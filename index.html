@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kenmemorize Arcade</title>
+<style>
+  /* ============ THEME PRESETS ============
+     Default = Candy (soft). Others via body[data-theme].
+     Each theme sets background, panels, text, glow strength,
+     and the five category colours. */
+  :root{
+    /* Candy — soft playful, gentle glow (DEFAULT) */
+    --bg-base:#1B1436;
+    --bg-1:#2A1F52;
+    --bg-2:#3A2560;
+    --panel:#271E4A;
+    --panel-raised:#31265C;
+    --score-bg:#191233;
+    --text:#F3EFFF;
+    --dim:#A99FD6;
+    --marquee:#FFD27A;
+    --marquee-border:#FFD27A;
+    --glow:0.18;                 /* hover glow opacity multiplier */
+    --chip-bg:#271E4A;
+    --chip-border:rgba(255,255,255,0.10);
+    --c-spatial:#8FB8FF;
+    --c-visual:#FF9FC7;
+    --c-numeric:#FFC97A;
+    --c-sequence:#9EE6C9;
+    --c-logic:#C6A6FF;
+  }
+  body[data-theme="dusk"]{
+    /* Dusk — muted slate/indigo, minimal glow */
+    --bg-base:#14161F;
+    --bg-1:#1C2030;
+    --bg-2:#232838;
+    --panel:#1E2333;
+    --panel-raised:#28304A;
+    --score-bg:#12141C;
+    --text:#E7EAF3;
+    --dim:#8B93AD;
+    --marquee:#C9D2E8;
+    --marquee-border:#5A6785;
+    --glow:0.10;
+    --chip-bg:#1E2333;
+    --chip-border:rgba(255,255,255,0.08);
+    --c-spatial:#7FA6E0;
+    --c-visual:#D98FB0;
+    --c-numeric:#E0B674;
+    --c-sequence:#82C4A6;
+    --c-logic:#A88FD9;
+  }
+  body[data-theme="paper"]{
+    /* Paper — light, clean, content-first */
+    --bg-base:#F4F2FB;
+    --bg-1:#ECE8FA;
+    --bg-2:#F6F1FF;
+    --panel:#FFFFFF;
+    --panel-raised:#F3F0FC;
+    --score-bg:#F0ECFA;
+    --text:#231C42;
+    --dim:#6B6390;
+    --marquee:#6A4BC4;
+    --marquee-border:#C9B8F5;
+    --glow:0.16;
+    --chip-bg:#FFFFFF;
+    --chip-border:rgba(60,40,120,0.16);
+    --c-spatial:#3E6FD1;
+    --c-visual:#D24E8E;
+    --c-numeric:#C77A16;
+    --c-sequence:#1F9E76;
+    --c-logic:#7B4DD1;
+  }
+  body[data-theme="neon"]{
+    /* Neon — the original high-glare arcade look */
+    --bg-base:#14103A;
+    --bg-1:#241C66;
+    --bg-2:#2A1F5E;
+    --panel:#1E1854;
+    --panel-raised:#241C66;
+    --score-bg:#0F0C2C;
+    --text:#F5F3FF;
+    --dim:#9C93D9;
+    --marquee:#FFC94D;
+    --marquee-border:#FFC94D;
+    --glow:0.45;
+    --chip-bg:#1E1854;
+    --chip-border:rgba(255,255,255,0.10);
+    --c-spatial:#2FE6E6;
+    --c-visual:#FF3E9A;
+    --c-numeric:#FFC94D;
+    --c-sequence:#A6FF4D;
+    --c-logic:#B18CFF;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 15% 0%, var(--bg-1) 0%, transparent 45%),
+      radial-gradient(circle at 85% 10%, var(--bg-2) 0%, transparent 40%),
+      var(--bg-base);
+    color:var(--text);
+    font-family:-apple-system, "SF Pro Rounded", "Segoe UI Rounded", "Nunito", "Helvetica Neue", Arial, sans-serif;
+    min-height:100vh;
+    padding:24px 18px 60px;
+    transition:background 0.3s ease, color 0.3s ease;
+  }
+
+  /* ---------- Header ---------- */
+  header{ max-width:1100px; margin:0 auto 18px; text-align:center; }
+  .marquee{
+    display:inline-block; padding:9px 26px;
+    border:3px solid var(--marquee-border); border-radius:999px;
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--marquee-border) 12%, transparent);
+    font-weight:800; font-size:1.8rem; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--marquee);
+  }
+  header p{ margin:12px auto 0; color:var(--dim); font-size:0.92rem; max-width:460px; }
+
+  /* ---------- Theme switcher ---------- */
+  .themebar{
+    max-width:1100px; margin:14px auto 0;
+    display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
+  }
+  .themebar .lbl{ color:var(--dim); font-size:0.7rem; align-self:center; letter-spacing:0.06em; text-transform:uppercase; margin-right:2px; }
+  .theme-btn{
+    cursor:pointer; border:1.5px solid var(--chip-border); background:var(--chip-bg);
+    color:var(--text); border-radius:999px; padding:5px 13px; font-size:0.74rem;
+    font-weight:700; letter-spacing:0.03em; transition:all 0.15s ease;
+  }
+  .theme-btn[aria-pressed="true"]{ border-color:var(--marquee); color:var(--marquee); }
+
+  /* ---------- Filter chips ---------- */
+  .filters{
+    max-width:1100px; margin:22px auto 6px;
+    display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
+  }
+  .chip{
+    cursor:pointer; border:1.5px solid var(--chip-border); background:var(--chip-bg);
+    color:var(--dim); border-radius:999px; padding:6px 15px; font-size:0.78rem;
+    font-weight:700; letter-spacing:0.02em; transition:all 0.15s ease;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .chip[aria-pressed="true"]{ color:var(--text); border-color:var(--chip-c, var(--marquee)); background:color-mix(in srgb, var(--chip-c, var(--marquee)) 14%, var(--chip-bg)); }
+  .chip .dot{ width:9px; height:9px; border-radius:50%; background:var(--chip-c, var(--marquee)); }
+
+  /* ---------- Section headers ---------- */
+  .section-head{
+    max-width:1100px; margin:26px auto 14px; display:flex; align-items:center; gap:12px;
+  }
+  .section-head h2{
+    margin:0; font-size:0.92rem; font-weight:800; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--sc, var(--marquee)); white-space:nowrap;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-head .rule{ flex-grow:1; height:2px; background:linear-gradient(90deg, var(--sc, var(--marquee)), transparent); border-radius:2px; }
+  .section-head .count{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.8rem; color:var(--dim); }
+
+  /* ---------- Grid & cards ---------- */
+  .grid{
+    max-width:1100px; margin:0 auto;
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:20px;
+  }
+  .card{
+    position:relative; background:var(--panel); border-radius:20px; padding:20px 18px 16px;
+    border:2px solid var(--chip-border); box-shadow:0 8px 22px rgba(0,0,0,0.28);
+    opacity:0; transform:translateY(14px); animation:riseIn 0.5s ease forwards;
+    transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    display:flex; flex-direction:column; text-decoration:none; color:inherit;
+  }
+  .card:hover, .card:focus-visible{
+    transform:translateY(-5px); border-color:var(--accent);
+    box-shadow:0 14px 28px rgba(0,0,0,0.35),
+               0 0 0 1px var(--accent),
+               0 0 26px -4px color-mix(in srgb, var(--accent) calc(var(--glow) * 100%), transparent);
+    outline:none;
+  }
+  @keyframes riseIn{ to{ opacity:1; transform:translateY(0); } }
+  @media (prefers-reduced-motion: reduce){
+    .card{ animation:none; opacity:1; transform:none; }
+    .card:hover, .card:focus-visible{ transform:none; }
+  }
+  .card::before{ content:""; position:absolute; top:0; left:20px; right:20px; height:4px; background:var(--accent); border-radius:0 0 6px 6px; }
+
+  .badge{ position:absolute; top:-9px; right:14px; font-size:0.62rem; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; padding:4px 9px; border-radius:999px; color:#1a1330; }
+  .badge.new{ background:var(--c-sequence); }
+  .badge.updated{ background:var(--c-spatial); }
+
+  .rank{ position:absolute; top:14px; left:14px; font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.66rem; font-weight:800; padding:3px 7px; border-radius:8px; background:var(--panel-raised); color:var(--dim); border:1px solid var(--chip-border); }
+  .rank.r1{ background:#FFD27A; color:#4a3400; border-color:transparent; }
+  .rank.r2{ background:#D4DCE8; color:#33404f; border-color:transparent; }
+  .rank.r3{ background:#E3B487; color:#4a2c12; border-color:transparent; }
+
+  .icon-row{ display:flex; align-items:center; gap:12px; margin:6px 0 10px; }
+  .icon{ width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; background:var(--panel-raised); border:2px solid var(--accent); flex-shrink:0; }
+  .title{ font-weight:800; font-size:1.06rem; letter-spacing:0.01em; }
+  .cat-tag{ font-size:0.64rem; color:var(--accent); font-weight:700; letter-spacing:0.05em; text-transform:uppercase; margin-top:2px; }
+
+  .blurb{ color:var(--dim); font-size:0.84rem; line-height:1.4; margin:0 0 16px; flex-grow:1; }
+
+  .scoreboard{ background:var(--score-bg); border-radius:10px; padding:8px 12px; display:flex; justify-content:space-between; font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.72rem; letter-spacing:0.03em; color:var(--marquee); border:1px solid var(--chip-border); }
+  .scoreboard .label{ color:var(--dim); margin-right:4px; }
+
+  .play-btn{ margin-top:12px; text-align:center; font-weight:800; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; padding:9px; border-radius:10px; background:var(--accent); color:#1a1330; }
+
+  .empty-note{ text-align:center; color:var(--dim); max-width:500px; margin:60px auto; font-size:0.9rem; }
+</style>
+</head>
+<body data-theme="candy">
+
+<header>
+  <div class="marquee">Kenmemorize Arcade</div>
+  <p>Pick a game. Your best is saved on this device; total plays count everyone.</p>
+  <div class="themebar" id="themebar">
+    <span class="lbl">Theme</span>
+    <button class="theme-btn" data-theme-val="candy">Candy</button>
+    <button class="theme-btn" data-theme-val="dusk">Dusk</button>
+    <button class="theme-btn" data-theme-val="paper">Paper</button>
+    <button class="theme-btn" data-theme-val="neon">Neon</button>
+  </div>
+</header>
+
+<div class="filters" id="filters"></div>
+<div id="sections"></div>
+<div class="empty-note" id="emptyNote" style="display:none;">No games yet — add entries to BUILTIN_GAMES, or add games via admin.html.</div>
+
+<script>
+/* =========================================================
+   CATEGORIES — memory-skill groups. Order here = display order.
+   ========================================================= */
+const CATEGORIES = [
+  { key:"spatial",  label:"Spatial",  icon:"🧭", color:"var(--c-spatial)"  },
+  { key:"visual",   label:"Visual",   icon:"👁️", color:"var(--c-visual)"   },
+  { key:"numeric",  label:"Numeric",  icon:"🔢", color:"var(--c-numeric)"  },
+  { key:"sequence", label:"Sequence", icon:"🔗", color:"var(--c-sequence)" },
+  { key:"logic",    label:"Logic",    icon:"🧩", color:"var(--c-logic)"    },
+];
+
+/* =========================================================
+   BUILT-IN ROSTER — the default game list, shipped in the file.
+   The admin panel (admin.html) can add/edit/delete games at the
+   Firebase path /games; those overlay this list at runtime (see
+   buildRoster). So this array is the fallback/seed — the hub still
+   works with no network, and the admin's live edits take priority.
+   skill : one of the category keys above (drives colour + group)
+   badge : "new" | "updated" | null
+   Best score is read from localStorage key  best:{id}
+   Total plays are read from Firebase  /globalStats/{id}/totalPlays
+   ========================================================= */
+const BUILTIN_GAMES = [
+  { id:"tidal-recall",     name:"Tidal Recall",       skill:"visual",   blurb:"Working-memory game — spot the new item washed in by the tide. Classic, Zen, and pass-and-play PvP.", url:"games/tidal_recall.html",       icon:"🌊", badge:null },
+  { id:"hue-recall",       name:"Hue Recall",         skill:"visual",   blurb:"Recall mixed brand-logo colours; scored on colour distance. Solo, Endless, Practice, and PvP.",       url:"games/hue_recall.html",         icon:"🎨", badge:null },
+  { id:"ring-match",       name:"Ring Match",         skill:"visual",   blurb:"Colour-matching slider puzzle with Zen and PvP race modes.",                                          url:"games/ring_match.html",         icon:"🎯", badge:null },
+  { id:"overlap-pictures", name:"Overlapping Pictures", skill:"visual", blurb:"Competition-format memory-sports trainer with a 300-icon pool.",                                     url:"games/overlapping_pictures.html", icon:"🖼️", badge:null },
+  { id:"memory-mash",      name:"Memory Mash",        skill:"visual",   blurb:"Kim's-Game-style recall with Mode A and Mode B, plus Competition and Practice.",                     url:"games/memory_mash.html",        icon:"🃏", badge:null },
+  { id:"vision-test",      name:"VisionTest",         skill:"visual",   blurb:"Eye-chart orientation recall, solo or Firebase multiplayer.",                                         url:"games/vision-test.html",        icon:"👁️", badge:null },
+  { id:"hex-memory-match", name:"Hex Memory Match",   skill:"visual",   blurb:"Classic pair-matching, reimagined on a hex grid.",                                                    url:"games/hex_memory_match.html",   icon:"🔷", badge:null },
+  { id:"quad-twist",       name:"Quad Twist",         skill:"spatial",  blurb:"Rotation puzzle in Classic and Numbers modes on 4×4, 6×6, and 8×8 grids.",                            url:"games/quad_twist.html",         icon:"🔄", badge:null },
+  { id:"ricochet-recall",  name:"Ricochet Recall",    skill:"spatial",  blurb:"Predict the mirror-bounce path. Solo (3 lives) or pass-and-play PvP.",                                url:"games/ricochet_recall.html",    icon:"🪞", badge:null },
+  { id:"voxel-vault",      name:"Voxel Vault",        skill:"spatial",  blurb:"Spatial memory across four modes — count, rebuild, spot the odd one out, or assemble the pair.",      url:"games/voxel-vault.html",        icon:"🧊", badge:"new" },
+  { id:"tile-placement",   name:"Tile Placement",     skill:"spatial",  blurb:"Place remembered tiles back in their exact spot; tap to rotate.",                                     url:"games/tile_placement.html",     icon:"🧩", badge:null },
+  { id:"ciphermath",       name:"CipherMath",         skill:"numeric",  blurb:"Equation-recall game on 4×4 and 5×5 grids with pass-and-play multiplayer.",                           url:"games/ciphermath.html",         icon:"🔐", badge:null },
+  { id:"hexasum",          name:"HexaSum",            skill:"numeric",  blurb:"Hexagonal number-line sum puzzle. Solo and PvP.",                                                     url:"games/hexasum.html",            icon:"➕", badge:null },
+  { id:"roll-remember",    name:"Roll & Remember",    skill:"numeric",  blurb:"Face-grid dice recall for 1–4 players.",                                                              url:"games/roll_and_remember.html",  icon:"🎲", badge:null },
+  { id:"cart-recall",      name:"Cart Recall",        skill:"sequence", blurb:"Memorize the cart in order, then recall it — now with online multiplayer.",                          url:"games/conveyor_clash.html",     icon:"🛒", badge:"updated" },
+  { id:"circuit-cascade",  name:"Circuit Cascade",    skill:"logic",    blurb:"Logic-circuit chip placement across Easy, Medium, and Hard.",                                         url:"games/circuit_cascade.html",    icon:"⚡", badge:null },
+];
+
+/* =========================================================
+   FIREBASE — same Realtime Database as your PvP games and admin.html.
+   IMPORTANT: this URL must be IDENTICAL to DB_URL in admin.html, and
+   must be the exact URL shown at the top of your Firebase console
+   (Realtime Database). If your DB is in the Singapore region it will
+   instead look like:
+     https://kenmemorize-arcade-default-rtdb.asia-southeast1.firebasedatabase.app
+   Paths used:
+     /games                 — roster managed by admin.html (overlays built-ins)
+     /globalStats/{id}/totalPlays — global play counter (read-only here)
+   ========================================================= */
+const FIREBASE_DB_URL = "https://kenmemorize-arcade-default-rtdb.firebaseio.com";
+
+async function fetchJSON(path){
+  try{
+    const res = await fetch(`${FIREBASE_DB_URL}/${path}.json`);
+    if(!res.ok) return {};
+    const data = await res.json();
+    // Firebase returns 200 with {error:...} when rules block a path
+    if(data && typeof data === "object" && data.error) return {};
+    return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+  }catch(e){
+    console.warn(`Fetch failed for /${path} (check FIREBASE_DB_URL):`, e);
+    return {};
+  }
+}
+
+/* Merge the built-in roster with admin edits from /games.
+   - built-ins keep their order; Firebase entries override by id
+   - {deleted:true} removes a game
+   - games only in Firebase (added via admin) are appended by createdAt */
+let ROSTER = [];
+function buildRoster(fireGames){
+  const map = new Map();
+  let order = 0;
+  for(const g of BUILTIN_GAMES){ map.set(g.id, { ...g, _order: order++ }); }
+  for(const [id, fg] of Object.entries(fireGames || {})){
+    if(!fg || typeof fg !== "object") continue;
+    if(fg.deleted){ map.delete(id); continue; }
+    const prev = map.get(id);
+    map.set(id, {
+      id,
+      name:  fg.name  ?? prev?.name  ?? id,
+      skill: fg.skill ?? prev?.skill ?? "visual",
+      blurb: fg.blurb ?? prev?.blurb ?? "",
+      url:   fg.url   ?? prev?.url   ?? "#",
+      icon:  fg.icon  ?? prev?.icon  ?? "🎮",
+      badge: prev?.badge ?? null,   // badges are a built-in concept only
+      _order: prev ? prev._order : (100000 + (Number(fg.createdAt) || 0))
+    });
+  }
+  return [...map.values()].sort((a,b) => a._order - b._order);
+}
+
+function localBest(id){
+  try{
+    const v = localStorage.getItem("best:" + id);
+    return (v !== null && v !== "") ? v : "—";
+  }catch(e){ return "—"; }
+}
+
+/* competition ranking (ties share a rank); 0-play games get no rank */
+function computeRanks(stats){
+  const rows = ROSTER.map(g => ({ id:g.id, plays:(stats[g.id]?.totalPlays) || 0 }))
+                    .sort((a,b) => b.plays - a.plays);
+  const rank = {};
+  let seen = 0, lastPlays = null, curRank = 0;
+  for(const row of rows){
+    seen++;
+    if(row.plays !== lastPlays){ curRank = seen; lastPlays = row.plays; }
+    rank[row.id] = row.plays > 0 ? curRank : null;
+  }
+  return rank;
+}
+
+function cardTemplate(game, stats, rank, catColor){
+  const plays = (stats[game.id]?.totalPlays) || 0;
+  const best  = localBest(game.id);
+  const r = rank[game.id];
+  const badgeHtml = game.badge ? `<div class="badge ${game.badge}">${game.badge}</div>` : "";
+  const rankHtml  = r ? `<div class="rank ${r<=3?("r"+r):""}">#${r}</div>` : "";
+  const catLabel  = (CATEGORIES.find(c=>c.key===game.skill)||{}).label || game.skill;
+  return `
+    <a class="card" style="--accent:${catColor}" href="${game.url}">
+      ${badgeHtml}
+      ${rankHtml}
+      <div class="icon-row">
+        <div class="icon">${game.icon}</div>
+        <div>
+          <div class="title">${game.name}</div>
+          <div class="cat-tag">${catLabel}</div>
+        </div>
+      </div>
+      <p class="blurb">${game.blurb}</p>
+      <div class="scoreboard">
+        <div><span class="label">PLAYS</span>${plays.toLocaleString()}</div>
+        <div><span class="label">BEST</span>${best}</div>
+      </div>
+      <div class="play-btn">Play</div>
+    </a>
+  `;
+}
+
+function renderFilters(activeCats){
+  const el = document.getElementById("filters");
+  const catChips = CATEGORIES
+    .filter(c => ROSTER.some(g => g.skill === c.key))
+    .map(c => {
+      const on = activeCats.has(c.key);
+      return `<button class="chip" data-cat="${c.key}" style="--chip-c:${c.color}" aria-pressed="${on}"><span class="dot"></span>${c.icon} ${c.label}</button>`;
+    }).join("");
+  const allOn = CATEGORIES.every(c => !ROSTER.some(g=>g.skill===c.key) || activeCats.has(c.key));
+  el.innerHTML = `<button class="chip" data-cat="__all" aria-pressed="${allOn}">All</button>` + catChips;
+}
+
+async function render(){
+  const sectionsEl = document.getElementById("sections");
+  const emptyNote  = document.getElementById("emptyNote");
+
+  // pull the admin-managed roster and the play counts in parallel
+  const [fireGames, stats] = await Promise.all([ fetchJSON("games"), fetchJSON("globalStats") ]);
+  ROSTER = buildRoster(fireGames);
+
+  if(ROSTER.length === 0){ emptyNote.style.display = "block"; return; }
+  const rank = computeRanks(stats);
+
+  // build one section per non-empty category
+  let html = "", delay = 0;
+  for(const cat of CATEGORIES){
+    const games = ROSTER.filter(g => g.skill === cat.key);
+    if(!games.length) continue;
+    const cards = games.map((g,i) => {
+      const c = cardTemplate(g, stats, rank, cat.color);
+      return c.replace('class="card"', `class="card" data-delay="${delay+i}"`);
+    }).join("");
+    delay += games.length;
+    html += `
+      <div class="section-head" data-cat-sec="${cat.key}" style="--sc:${cat.color}">
+        <h2>${cat.icon} ${cat.label}</h2><div class="rule"></div><div class="count">${games.length}</div>
+      </div>
+      <div class="grid" data-cat-grid="${cat.key}">${cards}</div>`;
+  }
+  sectionsEl.innerHTML = html;
+
+  // stagger entrance
+  document.querySelectorAll(".card").forEach(el => {
+    el.style.animationDelay = `${parseInt(el.getAttribute("data-delay")||"0",10) * 40}ms`;
+  });
+
+  // ---- filter chips ----
+  const activeCats = new Set(CATEGORIES.map(c=>c.key));
+  renderFilters(activeCats);
+
+  function applyFilter(){
+    for(const cat of CATEGORIES){
+      const show = activeCats.has(cat.key);
+      const sec  = document.querySelector(`[data-cat-sec="${cat.key}"]`);
+      const grid = document.querySelector(`[data-cat-grid="${cat.key}"]`);
+      if(sec)  sec.style.display  = show ? "" : "none";
+      if(grid) grid.style.display = show ? "" : "none";
+    }
+    renderFilters(activeCats);
+  }
+
+  document.getElementById("filters").addEventListener("click", e => {
+    const btn = e.target.closest(".chip");
+    if(!btn) return;
+    const cat = btn.getAttribute("data-cat");
+    if(cat === "__all"){
+      CATEGORIES.forEach(c => activeCats.add(c.key));
+    }else{
+      if(activeCats.has(cat)) activeCats.delete(cat); else activeCats.add(cat);
+      // never allow an all-empty view: re-enable all if nothing left
+      if(activeCats.size === 0) CATEGORIES.forEach(c => activeCats.add(c.key));
+    }
+    applyFilter();
+  });
+}
+
+/* ---- theme switcher ---- */
+function initTheme(){
+  const bar = document.getElementById("themebar");
+  let saved = "candy";
+  try{ saved = localStorage.getItem("hubTheme") || "candy"; }catch(e){}
+  setTheme(saved);
+  bar.addEventListener("click", e => {
+    const btn = e.target.closest(".theme-btn");
+    if(!btn) return;
+    setTheme(btn.getAttribute("data-theme-val"));
+  });
+  function setTheme(t){
+    document.body.setAttribute("data-theme", t);
+    try{ localStorage.setItem("hubTheme", t); }catch(e){}
+    document.querySelectorAll(".theme-btn").forEach(b =>
+      b.setAttribute("aria-pressed", b.getAttribute("data-theme-val") === t ? "true" : "false"));
+  }
+}
+
+initTheme();
+render();
+</script>
+</body>
+</html>
