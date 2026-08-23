@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ricochet Recall</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+  /* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+     Dark is the default (<html data-theme="dark">). The gold mirror hue is this
+     game's accent; light mode uses a darker, more saturated gold so it still
+     carries against white. --on-accent is the ink that sits on an accent fill
+     (dark on the pale gold, white on the deep gold) — §6's literal "white text"
+     is unreadable on #ffd60a. --on-pick does the same job for the pick colour. */
+  :root[data-theme="dark"]{
+    --bg:#0b1b2b;
+    --panel:#153450;
+    --panel-2:#1b4166;
+    --board-frame:#17395a;
+    --cell:#0d2438;
+    --grid-line:#2a5580;
+    --slot-stroke:#7d97ad;
+    --slot-fill:#16324c;
+    --mirror:#ffd60a;
+    --mirror-glow:rgba(255,214,10,.35);
+    --accent-tint:#3c3617;
+    --on-accent:#231a00;
+    --path:#3ef0a0;
+    --arrow:#4dffa6;
+    --pick:#b9dcf5;
+    --on-pick:#0b1b2b;
+    --text:#e8f1fa;
+    --muted:#8fabc4;
+    --border:#2b5075;
+    --good:#22c55e;
+    --bad:#e5484d;
+    --warn:#f5a524;
+    --shadow:rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"]{
+    --bg:#eef4fa;
+    --panel:#ffffff;
+    --panel-2:#e3edf7;
+    --board-frame:#cddff0;
+    --cell:#f4f9fd;
+    --grid-line:#9ab8d4;
+    --slot-stroke:#5a7d99;
+    --slot-fill:#ffffff;
+    --mirror:#9a6200;
+    --mirror-glow:rgba(154,98,0,.28);
+    --accent-tint:#f6ecd7;
+    --on-accent:#ffffff;
+    --path:#00875a;
+    --arrow:#00a86b;
+    --pick:#2f6690;
+    --on-pick:#ffffff;
+    --text:#0f2438;
+    --muted:#5b7793;
+    --border:#c3d6e8;
+    --good:#158a4a;
+    --bad:#c62a2f;
+    --warn:#a8620a;
+    --shadow:rgba(15,36,56,.12);
+  }
+
+  html,body{height:100%;}
+  /* §4 — system stack only, so the file stays self-contained and offline-safe. */
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI',Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+    /* headroom at the top so the fixed theme toggle never lands on the HUD (§2) */
+    padding:calc(env(safe-area-inset-top) + 56px) 12px calc(env(safe-area-inset-bottom) + 18px);
+    transition:background .25s,color .25s;
+  }
+
+  /* ── Theme toggle — §2 (shared convention across all games) ── */
+  .theme-toggle{
+    position:fixed;top:calc(env(safe-area-inset-top) + 16px);right:16px;z-index:300;
+    background:var(--panel);border:1px solid var(--border);border-radius:999px;
+    padding:7px 13px;min-height:36px;color:var(--muted);font-size:13px;font-weight:600;
+    font-family:'Consolas','Courier New',monospace;
+    display:flex;align-items:center;gap:7px;cursor:pointer;transition:all .15s;user-select:none;
+  }
+  .theme-toggle:hover{border-color:var(--mirror);color:var(--mirror);}
+  .theme-toggle:active{transform:scale(.95);}
+  .theme-toggle .toggle-icon{display:inline-flex;}
+  .theme-toggle .icon-moon{display:none;}
+  :root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+  :root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+  /* ── Screens ── */
+  /* §5 — the menu reads at the shared 720px width; the play screens keep the
+     narrower 560px shell the square board was laid out for. */
+  .screen{display:none;max-width:560px;margin:0 auto;flex-direction:column;align-items:center;gap:14px;}
+  .screen.active{display:flex;}
+  #scMenu{max-width:720px;}
+
+  /* ── Logo block — §3 (icon, h1, subtitle) ── */
+  .logo{text-align:center;}
+  .logo-icon{display:flex;justify-content:center;align-items:center;margin:0 auto 6px;
+    width:32px;height:32px;color:var(--mirror);}
+  h1{
+    font-size:28px;font-weight:800;letter-spacing:.5px;line-height:1.15;
+    text-align:center;
+  }
+  h1 .dot{color:var(--mirror);}
+  .tagline{color:var(--muted);font-size:14px;text-align:center;margin-top:6px;}
+
+  .card{
+    width:100%;background:var(--panel);border:1px solid var(--border);
+    border-radius:16px;padding:16px;box-shadow:0 6px 20px var(--shadow);
+  }
+  .card-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+
+  .setting{margin-bottom:16px;}
+  .setting:last-child{margin-bottom:0;}
+  .setting-label{font-size:13px;font-weight:600;margin-bottom:8px;}
+  .setting-note{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.5;}
+
+  .pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .pill{
+    flex:1 1 auto;min-width:74px;min-height:42px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    background:var(--panel-2);border:1.5px solid var(--border);border-radius:999px;
+    padding:8px 12px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;
+    transition:all .12s;
+  }
+  .pill:active{transform:scale(.96);}
+  .pill:hover{border-color:var(--mirror);color:var(--text);}
+  /* §6 — selected pill is accent-tinted with an accent border and accent text. */
+  .pill.on{background:var(--accent-tint);border-color:var(--mirror);color:var(--mirror);}
+  .pill.on:hover{color:var(--mirror);}
+
+  .name-inputs{display:flex;flex-direction:column;gap:8px;}
+  .name-inputs input{
+    width:100%;min-height:44px;padding:10px 14px;border-radius:12px;
+    background:var(--panel-2);border:1.5px solid var(--border);color:var(--text);
+    font-size:15px;font-family:inherit;
+  }
+  .name-inputs input:focus{outline:2px solid var(--mirror);outline-offset:1px;}
+
+  /* §6 — primary = solid accent with --on-accent ink; ghost = surface + border. */
+  .btn{
+    width:100%;min-height:52px;border:none;border-radius:14px;cursor:pointer;
+    font-family:inherit;font-size:16px;font-weight:700;
+    background:var(--mirror);color:var(--on-accent);transition:filter .15s,transform .1s;
+  }
+  .btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+  .btn:active{transform:scale(.98);}
+  .btn.ghost{background:var(--panel-2);color:var(--muted);border:1.5px solid var(--border);}
+  .btn.ghost:hover{filter:none;border-color:var(--mirror);color:var(--mirror);}
+  .btn.danger{background:transparent;color:var(--bad);border:1.5px solid var(--bad);}
+  .btn.danger:hover{filter:none;background:var(--bad);color:#fff;}
+  .btn.sm{min-height:44px;font-size:14px;}
+  .btn-row{display:flex;gap:10px;width:100%;}
+
+  /* ── How to play — §3. The card is always visible on the menu; the longer
+     reference detail lives behind "Full rules" in a modal. ── */
+  .howto-box{
+    width:100%;background:var(--panel);border:1px solid var(--border);
+    border-radius:16px;padding:18px 20px;box-shadow:0 6px 20px var(--shadow);
+  }
+  .howto-box p{font-size:13px;line-height:1.6;color:var(--muted);margin-bottom:8px;}
+  .howto-box p:last-of-type{margin-bottom:0;}
+  .howto-box b{color:var(--text);}
+  .howto-box .full-rules{margin-top:14px;}
+
+  ol.howto{list-style:none;counter-reset:h;display:flex;flex-direction:column;gap:11px;}
+  ol.howto li{counter-increment:h;display:flex;gap:11px;font-size:13px;line-height:1.6;color:var(--muted);}
+  ol.howto li::before{
+    content:counter(h);flex:0 0 22px;height:22px;border-radius:50%;
+    background:var(--mirror);color:var(--on-accent);font-size:12px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  ol.howto b{color:var(--text);}
+  ol.howto code{font-family:'Consolas','Courier New',monospace;color:var(--text);}
+
+  /* ── Countdown ── */
+  #countNum{font-family:'Consolas','Courier New',monospace;font-size:clamp(70px,26vw,130px);
+    font-weight:900;color:var(--mirror);line-height:1;}
+  .count-label{color:var(--muted);font-size:14px;}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+  .pop{animation:pop .35s ease-out;}
+
+  /* ── HUD ── */
+  .hud{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:10px 14px;
+  }
+  .hud-block{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .hud-key{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  .hud-val{font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .hearts{font-size:15px;letter-spacing:2px;}
+  .heart-off{opacity:.22;}
+
+  .ring{
+    width:54px;height:54px;flex:0 0 54px;border-radius:50%;position:relative;
+    background:conic-gradient(var(--mirror) calc(var(--pct,100) * 1%), var(--panel-2) 0);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ring::before{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--panel);}
+  .ring span{position:relative;font-size:16px;font-weight:800;font-family:'Consolas','Courier New',monospace;}
+
+  /* ── Board ── */
+  /* Square board: one width value controls both axes. The vh term keeps the
+     board plus HUD and buttons on one screen on short phones and in landscape. */
+  .board-host{width:min(94vw,520px,55vh);max-width:100%;}
+  .board-host svg{display:block;width:100%;height:auto;}
+  .cell-rect{fill:var(--cell);stroke:var(--grid-line);stroke-width:2;}
+  .frame-rect{fill:var(--board-frame);}
+  .mirror-glow{stroke:var(--mirror-glow);stroke-width:30;stroke-linecap:round;}
+  .mirror-line{stroke:var(--mirror);stroke-width:15;stroke-linecap:round;}
+  .path-line{stroke:var(--path);stroke-width:12;stroke-linecap:round;stroke-dasharray:1 30;fill:none;}
+  .arrow{fill:var(--arrow);}
+  .slot-circle{fill:var(--slot-fill);stroke:var(--slot-stroke);stroke-width:5;}
+  .slot-hit{fill:transparent;}
+  .slot-g{cursor:default;}
+  .slot-g.tappable{cursor:pointer;}
+  .slot-g.tappable:active .slot-circle{fill:var(--panel-2);}
+  .slot-sel .slot-circle{fill:var(--pick);stroke:var(--pick);}
+  .slot-truth .slot-circle{stroke:var(--good);stroke-width:8;}
+  .badge-good{fill:var(--good);}
+  .badge-bad{fill:var(--bad);}
+  .badge-text{fill:#fff;font-size:44px;font-weight:800;text-anchor:middle;dominant-baseline:central;font-family:inherit;}
+  .pick-text{fill:var(--on-pick);font-size:38px;font-weight:800;text-anchor:middle;dominant-baseline:central;font-family:inherit;}
+
+  .prompt{font-size:14px;color:var(--muted);text-align:center;line-height:1.5;min-height:20px;}
+  .prompt b{color:var(--text);}
+
+  .verdict{font-size:19px;font-weight:800;text-align:center;}
+  .verdict.good{color:var(--good);}
+  .verdict.bad{color:var(--bad);}
+
+  /* ── Pass screen ── */
+  .pass-wrap{text-align:center;padding:26px 0;}
+  .pass-name{font-size:clamp(26px,8vw,38px);font-weight:800;margin:8px 0 4px;}
+
+  /* ── Reveal list ── */
+  .pick-list{width:100%;display:flex;flex-direction:column;gap:7px;}
+  .pick-row{
+    display:flex;align-items:center;gap:10px;padding:9px 13px;border-radius:11px;
+    background:var(--panel-2);border:1px solid var(--border);font-size:14px;
+  }
+  .pick-row .num{
+    flex:0 0 24px;height:24px;border-radius:50%;background:var(--pick);color:var(--on-pick);
+    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    font-family:'Consolas','Courier New',monospace;
+  }
+  .pick-row .nm{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pick-row .res{font-weight:800;}
+  .pick-row .res.good{color:var(--good);}
+  .pick-row .res.bad{color:var(--bad);}
+
+  /* ── Results ── */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;}
+  .stat{background:var(--panel-2);border:1px solid var(--border);border-radius:13px;padding:13px;text-align:center;}
+  .stat-val{font-size:26px;font-weight:800;color:var(--mirror);font-family:'Consolas','Courier New',monospace;}
+  .stat-key{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:3px;}
+
+  .lb-row{
+    display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:13px;
+    background:var(--panel-2);border:1.5px solid var(--border);
+  }
+  .lb-row.top{border-color:var(--mirror);}
+  .lb-rank{flex:0 0 34px;font-size:20px;font-weight:800;text-align:center;}
+  .lb-name{flex:1;font-weight:700;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lb-score{font-size:20px;font-weight:800;color:var(--mirror);font-family:'Consolas','Courier New',monospace;}
+
+  /* ── Modal — §6 ── */
+  .modal-bg{
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:400;
+    align-items:center;justify-content:center;padding:20px;
+  }
+  .modal-bg.active{display:flex;}
+  .modal{
+    background:var(--panel);border:1px solid var(--border);border-radius:18px;
+    padding:22px;max-width:340px;width:100%;text-align:center;
+    box-shadow:0 18px 50px var(--shadow);
+  }
+  .modal h3{font-size:19px;margin-bottom:8px;}
+  .modal p{font-size:13.5px;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+  /* The "Full rules" sheet — reference detail only; the menu card is the summary. */
+  .modal.rules{max-width:460px;text-align:left;max-height:82vh;overflow-y:auto;}
+  .modal.rules h3{text-align:center;margin-bottom:16px;}
+  .modal.rules .rules-foot{font-size:12.5px;color:var(--muted);line-height:1.6;margin:14px 0 18px;}
+  .modal.rules .rules-foot b{color:var(--text);}
+
+  /* ── §9 mobile ── */
+  @media (max-width:520px){
+    body{padding-left:10px;padding-right:10px;}
+    h1{font-size:22px;}
+    .tagline{font-size:13px;}
+    .howto-box{padding:14px 16px;}
+    .howto-box p,ol.howto li{font-size:12.5px;}
+    .card{padding:14px;}
+    .theme-toggle{font-size:12px;padding:6px 11px;}
+    .modal{padding:18px;}
+    .stat-val{font-size:22px;}
+  }
+  @media (max-width:380px){
+    h1{font-size:19px;}
+    .theme-toggle{padding:5px 9px;gap:5px;}
+    .pill{min-width:64px;padding:8px 9px;}
+    .btn{font-size:15px;}
+    .lb-name,.pick-row{font-size:13px;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+  }
+</style>
+</head>
+<body>
+
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<!-- ══════════ MENU ══════════ -->
+<div class="screen active" id="scMenu">
+  <!-- §3 — logo block: icon, h1, subtitle, then the How-to-Play card, then settings. -->
+  <div class="logo">
+    <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="3.2" cy="15" r="1.4" fill="currentColor" stroke="none"/><path d="M10.5 19.5L19.5 10.5"/><path d="M4.6 15H15V5"/><path d="M11.8 8.2L15 5l3.2 3.2"/></svg></span>
+    <h1>Ricochet <span class="dot">Recall</span></h1>
+    <p class="tagline">Memorise the mirrors. Predict the bounce</p>
+  </div>
+
+  <div class="howto-box">
+    <div class="card-title">How to play</div>
+    <p>Study the grid — every <b>yellow diagonal is a mirror</b>. Memorise where they sit.</p>
+    <p>The mirrors vanish and a <b>green arrow</b> shows where the ball enters and which way it's heading.</p>
+    <p>The ball runs straight until it hits a mirror, then <b>turns 90°</b>.</p>
+    <p>Tap the edge circle where you think it comes out, then confirm.</p>
+    <button class="btn ghost sm full-rules" id="rulesBtn">Full rules →</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Setup</div>
+
+    <div class="setting">
+      <div class="setting-label">Mode</div>
+      <div class="pills" id="pMode">
+        <div class="pill on" data-v="solo">Solo · 3 lives</div>
+        <div class="pill" data-v="pvp">Pass &amp; play</div>
+      </div>
+    </div>
+
+    <div class="setting">
+      <div class="setting-label">Starting difficulty</div>
+      <div class="pills" id="pDiff">
+        <div class="pill on" data-v="1">Easy</div>
+        <div class="pill" data-v="4">Medium</div>
+        <div class="pill" data-v="7">Hard</div>
+      </div>
+      <div class="setting-note" id="diffNote"></div>
+    </div>
+
+    <div class="setting">
+      <div class="setting-label">Memorising pace</div>
+      <div class="pills" id="pPace">
+        <div class="pill" data-v="1.4">Relaxed</div>
+        <div class="pill on" data-v="1">Standard</div>
+        <div class="pill" data-v="0.7">Quick</div>
+      </div>
+      <div class="setting-note">Bigger boards always get more time — pace just stretches or squeezes it.</div>
+    </div>
+
+    <div class="setting" id="wrapPlayers" style="display:none">
+      <div class="setting-label">Players</div>
+      <div class="pills" id="pPlayers">
+        <div class="pill on" data-v="2">2</div>
+        <div class="pill" data-v="3">3</div>
+        <div class="pill" data-v="4">4</div>
+      </div>
+      <div class="name-inputs" id="nameInputs" style="margin-top:10px"></div>
+    </div>
+
+    <div class="setting" id="wrapRounds" style="display:none">
+      <div class="setting-label">Rounds</div>
+      <div class="pills" id="pRounds">
+        <div class="pill on" data-v="5">5</div>
+        <div class="pill" data-v="10">10</div>
+        <div class="pill" data-v="15">15</div>
+      </div>
+      <div class="setting-note">Difficulty climbs one stage every round, the same way it does in solo.</div>
+    </div>
+  </div>
+
+  <button class="btn" id="startBtn">Start game</button>
+</div>
+
+<!-- ══════════ COUNTDOWN ══════════ -->
+<div class="screen" id="scCount">
+  <div style="margin:auto;text-align:center">
+    <div id="countNum">3</div>
+    <div class="count-label" id="countLabel">Get ready</div>
+  </div>
+</div>
+
+<!-- ══════════ MEMORISE ══════════ -->
+<div class="screen" id="scMemo">
+  <div class="hud">
+    <div class="hud-block">
+      <div class="hud-key" id="memoKey">Stage</div>
+      <div class="hud-val" id="memoVal">1</div>
+    </div>
+    <div class="hud-block" style="text-align:center;flex:1">
+      <div class="hud-key">Mirrors</div>
+      <div class="hud-val" id="memoMirrors">6</div>
+    </div>
+    <div class="ring" id="memoRing"><span id="memoRingTxt">12</span></div>
+  </div>
+  <div class="prompt">Memorise the mirrors — the ball's entry point comes next.</div>
+  <div class="board-host" id="boardMemo"></div>
+  <div class="btn-row">
+    <button class="btn ghost sm" id="skipMemoBtn">Skip memorising</button>
+    <button class="btn danger sm" id="exitMemoBtn">Exit game</button>
+  </div>
+</div>
+
+<!-- ══════════ PASS DEVICE ══════════ -->
+<div class="screen" id="scPass">
+  <div class="card pass-wrap">
+    <div class="hud-key">Pass the device to</div>
+    <div class="pass-name" id="passName">Player 2</div>
+    <p style="color:var(--muted);font-size:13.5px;line-height:1.5">
+      Everyone saw the same board. Make your call without showing anyone else.
+    </p>
+  </div>
+  <button class="btn" id="passReadyBtn">I'm ready</button>
+  <button class="btn danger sm" id="exitPassBtn">Exit game</button>
+</div>
+
+<!-- ══════════ RECALL + REVEAL ══════════ -->
+<div class="screen" id="scPlay">
+  <div class="hud">
+    <div class="hud-block">
+      <div class="hud-key" id="playKey">Stage</div>
+      <div class="hud-val" id="playVal">1</div>
+    </div>
+    <div class="hud-block" style="text-align:center;flex:1">
+      <div class="hud-key" id="playKey2">Lives</div>
+      <div class="hud-val hearts" id="playVal2">♥♥♥</div>
+    </div>
+    <div class="ring" id="turnRing" style="display:none"><span id="turnRingTxt">30</span></div>
+  </div>
+  <div class="prompt" id="playPrompt">Tap the edge circle where the ball comes out.</div>
+  <div class="board-host" id="boardPlay"></div>
+  <div class="verdict" id="verdict" style="display:none"></div>
+  <div class="pick-list" id="pickList" style="display:none"></div>
+  <button class="btn" id="confirmBtn" disabled style="opacity:.45">Confirm exit</button>
+  <button class="btn" id="nextBtn" style="display:none">Next</button>
+  <button class="btn danger sm" id="exitPlayBtn">Exit game</button>
+</div>
+
+<!-- ══════════ RESULTS ══════════ -->
+<div class="screen" id="scEnd">
+  <div style="margin-top:14px;text-align:center">
+    <h1 id="endTitle">Run over</h1>
+    <p class="tagline" id="endSub"></p>
+  </div>
+  <div class="card">
+    <div class="card-title" id="endCardTitle">Summary</div>
+    <div id="endBody"></div>
+  </div>
+  <button class="btn" id="againBtn">Play again</button>
+  <button class="btn ghost" id="menuBtn">Main menu</button>
+</div>
+
+<!-- ══════════ FULL RULES ══════════ -->
+<!-- §3 two-tier rules: the menu card is the summary, this is the manual. -->
+<div class="modal-bg" id="rulesModal">
+  <div class="modal rules" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <h3 id="rulesTitle">Full rules</h3>
+    <ol class="howto">
+      <li>Study the grid. Each <b>yellow diagonal is a mirror</b> — memorise where they sit.</li>
+      <li>The mirrors vanish and a <b>green arrow</b> appears on the edge. That's where the ball enters and which way it's heading.</li>
+      <li>The ball travels in a straight line until it hits a mirror, then <b>turns 90°</b>. A <code>/</code> sends a rightward ball up; a <code>\</code> sends it down.</li>
+      <li>Tap the <b>edge circle where you think the ball comes out</b>, then confirm.</li>
+      <li>Every three stages the grid grows and gains mirrors. Solo costs a life on a miss and replays the stage; pass &amp; play scores a point per player, per round.</li>
+    </ol>
+    <p class="rules-foot">The ball can never leave through the arrow it came in by, so that circle is never a valid answer. In <b>pass &amp; play</b> everyone studies the same board together, then answers in private with a 30-second turn clock.</p>
+    <button class="btn ghost" id="rulesClose">Close</button>
+  </div>
+</div>
+
+<!-- ══════════ EXIT MODAL ══════════ -->
+<div class="modal-bg" id="exitModal">
+  <div class="modal">
+    <h3>Exit this game?</h3>
+    <p>Your current progress won't be saved.</p>
+    <button class="btn danger" id="exitYes" style="margin-bottom:9px">Exit to menu</button>
+    <button class="btn ghost" id="exitNo">Keep playing</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'ricochet-recall';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ═══════════════ CONSTANTS ═══════════════ */
+var U = 100;            // svg units per cell
+var MARGIN = 112;       // space outside the grid for the perimeter slots
+var SLOT_OFFSET = 56;   // distance from grid edge to slot centre
+var SLOT_R = 27;        // visible slot radius
+var HIT_R = 48;         // invisible tap target radius (slots are 100 apart, so no overlap)
+var SIDES = ["top","right","bottom","left"];
+var TURN_SECONDS = 30;
+
+/* ═══════════════ DIFFICULTY ═══════════════ */
+function tune(stage){
+  var tier = Math.floor((stage - 1) / 3);
+  var n = Math.min(4 + tier, 8);
+  var density = Math.min(0.35 + 0.02 * tier, 0.55);
+  return {
+    n: n,
+    mirrors: Math.round(n * n * density),
+    minBounces: Math.min(tier, 6)
+  };
+}
+function memoSeconds(mirrors, pace){
+  return Math.max(5, Math.round((4 + mirrors * 1.2) * pace));
+}
+
+/* ═══════════════ PUZZLE ═══════════════ */
+function allSlots(n){
+  var out = [];
+  for (var s = 0; s < 4; s++){
+    for (var i = 0; i < n; i++) out.push({ side: SIDES[s], i: i });
+  }
+  return out;
+}
+function slotKey(s){ return s.side + ":" + s.i; }
+
+function entryStart(slot, n){
+  if (slot.side === "top")    return { x: slot.i, y: 0,     dx: 0,  dy: 1 };
+  if (slot.side === "bottom") return { x: slot.i, y: n - 1, dx: 0,  dy: -1 };
+  if (slot.side === "left")   return { x: 0,     y: slot.i, dx: 1,  dy: 0 };
+  return { x: n - 1, y: slot.i, dx: -1, dy: 0 };  // right
+}
+function exitSlot(x, y, n){
+  if (y < 0)  return { side: "top",    i: x };
+  if (y >= n) return { side: "bottom", i: x };
+  if (x < 0)  return { side: "left",   i: y };
+  return { side: "right", i: y };
+}
+
+// Steps the ball cell by cell. Returns ok:false if the mirrors form a closed
+// loop (state repeats) — those boards have no exit and must be regenerated.
+function simulate(grid, n, entry){
+  var st = entryStart(entry, n);
+  var x = st.x, y = st.y, dx = st.dx, dy = st.dy;
+  var path = [], seen = Object.create(null), bounces = 0, guard = 0;
+  var cap = 4 * n * n + 20;
+  while (true){
+    if (x < 0 || y < 0 || x >= n || y >= n){
+      return { ok: true, path: path, exit: exitSlot(x, y, n), bounces: bounces };
+    }
+    var key = x + "," + y + "," + dx + "," + dy;
+    if (seen[key]) return { ok: false };
+    seen[key] = 1;
+    path.push({ x: x, y: y });
+    var m = grid[y][x], t;
+    if (m === "/"){ t = dx; dx = -dy; dy = -t; bounces++; }
+    else if (m === "\\"){ t = dx; dx = dy; dy = t; bounces++; }
+    x += dx; y += dy;
+    if (++guard > cap) return { ok: false };
+  }
+}
+
+function shuffled(arr){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+// Retry loop with fallback-to-best, same pattern as the other generators in the
+// suite: ideal configurations get rarer as the mirror count climbs, so cap the
+// attempts and keep the best candidate seen rather than looping forever.
+function makePuzzle(stage){
+  var cfg = tune(stage), n = cfg.n;
+  var cells = [];
+  for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) cells.push({ x: x, y: y });
+  var slots = allSlots(n);
+  var best = null;
+
+  for (var a = 0; a < 600; a++){
+    var grid = [];
+    for (var r = 0; r < n; r++) grid.push(new Array(n).fill(null));
+    var picked = shuffled(cells).slice(0, cfg.mirrors);
+    for (var k = 0; k < picked.length; k++){
+      grid[picked[k].y][picked[k].x] = Math.random() < 0.5 ? "/" : "\\";
+    }
+    var entry = slots[Math.floor(Math.random() * slots.length)];
+    var sim = simulate(grid, n, entry);
+    if (!sim.ok) continue;
+    var cand = {
+      n: n, grid: grid, entry: entry, path: sim.path,
+      exit: sim.exit, bounces: sim.bounces, stage: stage, mirrors: cfg.mirrors
+    };
+    if (!best || sim.bounces > best.bounces) best = cand;
+    if (sim.bounces >= cfg.minBounces) return cand;
+  }
+
+  if (best) return best;
+  // Last resort: an empty grid always resolves.
+  var flat = [];
+  for (var q = 0; q < n; q++) flat.push(new Array(n).fill(null));
+  var e = { side: "left", i: 0 };
+  var s2 = simulate(flat, n, e);
+  return { n: n, grid: flat, entry: e, path: s2.path, exit: s2.exit,
+           bounces: 0, stage: stage, mirrors: 0 };
+}
+
+/* ═══════════════ GEOMETRY ═══════════════ */
+function boardSize(n){ return n * U + MARGIN * 2; }
+function cellCentre(x, y){ return [MARGIN + x * U + U / 2, MARGIN + y * U + U / 2]; }
+function slotCentre(side, i, n){
+  var mid = MARGIN + i * U + U / 2;
+  if (side === "top")    return [mid, MARGIN - SLOT_OFFSET];
+  if (side === "bottom") return [mid, MARGIN + n * U + SLOT_OFFSET];
+  if (side === "left")   return [MARGIN - SLOT_OFFSET, mid];
+  return [MARGIN + n * U + SLOT_OFFSET, mid];
+}
+var ARROW_ROT = { top: 0, bottom: 180, left: -90, right: 90 };
+
+/* ═══════════════ RENDER ═══════════════ */
+/*
+  opts: showMirrors, showArrow, showPath, tappable,
+        selected  = slot or null,
+        marks     = [{slot, label, correct}],
+        truth     = slot or null
+*/
+function renderBoard(host, p, opts){
+  opts = opts || {};
+  var n = p.n, size = boardSize(n), i, x, y, c;
+  var out = ['<svg viewBox="0 0 ' + size + ' ' + size + '" xmlns="http://www.w3.org/2000/svg" role="img">'];
+
+  out.push('<rect class="frame-rect" x="' + (MARGIN - 16) + '" y="' + (MARGIN - 16) +
+           '" width="' + (n * U + 32) + '" height="' + (n * U + 32) + '" rx="12"/>');
+
+  for (y = 0; y < n; y++){
+    for (x = 0; x < n; x++){
+      out.push('<rect class="cell-rect" x="' + (MARGIN + x * U) + '" y="' + (MARGIN + y * U) +
+               '" width="' + U + '" height="' + U + '"/>');
+    }
+  }
+
+  if (opts.showMirrors){
+    for (y = 0; y < n; y++){
+      for (x = 0; x < n; x++){
+        var m = p.grid[y][x];
+        if (!m) continue;
+        c = cellCentre(x, y);
+        var x1, y1, x2, y2;
+        if (m === "/"){ x1 = c[0] - 31; y1 = c[1] + 31; x2 = c[0] + 31; y2 = c[1] - 31; }
+        else          { x1 = c[0] - 31; y1 = c[1] - 31; x2 = c[0] + 31; y2 = c[1] + 31; }
+        out.push('<line class="mirror-glow" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>');
+        out.push('<line class="mirror-line" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>');
+      }
+    }
+  }
+
+  if (opts.showPath && p.path.length){
+    var pts = [];
+    var ent = slotCentre(p.entry.side, p.entry.i, n);
+    pts.push(ent[0] + "," + ent[1]);
+    for (i = 0; i < p.path.length; i++){
+      c = cellCentre(p.path[i].x, p.path[i].y);
+      pts.push(c[0] + "," + c[1]);
+    }
+    var ex = slotCentre(p.exit.side, p.exit.i, n);
+    pts.push(ex[0] + "," + ex[1]);
+    out.push('<polyline class="path-line" points="' + pts.join(" ") + '"/>');
+  }
+
+  // Perimeter slots
+  var markMap = Object.create(null);
+  if (opts.marks){
+    for (i = 0; i < opts.marks.length; i++){
+      var mk = opts.marks[i], mkey = slotKey(mk.slot);
+      if (!markMap[mkey]) markMap[mkey] = { labels: [], correct: mk.correct };
+      markMap[mkey].labels.push(mk.label);
+    }
+  }
+  var selKey = opts.selected ? slotKey(opts.selected) : null;
+  var truthKey = opts.truth ? slotKey(opts.truth) : null;
+  var entryKey = slotKey(p.entry);
+
+  var slots = allSlots(n);
+  for (i = 0; i < slots.length; i++){
+    var s = slots[i], key = slotKey(s);
+    c = slotCentre(s.side, s.i, n);
+    // The entry slot is never a valid answer: a ball can't leave the way it came
+    // in. Mirrors only turn 90°, so the path can never reverse onto itself, which
+    // means entry→exit has no fixed points. Verified over 10k generated boards.
+    var isEntry = (key === entryKey) && opts.showArrow;
+    var cls = "slot-g";
+    if (opts.tappable && !isEntry) cls += " tappable";
+    if (key === selKey) cls += " slot-sel";
+    if (key === truthKey) cls += " slot-truth";
+
+    out.push('<g class="' + cls + '" data-slot="' + key + '">');
+    if (isEntry){
+      out.push('<polygon class="arrow" points="' +
+        (c[0] - 34) + "," + (c[1] - 22) + " " +
+        (c[0] + 34) + "," + (c[1] - 22) + " " +
+        c[0] + "," + (c[1] + 26) +
+        '" transform="rotate(' + ARROW_ROT[s.side] + ' ' + c[0] + ' ' + c[1] + ')"/>');
+    } else {
+      out.push('<circle class="slot-circle" cx="' + c[0] + '" cy="' + c[1] + '" r="' + SLOT_R + '"/>');
+      var mm = markMap[key];
+      if (mm){
+        out.push('<circle class="' + (mm.correct ? "badge-good" : "badge-bad") +
+                 '" cx="' + c[0] + '" cy="' + c[1] + '" r="' + SLOT_R + '"/>');
+        out.push('<text class="badge-text" x="' + c[0] + '" y="' + (c[1] + 2) + '">' +
+                 (mm.labels.join("") || (mm.correct ? "✓" : "✕")) + '</text>');
+      } else if (key === truthKey){
+        // Nobody landed on it — fill the real exit so the miss is unmistakable.
+        out.push('<circle class="badge-good" cx="' + c[0] + '" cy="' + c[1] + '" r="' + SLOT_R + '"/>');
+        out.push('<text class="badge-text" x="' + c[0] + '" y="' + (c[1] + 2) + '">✓</text>');
+      }
+    }
+    out.push('<circle class="slot-hit" cx="' + c[0] + '" cy="' + c[1] + '" r="' + HIT_R + '"/>');
+    out.push('</g>');
+  }
+
+  out.push('</svg>');
+  host.innerHTML = out.join("");
+}
+
+/* ═══════════════ STATE ═══════════════ */
+var cfg = { mode: "solo", startStage: 1, pace: 1, players: 2, rounds: 5, names: [] };
+var G = null;
+var memoTimer = null, turnTimer = null, countTimer = null;
+
+function clearTimers(){
+  if (memoTimer) { clearInterval(memoTimer); memoTimer = null; }
+  if (turnTimer) { clearInterval(turnTimer); turnTimer = null; }
+  if (countTimer){ clearInterval(countTimer); countTimer = null; }
+}
+
+function $(id){ return document.getElementById(id); }
+function show(id){
+  var all = document.querySelectorAll(".screen");
+  for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
+  $(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(ch){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch];
+  });
+}
+function sideName(s){
+  return { top:"top", bottom:"bottom", left:"left", right:"right" }[s.side] + " " + (s.i + 1);
+}
+
+/* ═══════════════ THEME — STYLE_GUIDE.md §2 ═══════════════
+   Icons swap via CSS on [data-theme]; JS only sets the attribute and the label.
+   The choice persists under ricochetRecall_theme. Storage is wrapped because a
+   private/sandboxed context can throw on access — the theme must still work. */
+var THEME_KEY = "ricochetRecall_theme";
+function themeStored(){
+  try { return localStorage.getItem(THEME_KEY); } catch (e){ return null; }
+}
+function themeStore(v){
+  try { localStorage.setItem(THEME_KEY, v); } catch (e){}
+}
+function applyTheme(t){
+  document.documentElement.setAttribute("data-theme", t);
+  $("theme-label").textContent = t === "dark" ? "Light" : "Dark";
+}
+$("theme-btn").addEventListener("click", function(){
+  var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  applyTheme(next);
+  themeStore(next);
+});
+
+/* ═══════════════ MENU WIRING ═══════════════ */
+function wirePills(id, onPick){
+  var group = $(id);
+  group.addEventListener("click", function(e){
+    var pill = e.target.closest(".pill");
+    if (!pill || !group.contains(pill)) return;
+    var kids = group.querySelectorAll(".pill");
+    for (var i = 0; i < kids.length; i++) kids[i].classList.remove("on");
+    pill.classList.add("on");
+    onPick(pill.dataset.v);
+  });
+}
+
+function describeStage(stage){
+  var t = tune(stage);
+  return "Starts at stage " + stage + " — a " + t.n + "×" + t.n +
+         " grid with " + t.mirrors + " mirrors.";
+}
+
+wirePills("pMode", function(v){
+  cfg.mode = v;
+  $("wrapPlayers").style.display = v === "pvp" ? "block" : "none";
+  $("wrapRounds").style.display  = v === "pvp" ? "block" : "none";
+});
+wirePills("pDiff", function(v){
+  cfg.startStage = parseInt(v, 10);
+  $("diffNote").textContent = describeStage(cfg.startStage);
+});
+wirePills("pPace", function(v){ cfg.pace = parseFloat(v); });
+wirePills("pPlayers", function(v){ cfg.players = parseInt(v, 10); buildNameInputs(); });
+wirePills("pRounds", function(v){ cfg.rounds = parseInt(v, 10); });
+
+function buildNameInputs(){
+  var wrap = $("nameInputs"), existing = wrap.querySelectorAll("input"), old = [];
+  for (var i = 0; i < existing.length; i++) old.push(existing[i].value);
+  wrap.innerHTML = "";
+  for (var p = 0; p < cfg.players; p++){
+    var inp = document.createElement("input");
+    inp.type = "text";
+    inp.maxLength = 16;
+    inp.placeholder = "Player " + (p + 1);
+    inp.value = old[p] || "";
+    wrap.appendChild(inp);
+  }
+}
+buildNameInputs();
+$("diffNote").textContent = describeStage(1);
+
+/* ═══════════════ GAME START ═══════════════ */
+$("startBtn").addEventListener("click", function(){
+  cfg.names = [];
+  if (cfg.mode === "pvp"){
+    var inputs = $("nameInputs").querySelectorAll("input");
+    for (var i = 0; i < inputs.length; i++){
+      cfg.names.push((inputs[i].value || "").trim() || ("Player " + (i + 1)));
+    }
+  }
+  startGame();
+});
+
+function startGame(){
+  hubReportPlay();          // §12 — count this play on the hub
+  clearTimers();
+  G = {
+    mode: cfg.mode,
+    stage: cfg.startStage,
+    lives: 3,
+    cleared: 0,
+    attempts: 0,
+    bestStage: cfg.startStage,
+    round: 1,
+    rounds: cfg.rounds,
+    turn: 0,
+    players: [],
+    puzzle: null,
+    selected: null,
+    locked: false
+  };
+  if (G.mode === "pvp"){
+    for (var i = 0; i < cfg.players; i++){
+      G.players.push({ name: cfg.names[i], score: 0, pick: null });
+    }
+  }
+  nextRound();
+}
+
+function nextRound(){
+  G.puzzle = makePuzzle(G.stage);
+  G.selected = null;
+  G.locked = false;
+  if (G.mode === "pvp"){
+    G.turn = 0;
+    for (var i = 0; i < G.players.length; i++) G.players[i].pick = null;
+  }
+  runCountdown();
+}
+
+/* ═══════════════ COUNTDOWN ═══════════════ */
+function runCountdown(){
+  show("scCount");
+  $("countLabel").textContent = G.mode === "pvp"
+    ? "Round " + G.round + " of " + G.rounds + " — everyone watch"
+    : "Stage " + G.stage;
+  var seq = ["3", "2", "1", "GO"], idx = 0;
+  var el = $("countNum");
+  function tick(){
+    el.textContent = seq[idx];
+    el.classList.remove("pop");
+    void el.offsetWidth;
+    el.classList.add("pop");
+    idx++;
+    if (idx > seq.length){
+      clearInterval(countTimer); countTimer = null;
+      startMemorise();
+    }
+  }
+  tick();
+  countTimer = setInterval(tick, 680);
+}
+
+/* ═══════════════ MEMORISE ═══════════════ */
+function startMemorise(resume){
+  clearTimers();
+  show("scMemo");
+  var p = G.puzzle;
+  $("memoKey").textContent = G.mode === "pvp" ? "Round" : "Stage";
+  $("memoVal").textContent = G.mode === "pvp" ? (G.round + " / " + G.rounds) : G.stage;
+  $("memoMirrors").textContent = p.mirrors;
+  renderBoard($("boardMemo"), p, { showMirrors: true });
+
+  // Resuming after a cancelled exit picks up the clock where it stopped,
+  // so the pause dialog can't be used to buy extra memorising time.
+  if (!resume){
+    G.memoTotal = memoSeconds(p.mirrors, cfg.pace);
+    G.memoLeft = G.memoTotal;
+  }
+  var ring = $("memoRing"), txt = $("memoRingTxt");
+  function paint(){
+    ring.style.setProperty("--pct", Math.max(0, (G.memoLeft / G.memoTotal) * 100));
+    txt.textContent = G.memoLeft;
+  }
+  paint();
+  memoTimer = setInterval(function(){
+    G.memoLeft--;
+    paint();
+    if (G.memoLeft <= 0){
+      clearInterval(memoTimer); memoTimer = null;
+      afterMemorise();
+    }
+  }, 1000);
+}
+
+function afterMemorise(){
+  clearTimers();
+  if (G.mode === "pvp") showPass();
+  else startRecall();
+}
+
+$("skipMemoBtn").addEventListener("click", function(){
+  clearTimers();
+  afterMemorise();
+});
+
+/* ═══════════════ PASS DEVICE ═══════════════ */
+function showPass(){
+  clearTimers();
+  show("scPass");
+  $("passName").textContent = G.players[G.turn].name;
+}
+// Wrapped, not passed by reference: the click event would arrive as `resume`
+// and carry the previous player's selection and turn clock into this turn.
+$("passReadyBtn").addEventListener("click", function(){ startRecall(false); });
+
+/* ═══════════════ RECALL ═══════════════ */
+function startRecall(resume){
+  clearTimers();
+  show("scPlay");
+  if (!resume) G.selected = null;
+  G.locked = false;
+
+  $("verdict").style.display = "none";
+  $("pickList").style.display = "none";
+  $("nextBtn").style.display = "none";
+  $("confirmBtn").style.display = "block";
+  setConfirmEnabled(!!G.selected);
+
+  var p = G.puzzle;
+  if (G.mode === "pvp"){
+    $("playKey").textContent = "Round";
+    $("playVal").textContent = G.round + " / " + G.rounds;
+    $("playKey2").textContent = "Guessing";
+    $("playVal2").textContent = G.players[G.turn].name;
+    $("playVal2").className = "hud-val";
+    $("playPrompt").innerHTML = "<b>" + esc(G.players[G.turn].name) +
+      "</b> — tap where the ball comes out.";
+    startTurnTimer(resume);
+  } else {
+    $("playKey").textContent = "Stage";
+    $("playVal").textContent = G.stage;
+    $("playKey2").textContent = "Lives";
+    $("playVal2").className = "hud-val hearts";
+    $("playVal2").innerHTML = hearts(G.lives);
+    $("playPrompt").textContent = "Tap the edge circle where the ball comes out.";
+    $("turnRing").style.display = "none";
+  }
+
+  renderBoard($("boardPlay"), p, {
+    showArrow: true, tappable: true, selected: G.selected
+  });
+}
+
+function hearts(n){
+  var s = "";
+  for (var i = 0; i < 3; i++){
+    s += i < n ? '<span>♥</span>' : '<span class="heart-off">♥</span>';
+  }
+  return s;
+}
+
+function setConfirmEnabled(on){
+  var b = $("confirmBtn");
+  b.disabled = !on;
+  b.style.opacity = on ? "1" : ".45";
+}
+
+function startTurnTimer(resume){
+  var ring = $("turnRing"), txt = $("turnRingTxt");
+  ring.style.display = "flex";
+  if (!resume) G.turnLeft = TURN_SECONDS;
+  function paint(){
+    ring.style.setProperty("--pct", (G.turnLeft / TURN_SECONDS) * 100);
+    txt.textContent = G.turnLeft;
+  }
+  paint();
+  turnTimer = setInterval(function(){
+    G.turnLeft--;
+    paint();
+    if (G.turnLeft <= 0){
+      clearInterval(turnTimer); turnTimer = null;
+      if (!G.locked) submitAnswer(null);   // auto-pass: no answer scores nothing
+    }
+  }, 1000);
+}
+
+$("boardPlay").addEventListener("click", function(e){
+  if (G.locked) return;
+  var g = e.target.closest(".slot-g");
+  if (!g || !g.classList.contains("tappable")) return;
+  var parts = g.dataset.slot.split(":");
+  G.selected = { side: parts[0], i: parseInt(parts[1], 10) };
+  renderBoard($("boardPlay"), G.puzzle, {
+    showArrow: true, tappable: true, selected: G.selected
+  });
+  setConfirmEnabled(true);
+});
+
+$("confirmBtn").addEventListener("click", function(){
+  if (!G.selected || G.locked) return;
+  submitAnswer(G.selected);
+});
+
+function submitAnswer(pick){
+  G.locked = true;
+  clearTimers();
+  $("turnRing").style.display = "none";
+  if (G.mode === "pvp"){
+    G.players[G.turn].pick = pick;
+    G.turn++;
+    if (G.turn < G.players.length){ showPass(); }
+    else { revealPvp(); }
+  } else {
+    revealSolo(pick);
+  }
+}
+
+/* ═══════════════ REVEAL — SOLO ═══════════════ */
+function revealSolo(pick){
+  var p = G.puzzle;
+  var right = pick && slotKey(pick) === slotKey(p.exit);
+  G.attempts++;
+
+  renderBoard($("boardPlay"), p, {
+    showMirrors: true, showArrow: true, showPath: true,
+    truth: p.exit,
+    marks: pick ? [{ slot: pick, label: right ? "✓" : "✕", correct: right }] : []
+  });
+
+  var v = $("verdict");
+  v.style.display = "block";
+  v.className = "verdict " + (right ? "good" : "bad");
+
+  if (right){
+    G.cleared++;
+    G.stage++;
+    if (G.stage > G.bestStage) G.bestStage = G.stage;
+    v.textContent = "Correct — " + p.bounces + (p.bounces === 1 ? " bounce" : " bounces");
+    var nx = tune(G.stage), pv = tune(G.stage - 1);
+    $("playPrompt").textContent = (nx.n > pv.n)
+      ? "Stage " + G.stage + " — the grid grows to " + nx.n + "×" + nx.n + "."
+      : "On to stage " + G.stage + ".";
+  } else {
+    G.lives--;
+    v.textContent = "Missed — it exited at " + sideName(p.exit);
+    $("playVal2").innerHTML = hearts(Math.max(0, G.lives));
+    $("playPrompt").textContent = G.lives > 0
+      ? "Same stage, new mirrors. " + G.lives + (G.lives === 1 ? " life" : " lives") + " left."
+      : "That was your last life.";
+  }
+
+  $("confirmBtn").style.display = "none";
+  var nb = $("nextBtn");
+  nb.style.display = "block";
+  nb.textContent = G.lives > 0 ? (right ? "Next stage" : "Try stage " + G.stage + " again") : "See results";
+}
+
+/* ═══════════════ REVEAL — PVP ═══════════════ */
+function revealPvp(){
+  show("scPlay");
+  clearTimers();
+  $("turnRing").style.display = "none";
+  var p = G.puzzle, i;
+
+  var marks = [], rows = [];
+  for (i = 0; i < G.players.length; i++){
+    var pl = G.players[i];
+    var right = pl.pick && slotKey(pl.pick) === slotKey(p.exit);
+    if (right) pl.score++;
+    if (pl.pick) marks.push({ slot: pl.pick, label: String(i + 1), correct: right });
+    rows.push('<div class="pick-row"><span class="num">' + (i + 1) + '</span>' +
+      '<span class="nm">' + esc(pl.name) + '</span>' +
+      '<span class="res ' + (right ? "good" : "bad") + '">' +
+      (pl.pick ? (right ? "✓ " + sideName(pl.pick) : "✕ " + sideName(pl.pick)) : "no answer") +
+      '</span></div>');
+  }
+
+  $("playKey").textContent = "Round";
+  $("playVal").textContent = G.round + " / " + G.rounds;
+  $("playKey2").textContent = "Exit";
+  $("playVal2").className = "hud-val";
+  $("playVal2").textContent = sideName(p.exit);
+  $("playPrompt").textContent = "The ball made " + p.bounces +
+    (p.bounces === 1 ? " bounce" : " bounces") + " before leaving at " + sideName(p.exit) + ".";
+
+  renderBoard($("boardPlay"), p, {
+    showMirrors: true, showArrow: true, showPath: true, truth: p.exit, marks: marks
+  });
+
+  $("verdict").style.display = "none";
+  var list = $("pickList");
+  list.innerHTML = rows.join("");
+  list.style.display = "flex";
+
+  $("confirmBtn").style.display = "none";
+  var nb = $("nextBtn");
+  nb.style.display = "block";
+  nb.textContent = G.round >= G.rounds ? "See results" : "Next round";
+}
+
+/* ═══════════════ NEXT ═══════════════ */
+$("nextBtn").addEventListener("click", function(){
+  if (G.mode === "pvp"){
+    if (G.round >= G.rounds){ endGame(); return; }
+    G.round++;
+    G.stage++;              // difficulty climbs each round, same as solo
+    nextRound();
+  } else {
+    if (G.lives <= 0){ endGame(); return; }
+    nextRound();
+  }
+});
+
+/* ═══════════════ RESULTS ═══════════════ */
+function endGame(){
+  clearTimers();
+  show("scEnd");
+  var body = $("endBody");
+
+  if (G.mode === "solo"){
+    var acc = G.attempts ? Math.round((G.cleared / G.attempts) * 100) : 0;
+    $("endTitle").textContent = "Run over";
+    $("endSub").textContent = "You cleared " + G.cleared +
+      (G.cleared === 1 ? " stage." : " stages.");
+    $("endCardTitle").textContent = "Summary";
+    body.innerHTML =
+      '<div class="stat-grid">' +
+        '<div class="stat"><div class="stat-val">' + G.cleared + '</div><div class="stat-key">Cleared</div></div>' +
+        '<div class="stat"><div class="stat-val">' + G.stage + '</div><div class="stat-key">Reached stage</div></div>' +
+        '<div class="stat"><div class="stat-val">' + tune(G.stage).n + '×' + tune(G.stage).n + '</div><div class="stat-key">Final grid</div></div>' +
+        '<div class="stat"><div class="stat-val">' + acc + '%</div><div class="stat-key">Accuracy</div></div>' +
+      '</div>';
+  } else {
+    var sorted = G.players.slice().sort(function(a, b){ return b.score - a.score; });
+    // Tied scores share a rank.
+    var rank = 0, prev = null, out = [];
+    for (var i = 0; i < sorted.length; i++){
+      if (prev === null || sorted[i].score !== prev){ rank = i + 1; prev = sorted[i].score; }
+      var medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
+      out.push('<div class="lb-row' + (rank === 1 ? " top" : "") + '">' +
+        '<span class="lb-rank">' + medal + '</span>' +
+        '<span class="lb-name">' + esc(sorted[i].name) + '</span>' +
+        '<span class="lb-score">' + sorted[i].score + '</span></div>');
+    }
+    var topScore = sorted[0].score, winners = [];
+    for (var w = 0; w < sorted.length; w++){
+      if (sorted[w].score === topScore) winners.push(sorted[w].name);
+    }
+    $("endTitle").textContent = winners.length > 1 ? "It's a tie" : "Winner";
+    $("endSub").textContent = winners.join(" & ") + " — " + topScore +
+      (topScore === 1 ? " point" : " points") + " over " + G.rounds + " rounds.";
+    $("endCardTitle").textContent = "Leaderboard";
+    body.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px">' + out.join("") + '</div>';
+  }
+}
+
+$("againBtn").addEventListener("click", startGame);
+$("menuBtn").addEventListener("click", function(){ clearTimers(); show("scMenu"); });
+
+/* ═══════════════ EXIT MODAL ═══════════════ */
+var pausedFrom = null;
+function openExit(){
+  pausedFrom = document.querySelector(".screen.active").id;
+  clearTimers();
+  $("exitModal").classList.add("active");
+}
+$("exitMemoBtn").addEventListener("click", openExit);
+$("exitPlayBtn").addEventListener("click", openExit);
+$("exitPassBtn").addEventListener("click", openExit);
+
+$("exitNo").addEventListener("click", function(){
+  $("exitModal").classList.remove("active");
+  // Resume the phase that was interrupted rather than dropping the player mid-board.
+  if (pausedFrom === "scMemo") startMemorise(true);
+  else if (pausedFrom === "scPlay" && !G.locked) startRecall(true);
+});
+$("exitYes").addEventListener("click", function(){
+  $("exitModal").classList.remove("active");
+  clearTimers();
+  show("scMenu");
+});
+
+/* ═══════════════ FULL RULES MODAL ═══════════════ */
+$("rulesBtn").addEventListener("click", function(){ $("rulesModal").classList.add("active"); });
+$("rulesClose").addEventListener("click", function(){ $("rulesModal").classList.remove("active"); });
+$("rulesModal").addEventListener("click", function(e){
+  if (e.target === this) this.classList.remove("active");   // tap the scrim to dismiss
+});
+
+applyTheme(themeStored() === "light" ? "light" : "dark");
+})();
+</script>
+</body>
+</html>

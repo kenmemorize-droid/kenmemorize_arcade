@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#211d3f">
+<title>Ring Match</title>
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+   Dark is the default (<html data-theme="dark">). Ring Match keeps its own
+   purple/gold identity: gold is the primary accent, purple the second one.
+   Light mode uses darker, more saturated variants of both so they hold up on
+   white. --on-accent is the ink that sits on an accent fill. */
+:root[data-theme="dark"]{
+  --bg:#211d3f; --bg-2:#2a2551; --panel:#0a0a10;
+  --ink:#f4f2ff; --ink-dim:#a9a3cc;
+  --line:rgba(255,255,255,.28); --pill:rgba(255,255,255,.10); --pill-line:rgba(255,255,255,.45);
+  --accent:#f0a41a; --accent-2:#b39bff; --accent-tint:rgba(240,164,26,.18); --on-accent:#1b1508;
+  --shade:rgba(0,0,0,.82); --card:rgba(255,255,255,.07);
+  --ball-line:rgba(0,0,0,.85); --ok:#3ddc84; --bad:#ff6b6b; --warn:#ffc24d;
+  --shadow:rgba(0,0,0,.42);
+}
+:root[data-theme="light"]{
+  --bg:#eceaf6; --bg-2:#dcd8ee; --panel:#ffffff;
+  --ink:#1c1836; --ink-dim:#5d5780;
+  --line:rgba(28,24,54,.25); --pill:rgba(28,24,54,.06); --pill-line:rgba(28,24,54,.35);
+  --accent:#a86a00; --accent-2:#6c3fd6; --accent-tint:rgba(168,106,0,.14); --on-accent:#ffffff;
+  --shade:rgba(0,0,0,.82); --card:rgba(28,24,54,.05); --ball-line:rgba(0,0,0,.7);
+  --ok:#1f9d52; --bad:#d6294a; --warn:#a86a00;
+  --shadow:rgba(20,16,45,.16);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:radial-gradient(120% 90% at 50% -10%,var(--bg-2),var(--bg) 60%);
+  color:var(--ink);
+  /* §4 — system stack only, no network font dependency */
+  font-family:'Segoe UI',Arial,sans-serif;
+  min-height:100dvh;overflow-x:hidden;
+  transition:background .25s,color .25s;
+}
+.sky{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.orb{position:absolute;border-radius:50%;opacity:.75}
+.poly{position:absolute;opacity:.5}
+.wrap{
+  position:relative;z-index:1;max-width:520px;margin:0 auto;
+  padding:calc(14px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+  min-height:100dvh;display:flex;flex-direction:column;
+}
+/* §5 — the menu reads at the shared 720px width; the board screens keep the
+   narrower 520px shell they were laid out for. The extra top padding on the
+   menu clears the fixed theme toggle. */
+body.at-home .wrap{max-width:720px;padding-top:calc(62px + env(safe-area-inset-top))}
+.screen{display:none;flex:1;flex-direction:column}
+.screen.on{display:flex}
+
+/* ── THEME TOGGLE — §2 (shared convention across all games) ──
+   Only shown on the menu: the game screen already owns its top-right corner
+   with the Reset control, and the two would collide on a phone. */
+.theme-toggle{
+  position:fixed;top:calc(16px + env(safe-area-inset-top));right:16px;display:none;
+  align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);
+  border-radius:50px;padding:7px 14px;cursor:pointer;font-size:13px;
+  font-family:'Consolas','Courier New',monospace;color:var(--ink-dim);
+  transition:all .15s;z-index:40;user-select:none;
+}
+body.at-home .theme-toggle{display:flex}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+.theme-toggle .toggle-icon{display:inline-flex}
+.theme-toggle .icon-moon{display:none}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex}
+
+/* §6 — ghost/secondary buttons and choice pills: surface fill, border, muted
+   ink, hovering to the accent. Selected pills take an accent tint. */
+.pill{
+  appearance:none;border:1.5px solid var(--pill-line);background:var(--pill);color:var(--ink-dim);
+  font-weight:600;font-size:13px;line-height:1;letter-spacing:.02em;border-radius:999px;padding:0 18px;min-height:44px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+  transition:transform .12s ease,background .15s ease,border-color .15s ease,color .15s ease;
+}
+.pill:hover{border-color:var(--accent);color:var(--ink)}
+.pill:active{transform:scale(.96)}
+.pill:focus-visible,.lvl:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.pill.solid{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pill.solid:hover{filter:brightness(1.1);transform:translateY(-1px);color:var(--on-accent)}
+.pill.warn{border-color:var(--bad);color:var(--bad)}
+.pill.warn:hover{border-color:var(--bad);color:var(--bad)}
+.pill.wide{width:100%;min-height:52px;font-size:16px;font-weight:700;border-radius:14px}
+.icon-btn{width:52px;padding:0;font-size:20px}
+
+.topbar{display:grid;grid-template-columns:52px 1fr auto;align-items:center;gap:10px;margin-bottom:6px}
+.topbar h2{margin:0;text-align:center;font-weight:700;font-size:18px;line-height:1.2;letter-spacing:.04em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar h2 small{display:block;font-weight:500;font-size:11px;line-height:1.4;letter-spacing:.14em;color:var(--ink-dim);text-transform:uppercase;margin-top:3px}
+
+/* ── LOGO BLOCK — §3: icon, h1, subtitle, then the How-to-Play card ── */
+.brand{text-align:center;margin:2px 0 4px}
+.logo-icon{display:flex;justify-content:center;align-items:center;width:32px;height:32px;margin:0 auto 8px;color:var(--accent)}
+.brand h1{margin:0;font-weight:800;font-size:28px;line-height:1.15;letter-spacing:.02em}
+.brand h1 em{font-style:normal;color:var(--accent)}
+.brand p{margin:8px auto 0;max-width:40ch;color:var(--ink-dim);font-weight:500;font-size:14px;line-height:1.5}
+
+/* ── HOW TO PLAY CARD — §3. Always visible on the menu, never collapsed.
+   The animated walk-through stays in #helpModal behind "Full rules". ── */
+.howto-box{
+  margin:18px 0 4px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:18px 20px;text-align:left;box-shadow:0 2px 14px var(--shadow);
+}
+.howto-box .howto-title{
+  font-weight:700;font-size:11px;line-height:1;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent-2);margin-bottom:10px;
+}
+.howto-box p{margin:0 0 8px;font-weight:500;font-size:13px;line-height:1.6;color:var(--ink-dim)}
+.howto-box p:last-of-type{margin-bottom:0}
+.howto-box b{color:var(--ink);font-weight:700}
+.howto-box .full-rules{margin-top:14px;width:100%}
+
+.seg{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:16px 0 6px}
+.seg .pill{flex:1;font-weight:700;padding:0 10px;font-size:13px}
+.seg .pill[aria-pressed="true"]{background:var(--accent-tint);border-color:var(--accent);color:var(--accent)}
+.label{font-weight:600;font-size:11px;line-height:1;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);margin:18px 0 8px}
+.tab-body{display:none}
+.tab-body.on{display:block}
+
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.lvl{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 10px;box-shadow:0 2px 10px var(--shadow);
+  text-align:center;cursor:pointer;color:var(--ink);font:inherit;min-height:88px;
+  display:flex;flex-direction:column;justify-content:center;gap:5px;transition:transform .12s ease;
+}
+.lvl:active{transform:scale(.97)}
+.lvl .n{font:800 20px/1 'Consolas','Courier New',monospace}
+.lvl .t{font-weight:600;font-size:12px;line-height:1;color:var(--ink-dim);letter-spacing:.04em}
+.lvl .t.done{color:var(--ok)}
+
+.names{display:grid;gap:8px;margin-top:8px}
+.names input{
+  width:100%;min-height:46px;border-radius:14px;border:1.5px solid var(--line);
+  background:var(--card);color:var(--ink);padding:0 14px;font-weight:600;font-size:15px;line-height:1;
+}
+.names input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.zen-stat{margin-top:14px;text-align:center;color:var(--ink-dim);font-weight:600;font-size:13px;line-height:1.5}
+.menu-foot{margin-top:auto;padding-top:22px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+
+.board-shell{margin:10px 0}
+.board{
+  position:relative;width:100%;aspect-ratio:1/1;background:var(--panel);border-radius:6px;
+  display:grid;overflow:hidden;touch-action:none;user-select:none;
+  box-shadow:0 18px 44px var(--shadow);
+}
+.cell{position:relative;display:flex;align-items:center;justify-content:center}
+.ring{width:92%;aspect-ratio:1/1;border-radius:50%;box-shadow:0 0 0 1.5px rgba(0,0,0,.5) inset}
+.ball{
+  position:absolute;width:56%;aspect-ratio:1/1;border-radius:50%;border:2.5px solid var(--ball-line);
+  transition:transform 175ms cubic-bezier(.3,.7,.3,1),opacity 175ms linear;will-change:transform,opacity;
+}
+.board.no-anim .ball{transition:none}
+.board.veiled .ring,.board.veiled .ball{visibility:hidden}
+.board.won .ring{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.09)}100%{transform:scale(1)}}
+
+.statbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;min-height:44px}
+.clock{font:700 30px/1 'Consolas','Courier New',monospace;display:flex;align-items:center;gap:9px}
+.clock .dot{width:8px;height:8px;border-radius:50%;background:#ff2d78}
+.clock.low{color:var(--bad)}
+.moves{font-weight:600;font-size:13px;line-height:1;color:var(--ink-dim);letter-spacing:.1em;text-transform:uppercase;text-align:right}
+.hint{margin:12px 0 0;text-align:center;color:var(--ink-dim);font-weight:500;font-size:13px;line-height:1.5}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:2px 0 6px}
+.chip{
+  font-weight:700;font-size:12px;line-height:1;border-radius:999px;padding:7px 11px;
+  background:var(--card);border:1px solid var(--line);color:var(--ink-dim);
+}
+.chip.current{border-color:var(--accent);color:var(--ink)}
+.chip.done{color:var(--ok)}
+
+.modal[hidden]{display:none!important}
+.modal{
+  position:fixed;inset:0;z-index:20;background:var(--shade);display:flex;align-items:center;
+  justify-content:center;padding:18px;backdrop-filter:blur(3px);
+}
+.sheet{
+  background:var(--bg-2);border:1px solid var(--line);border-radius:20px;width:100%;max-width:440px;
+  max-height:88dvh;overflow:auto;padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+  box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+.sheet h3{margin:0 0 4px;font-weight:800;font-size:24px;line-height:1.2}
+.sheet .lead{margin:0 0 16px;color:var(--ink-dim);font-weight:500;font-size:14px;line-height:1.5}
+.sheet ol{margin:0 0 18px;padding-left:20px}
+.sheet ol li{margin:0 0 11px;font-weight:500;font-size:15px;line-height:1.55}
+.sheet b{color:var(--accent);font-weight:700}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.actions .pill{flex:1;min-width:110px}
+.result{display:flex;gap:10px;margin:4px 0 18px}
+.result div{flex:1;background:var(--card);border-radius:14px;padding:12px;text-align:center}
+.result span{display:block;font-weight:600;font-size:11px;line-height:1;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:7px}
+.result strong{font:800 22px/1 'Consolas','Courier New',monospace}
+.demos{display:flex;gap:14px;align-items:center;justify-content:center;margin:0 0 18px}
+.demo{width:110px}
+.demo .board{aspect-ratio:1/1;border-radius:4px;box-shadow:none}
+.demo p{margin:8px 0 0;text-align:center;font-weight:600;font-size:11px;line-height:1;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim)}
+.demo.win p{color:var(--ok)}
+.arrow{font-size:22px;color:var(--ink-dim)}
+
+.rank{list-style:none;margin:0 0 18px;padding:0}
+.rank li{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;
+  background:var(--card);margin-bottom:8px;
+}
+.rank .pos{font-weight:800;font-size:17px;line-height:1;min-width:30px;color:var(--ink-dim)}
+.rank .who{flex:1;font-weight:700;font-size:16px;line-height:1;overflow:hidden;text-overflow:ellipsis}
+.rank .tm{font:700 15px/1 'Consolas','Courier New',monospace}
+.rank .tm.dnf{color:var(--bad);font-family:inherit;font-size:13px}
+.rank li.top{outline:1.5px solid var(--accent)}
+
+.count[hidden]{display:none!important}
+.count{
+  position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+  background:var(--shade);backdrop-filter:blur(4px);
+}
+.count span{font-weight:800;font-size:clamp(70px,26vw,140px);line-height:1;color:#f0a41a;animation:beat .6s ease}
+@keyframes beat{0%{transform:scale(.55);opacity:0}40%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  .brand h1{font-size:22px}
+  .brand p{font-size:13px}
+  .howto-box{padding:14px 16px;margin-top:14px}
+  .howto-box p{font-size:12.5px}
+  .sheet{padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  .sheet h3{font-size:20px}
+  .sheet ol li{font-size:14px}
+  .theme-toggle{padding:6px 12px;font-size:12px}
+  .clock{font-size:26px}
+}
+@media (max-width:380px){
+  .logo-icon{width:28px;height:28px}
+  .theme-toggle{padding:6px 10px;gap:5px}
+  .pill{padding:0 12px}
+  .seg .pill{padding:0 6px;font-size:12px}
+  .levels{grid-template-columns:repeat(auto-fit,minmax(84px,1fr));gap:8px}
+  .lvl{min-height:78px;padding:12px 8px}
+  .clock{font-size:22px}
+}
+
+/* Ring Match is the one game that respects the OS "reduce motion" setting —
+   keep this rule. */
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="sky" id="sky" aria-hidden="true"></div>
+
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="themeBtn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="wrap">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen on" id="homeScreen">
+    <div class="brand">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2.2"/></svg></span>
+      <h1>Ring<em>Match</em></h1>
+      <p>Slide the balls until every one sits inside a ring of its own colour</p>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>Swipe a row sideways, or a column up and down, to slide the balls one cell. The coloured <b>rings never move</b> — only the balls do.</p>
+      <p>A ball pushed off an edge <b>wraps around</b> to the other side of the board.</p>
+      <p>Land every ball inside a ring of <b>its own colour</b> to clear the board.</p>
+      <button class="pill full-rules" id="homeHelpBtn">Full rules</button>
+    </div>
+
+    <div class="seg" id="modeSeg" role="group" aria-label="Game mode"></div>
+
+    <div class="tab-body on" id="tabLevels">
+      <div class="label">Board</div>
+      <div class="seg" id="sizeSegLevels"></div>
+      <div class="label">Level</div>
+      <div class="levels" id="levelGrid"></div>
+    </div>
+
+    <div class="tab-body" id="tabZen">
+      <div class="label">Board</div>
+      <div class="seg" id="sizeSegZen"></div>
+      <div class="label">Scramble</div>
+      <div class="seg" id="zenDepthSeg"></div>
+      <div class="zen-stat" id="zenStat"></div>
+      <div style="margin-top:16px"><button class="pill solid wide" id="zenStart">Start free play</button></div>
+    </div>
+
+    <div class="tab-body" id="tabPvp">
+      <div class="label">Board</div>
+      <div class="seg" id="sizeSegPvp"></div>
+      <div class="label">Scramble</div>
+      <div class="seg" id="pvpDepthSeg"></div>
+      <div class="label">Time limit per player</div>
+      <div class="seg" id="pvpLimitSeg"></div>
+      <div class="label">Players</div>
+      <div class="seg" id="pvpCountSeg"></div>
+      <div class="names" id="pvpNames"></div>
+      <div style="margin-top:16px"><button class="pill solid wide" id="pvpStart">Start match</button></div>
+    </div>
+
+    <div class="menu-foot">
+      <button class="pill" id="resetProgressBtn">Reset progress</button>
+    </div>
+  </section>
+
+  <!-- ============ GAME ============ -->
+  <section class="screen" id="gameScreen">
+    <div class="topbar">
+      <button class="pill icon-btn" id="backBtn" aria-label="Leave game">&lsaquo;</button>
+      <h2 id="gameTitle">Level 1<small>3 &times; 3</small></h2>
+      <button class="pill" id="resetBtn">Reset</button>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="board-shell">
+      <div class="board" id="board" role="application" aria-label="Puzzle board"></div>
+    </div>
+
+    <div class="statbar">
+      <button class="pill" id="helpBtn">Full rules</button>
+      <div class="clock"><span class="dot"></span><span id="clock">00:00.00</span></div>
+    </div>
+    <div class="statbar">
+      <button class="pill" id="secondaryBtn" hidden>New puzzle</button>
+      <div class="moves" id="moves">0 moves</div>
+    </div>
+
+    <p class="hint" id="hint">Swipe a row sideways or a column up and down.</p>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="screen" id="resultScreen">
+    <div class="topbar">
+      <span></span>
+      <h2>Final scores<small id="resultSub">Race</small></h2>
+      <span></span>
+    </div>
+    <ol class="rank" id="rankList"></ol>
+    <div class="actions" style="margin-top:auto">
+      <button class="pill" id="rematchBtn">Rematch</button>
+      <button class="pill solid" id="resultHome">Home</button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ HELP ============ -->
+<div class="modal" id="helpModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Full rules">
+    <h3>Full rules</h3>
+    <p class="lead">The rings never move. Only the balls do.</p>
+    <div class="demos">
+      <div class="demo"><div class="board" id="demoA"></div><p>Scrambled</p></div>
+      <div class="arrow">&rarr;</div>
+      <div class="demo win"><div class="board" id="demoB"></div><p>Solved</p></div>
+    </div>
+    <ol>
+      <li>The board holds <b>coloured rings</b> and <b>coloured balls</b> in a jumbled order.</li>
+      <li>Swipe <b>up or down</b> to move a whole column by one cell.</li>
+      <li>Swipe <b>left or right</b> to move a whole row by one cell.</li>
+      <li>Balls pushed off an edge <b>wrap around</b> to the other side.</li>
+      <li>Match <b>every ball to its own ring</b> to clear the board.</li>
+    </ol>
+    <div class="actions"><button class="pill solid" data-close="helpModal">Close</button></div>
+  </div>
+</div>
+
+<!-- ============ SOLVED ============ -->
+<div class="modal" id="winModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Board solved">
+    <h3 id="winTitle">Solved</h3>
+    <p class="lead" id="winNote">Every ball found its ring.</p>
+    <div class="result">
+      <div><span>Time</span><strong id="winTime">00:00.00</strong></div>
+      <div><span>Moves</span><strong id="winMoves">0</strong></div>
+    </div>
+    <div class="actions" id="winActions"></div>
+  </div>
+</div>
+
+<!-- ============ HANDOFF ============ -->
+<div class="modal" id="handModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Next player">
+    <h3 id="handName">Player 1</h3>
+    <p class="lead" id="handNote">Same board for everyone. Fastest solve wins.</p>
+    <div class="actions"><button class="pill solid" id="handGo">I'm ready</button></div>
+  </div>
+</div>
+
+<!-- ============ CONFIRM ============ -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Confirm">
+    <h3 id="confirmTitle">Reset this board?</h3>
+    <p class="lead" id="confirmBody">The board goes back to the start.</p>
+    <div class="actions">
+      <button class="pill" data-close="confirmModal">Keep playing</button>
+      <button class="pill warn" id="confirmYes">Reset</button>
+    </div>
+  </div>
+</div>
+
+<div class="count" id="countOverlay" hidden><span id="countNum">3</span></div>
+
+<script>
+"use strict";
+/* =========================================================
+   Ring Match — rings are fixed targets, swipes cycle the balls
+   Modes: Levels (15 seeded puzzles) / Zen (endless) / PvP (race)
+   ========================================================= */
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12 (timed variant)
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   Portable: copy verbatim into another timed game, change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = "ring-match";
+const HUB_DB = "https://kenmemorize-arcade-default-rtdb.firebaseio.com";
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:"PUT", body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+var PALETTE = ["#e03131","#1c7ed6","#f0a41a","#2f9e44","#9c36b5","#f06595"];
+var SIZES = [3,4,6];
+var LEVELS_PER_SIZE = 5;
+var SCRAMBLE = { 3:[4,6,8,10,12], 4:[8,11,14,17,20], 6:[15,21,27,33,40] };
+var DEPTHS = [
+  {id:"gentle", label:"Gentle", mult:2},
+  {id:"normal", label:"Normal", mult:4},
+  {id:"deep",   label:"Deep",   mult:7}
+];
+var LIMITS = [
+  {id:"60",  label:"1 min", secs:60},
+  {id:"120", label:"2 min", secs:120},
+  {id:"180", label:"3 min", secs:180},
+  {id:"0",   label:"None",  secs:0}
+];
+var ANIM_MS = 175;
+var KEY_LEVELS = "ringMatch.v1";
+var KEY_ZEN = "ringMatch.zen.v1";
+
+/* ---------- seeded prng ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashSeed(str){
+  var h = 2166136261 >>> 0; str = String(str).toLowerCase();
+  for (var i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+
+/* ---------- pure board logic ---------- */
+function shuffled(arr, rnd){
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = Math.floor(rnd() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function makeRings(n, rnd){
+  var pool = [];
+  for (var c = 0; c < n; c++) for (var k = 0; k < n; k++) pool.push(c);
+  return shuffled(pool, rnd);
+}
+function shiftRow(state, n, r, dir){
+  var out = state.slice();
+  for (var c = 0; c < n; c++) out[r*n+c] = state[r*n + ((c - dir) % n + n) % n];
+  return out;
+}
+function shiftCol(state, n, c, dir){
+  var out = state.slice();
+  for (var r = 0; r < n; r++) out[r*n+c] = state[(((r - dir) % n + n) % n)*n + c];
+  return out;
+}
+function applyMove(state, n, mv){
+  return mv.type === "row" ? shiftRow(state, n, mv.i, mv.d) : shiftCol(state, n, mv.i, mv.d);
+}
+function allMoves(n){
+  var list = [];
+  for (var i = 0; i < n; i++){
+    list.push({type:"row",i:i,d:1},{type:"row",i:i,d:-1},{type:"col",i:i,d:1},{type:"col",i:i,d:-1});
+  }
+  return list;
+}
+function isSolved(balls, rings){
+  for (var i = 0; i < balls.length; i++) if (balls[i] !== rings[i]) return false;
+  return true;
+}
+function mismatchCount(balls, rings){
+  var m = 0; for (var i = 0; i < balls.length; i++) if (balls[i] !== rings[i]) m++; return m;
+}
+function isInverse(a, b){ return a && b && a.type === b.type && a.i === b.i && a.d === -b.d; }
+function solvableWithin(balls, rings, n, depth){
+  var moves = allMoves(n);
+  function dfs(state, left, last){
+    if (isSolved(state, rings)) return true;
+    if (left === 0) return false;
+    for (var k = 0; k < moves.length; k++){
+      var mv = moves[k];
+      if (isInverse(mv, last)) continue;
+      if (dfs(applyMove(state, n, mv), left - 1, mv)) return true;
+    }
+    return false;
+  }
+  return dfs(balls, depth, null);
+}
+function scramble(rings, n, count, rnd){
+  var moves = allMoves(n), state = rings.slice(), last = null;
+  for (var k = 0; k < count; k++){
+    var mv, guard = 0;
+    do { mv = moves[Math.floor(rnd() * moves.length)]; guard++; }
+    while (isInverse(mv, last) && guard < 40);
+    state = applyMove(state, n, mv); last = mv;
+  }
+  return state;
+}
+/* Built forward from the solved board, so a solution always exists. */
+function buildBoard(n, count, seedBase, floorDepth){
+  var cells = n * n, minMismatch = Math.ceil(cells * 0.45);
+  var best = null, bestScore = -1;
+  for (var attempt = 0; attempt < 60; attempt++){
+    var rnd = mulberry32(hashSeed(seedBase + "|" + attempt));
+    var rings = makeRings(n, rnd);
+    var balls = scramble(rings, n, count, rnd);
+    var mm = mismatchCount(balls, rings);
+    if (mm === 0) continue;
+    var deep = !solvableWithin(balls, rings, n, floorDepth);
+    var score = (deep ? 1000 : 0) + mm;
+    if (score > bestScore){ bestScore = score; best = {rings:rings, balls:balls}; }
+    if (deep && mm >= minMismatch) return best;
+  }
+  return best;
+}
+function levelBoard(n, level){
+  return buildBoard(n, SCRAMBLE[n][level-1], "ringmatch|" + n + "|" + level, Math.min(level + 1, 3));
+}
+function depthMult(id){
+  for (var i = 0; i < DEPTHS.length; i++) if (DEPTHS[i].id === id) return DEPTHS[i].mult;
+  return 4;
+}
+function depthLabel(id){
+  for (var i = 0; i < DEPTHS.length; i++) if (DEPTHS[i].id === id) return DEPTHS[i].label;
+  return "Normal";
+}
+function limitSecs(id){
+  for (var i = 0; i < LIMITS.length; i++) if (LIMITS[i].id === id) return LIMITS[i].secs;
+  return 0;
+}
+function freeBoard(n, depthId, seed){
+  return buildBoard(n, n * depthMult(depthId), "free|" + n + "|" + depthId + "|" + seed, 3);
+}
+
+/* ---------- storage ---------- */
+function readJSON(key){ try { return JSON.parse(localStorage.getItem(key)) || {}; } catch(e){ return {}; } }
+function writeJSON(key, o){ try { localStorage.setItem(key, JSON.stringify(o)); } catch(e){} }
+var levelStore = readJSON(KEY_LEVELS);
+var zenStore = readJSON(KEY_ZEN);
+function bestOf(n, lvl){ var r = levelStore[n + "-" + lvl]; return r ? r.best : null; }
+function recordLevel(n, lvl, ms, mvs){
+  var k = n + "-" + lvl, cur = levelStore[k];
+  if (!cur || ms < cur.best) levelStore[k] = {best:ms, moves:mvs};
+  writeJSON(KEY_LEVELS, levelStore);
+}
+function recordZen(n, ms){
+  var k = "z" + n, cur = zenStore[k] || {solved:0, best:null};
+  cur.solved++;
+  if (cur.best === null || ms < cur.best) cur.best = ms;
+  zenStore[k] = cur; writeJSON(KEY_ZEN, zenStore);
+}
+
+/* ---------- helpers ---------- */
+var $ = function(id){ return document.getElementById(id); };
+function fmt(ms){
+  var cs = Math.floor(ms / 10), m = Math.floor(cs / 6000), s = Math.floor(cs / 100) % 60, c = cs % 100;
+  var p = function(v){ return v < 10 ? "0" + v : "" + v; };
+  return p(m) + ":" + p(s) + "." + p(c);
+}
+function openModal(id){ $(id).hidden = false; }
+function closeModal(id){ $(id).hidden = true; }
+document.addEventListener("click", function(e){
+  var t = e.target.getAttribute && e.target.getAttribute("data-close");
+  if (t) closeModal(t);
+});
+function segment(host, items, current, onPick){
+  host.innerHTML = "";
+  items.forEach(function(it){
+    var b = document.createElement("button");
+    b.className = "pill"; b.type = "button"; b.textContent = it.label;
+    b.setAttribute("aria-pressed", it.value === current ? "true" : "false");
+    b.addEventListener("click", function(){ onPick(it.value); });
+    host.appendChild(b);
+  });
+}
+var sizeItems = SIZES.map(function(n){ return {value:n, label:n + " \u00d7 " + n}; });
+var depthItems = DEPTHS.map(function(d){ return {value:d.id, label:d.label}; });
+
+/* ---------- ambient backdrop ---------- */
+(function backdrop(){
+  var sky = $("sky"), rnd = mulberry32(20260809);
+  var tint = ["#ff6b9d","#ffb26b","#6bd3ff","#c77dff"];
+  for (var i = 0; i < 16; i++){
+    var d = document.createElement("div"); d.className = "orb";
+    var sz = 3 + rnd() * 7;
+    d.style.cssText = "width:" + sz + "px;height:" + sz + "px;left:" + (rnd()*96) + "%;top:" + (rnd()*96) +
+      "%;background:" + tint[i%4] + ";opacity:" + (0.25 + rnd()*0.45) + ";box-shadow:0 0 " + (8+sz) + "px " + tint[i%4];
+    sky.appendChild(d);
+  }
+  [{l:"-8%",t:"78%",s:190,c:"#7ad7f0",r:-14},{l:"74%",t:"84%",s:230,c:"#c2277a",r:22},{l:"82%",t:"6%",s:120,c:"#f0a41a",r:8}]
+  .forEach(function(g){
+    var d = document.createElement("div"); d.className = "poly";
+    d.style.cssText = "left:" + g.l + ";top:" + g.t + ";width:" + g.s + "px;height:" + g.s + "px;transform:rotate(" +
+      g.r + "deg);background:radial-gradient(circle at 32% 28%," + g.c +
+      ",rgba(0,0,0,0) 72%);clip-path:polygon(50% 0,93% 26%,93% 74%,50% 100%,7% 74%,7% 26%)";
+    sky.appendChild(d);
+  });
+})();
+
+/* ---------- theme — STYLE_GUIDE.md §2 ----------
+   The sun/moon icons swap in CSS off [data-theme]; JS only sets the attribute
+   and the label. Persisted under the game's existing key, ringMatch.theme. */
+(function theme(){
+  function apply(t){
+    document.documentElement.setAttribute("data-theme", t);
+    $("theme-label").textContent = t === "dark" ? "Light" : "Dark";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem("ringMatch.theme"); } catch(e){}
+  apply(saved === "light" ? "light" : "dark");
+  $("themeBtn").addEventListener("click", function(){
+    var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    apply(next);
+    try { localStorage.setItem("ringMatch.theme", next); } catch(e){}
+  });
+})();
+
+/* ---------- rendering ---------- */
+function paintBoard(el, n, rings, balls){
+  el.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
+  el.innerHTML = "";
+  for (var i = 0; i < n*n; i++){
+    var cell = document.createElement("div"); cell.className = "cell";
+    var ring = document.createElement("div"); ring.className = "ring";
+    ring.style.background = PALETTE[rings[i]];
+    var ball = document.createElement("div"); ball.className = "ball";
+    ball.style.background = PALETTE[balls[i]];
+    cell.appendChild(ring); cell.appendChild(ball); el.appendChild(cell);
+  }
+}
+
+/* ---------- game state ---------- */
+var G = {
+  mode:"levels", n:3, level:1, depthId:"normal",
+  rings:[], balls:[], start:[],
+  moves:0, elapsed:0, t0:0, running:false, animating:false, done:false, tick:null,
+  limit:0, zenSeed:0, players:[], turn:0
+};
+
+function setBoard(gen){
+  G.rings = gen.rings.slice();
+  G.start = gen.balls.slice();
+  G.balls = gen.balls.slice();
+  G.moves = 0; G.elapsed = 0; G.running = false; G.done = false; G.animating = false;
+  paintBoard($("board"), G.n, G.rings, G.balls);
+  $("board").classList.remove("won");
+  updateClock(); updateMoves();
+}
+function restartBoard(){
+  G.balls = G.start.slice(); G.moves = 0; G.done = false; G.animating = false;
+  if (G.mode !== "pvp"){ stopClock(); G.elapsed = 0; }
+  paintBoard($("board"), G.n, G.rings, G.balls);
+  $("board").classList.remove("won");
+  updateClock(); updateMoves();
+}
+
+/* ---------- clock ---------- */
+function startClock(){
+  if (G.running || G.done) return;
+  G.running = true; G.t0 = Date.now() - G.elapsed;
+  G.tick = setInterval(function(){
+    G.elapsed = Date.now() - G.t0;
+    updateClock();
+    if (G.limit > 0 && G.elapsed >= G.limit * 1000) timeUp();
+  }, 43);
+}
+function stopClock(){ G.running = false; if (G.tick){ clearInterval(G.tick); G.tick = null; } }
+function updateClock(){
+  var el = $("clock");
+  if (G.limit > 0){
+    var left = Math.max(0, G.limit * 1000 - G.elapsed);
+    el.textContent = fmt(left);
+    el.parentNode.classList.toggle("low", left <= 10000);
+  } else {
+    el.textContent = fmt(G.elapsed);
+    el.parentNode.classList.remove("low");
+  }
+}
+function updateMoves(){ $("moves").textContent = G.moves + (G.moves === 1 ? " move" : " moves"); }
+
+/* ---------- moves ---------- */
+function cellAt(r, c){ return $("board").children[r * G.n + c]; }
+function doMove(type, index, dir){
+  if (G.animating || G.done) return;
+  G.animating = true;
+  startClock();
+
+  var board = $("board"), pitch = board.clientWidth / G.n;
+  var axis = type === "row" ? "X" : "Y", n = G.n;
+
+  for (var k = 0; k < n; k++){
+    var r = type === "row" ? index : k;
+    var c = type === "row" ? k : index;
+    var pos = type === "row" ? c : r;
+    var ball = cellAt(r, c).querySelector(".ball");
+    ball.style.transform = "translate" + axis + "(" + (dir * pitch) + "px)";
+    if ((dir > 0 && pos === n-1) || (dir < 0 && pos === 0)){
+      ball.style.opacity = "0";
+      var tr = type === "row" ? index : (dir > 0 ? 0 : n-1);
+      var tc = type === "row" ? (dir > 0 ? 0 : n-1) : index;
+      var ghost = document.createElement("div");
+      ghost.className = "ball";
+      ghost.style.background = ball.style.background;
+      ghost.style.opacity = "0";
+      ghost.style.transform = "translate" + axis + "(" + (-dir * pitch) + "px)";
+      cellAt(tr, tc).appendChild(ghost);
+      void ghost.offsetWidth;
+      ghost.style.opacity = "1";
+      ghost.style.transform = "translate" + axis + "(0px)";
+    }
+  }
+
+  G.balls = type === "row" ? shiftRow(G.balls, n, index, dir) : shiftCol(G.balls, n, index, dir);
+  G.moves++; updateMoves();
+
+  setTimeout(function(){
+    board.classList.add("no-anim");
+    paintBoard(board, n, G.rings, G.balls);
+    void board.offsetWidth;
+    board.classList.remove("no-anim");
+    G.animating = false;
+    if (isSolved(G.balls, G.rings)) finish();
+  }, ANIM_MS + 15);
+}
+
+/* ---------- finish ---------- */
+function actions(list){
+  var host = $("winActions"); host.innerHTML = "";
+  list.forEach(function(a){
+    var b = document.createElement("button");
+    b.className = "pill" + (a.primary ? " solid" : "");
+    b.type = "button"; b.textContent = a.label;
+    b.addEventListener("click", a.fn);
+    host.appendChild(b);
+  });
+}
+function finish(){
+  G.done = true; stopClock();
+  $("board").classList.add("won");
+  $("winTime").textContent = fmt(G.elapsed);
+  $("winMoves").textContent = String(G.moves);
+
+  if (G.mode === "levels"){
+    var prev = bestOf(G.n, G.level);
+    recordLevel(G.n, G.level, G.elapsed, G.moves);
+    $("winTitle").textContent = "Solved";
+    $("winNote").textContent = (prev === null || G.elapsed < prev)
+      ? "New best time for this level." : "Best so far: " + fmt(prev) + ".";
+    var acts = [
+      {label:"Home", fn:function(){ closeModal("winModal"); goHome(); }},
+      {label:"Replay", fn:function(){ closeModal("winModal"); restartBoard(); }}
+    ];
+    if (G.level < LEVELS_PER_SIZE) acts.push({label:"Next level", primary:true, fn:function(){
+      closeModal("winModal"); startLevel(G.n, G.level + 1);
+    }});
+    actions(acts);
+  } else if (G.mode === "zen"){
+    recordZen(G.n, G.elapsed);
+    $("winTitle").textContent = "Solved";
+    $("winNote").textContent = "No levels here, no pressure. Take another whenever you like.";
+    actions([
+      {label:"Home", fn:function(){ closeModal("winModal"); goHome(); }},
+      {label:"Replay", fn:function(){ closeModal("winModal"); restartBoard(); }},
+      {label:"New puzzle", primary:true, fn:function(){ closeModal("winModal"); nextZen(); }}
+    ]);
+  } else {
+    finishTurn(G.elapsed, G.moves);
+    return;
+  }
+  setTimeout(function(){ openModal("winModal"); }, 420);
+}
+
+/* ---------- swipe input ---------- */
+(function input(){
+  var board = $("board");
+  var sx = 0, sy = 0, sr = 0, sc = 0, active = false, THRESH = 18;
+  function cellFrom(x, y){
+    var rect = board.getBoundingClientRect(), size = rect.width / G.n;
+    var c = Math.floor((x - rect.left) / size), r = Math.floor((y - rect.top) / size);
+    if (r < 0 || c < 0 || r >= G.n || c >= G.n) return null;
+    return {r:r, c:c};
+  }
+  function begin(x, y){
+    var cell = cellFrom(x, y); if (!cell) return;
+    active = true; sx = x; sy = y; sr = cell.r; sc = cell.c;
+  }
+  function end(x, y){
+    if (!active) return; active = false;
+    var dx = x - sx, dy = y - sy;
+    if (Math.abs(dx) < THRESH && Math.abs(dy) < THRESH) return;
+    if (Math.abs(dx) >= Math.abs(dy)) doMove("row", sr, dx > 0 ? 1 : -1);
+    else doMove("col", sc, dy > 0 ? 1 : -1);
+  }
+  board.addEventListener("touchstart", function(e){ var t = e.changedTouches[0]; begin(t.clientX, t.clientY); }, {passive:true});
+  board.addEventListener("touchmove", function(e){ if (active) e.preventDefault(); }, {passive:false});
+  board.addEventListener("touchend", function(e){ var t = e.changedTouches[0]; end(t.clientX, t.clientY); }, {passive:true});
+  board.addEventListener("touchcancel", function(){ active = false; }, {passive:true});
+  board.addEventListener("mousedown", function(e){ e.preventDefault(); begin(e.clientX, e.clientY); });
+  window.addEventListener("mouseup", function(e){ end(e.clientX, e.clientY); });
+})();
+
+/* ---------- screens ---------- */
+function show(id){
+  ["homeScreen","gameScreen","resultScreen"].forEach(function(s){
+    $(s).classList.toggle("on", s === id);
+  });
+  /* Menu-only chrome: 720px width (§5) and the fixed theme toggle (§2). */
+  document.body.classList.toggle("at-home", id === "homeScreen");
+  window.scrollTo(0, 0);
+}
+function goHome(){ stopClock(); renderHome(); show("homeScreen"); }
+
+/* ---------- countdown ---------- */
+function countdown(done){
+  var steps = ["3","2","1","GO"], i = 0;
+  $("countNum").textContent = steps[0];
+  openModal("countOverlay");
+  var iv = setInterval(function(){
+    i++;
+    if (i >= steps.length){ clearInterval(iv); closeModal("countOverlay"); done(); return; }
+    var span = $("countNum");
+    span.textContent = steps[i];
+    span.style.animation = "none"; void span.offsetWidth; span.style.animation = "";
+  }, 650);
+}
+
+/* ---------- mode: levels ---------- */
+function startLevel(n, level){
+  hubReportPlay();
+  G.mode = "levels"; G.n = n; G.level = level; G.limit = 0;
+  $("gameTitle").innerHTML = "Level " + level + "<small>" + n + " \u00d7 " + n + "</small>";
+  $("secondaryBtn").hidden = true;
+  $("chips").innerHTML = "";
+  $("hint").textContent = "Swipe a row sideways or a column up and down.";
+  setBoard(levelBoard(n, level));
+  show("gameScreen");
+}
+
+/* ---------- mode: zen ---------- */
+function startZen(){
+  hubReportPlay();
+  G.mode = "zen"; G.n = zenSize; G.depthId = zenDepth; G.limit = 0;
+  G.zenSeed = Date.now() % 100000;
+  $("secondaryBtn").hidden = false;
+  $("secondaryBtn").textContent = "New puzzle";
+  $("chips").innerHTML = "";
+  $("hint").textContent = "Free play. No levels, no limit \u2014 take a new board whenever.";
+  applyZenBoard();
+  show("gameScreen");
+}
+function applyZenBoard(){
+  $("gameTitle").innerHTML = "Zen<small>" + G.n + " \u00d7 " + G.n + " \u00b7 " + depthLabel(G.depthId) + "</small>";
+  setBoard(freeBoard(G.n, G.depthId, G.zenSeed));
+}
+function nextZen(){
+  G.zenSeed = (G.zenSeed + 1 + Math.floor(Math.random()*9999)) % 100000;
+  applyZenBoard();
+}
+
+/* ---------- mode: pvp ---------- */
+var pvpBoardData = null;
+function startPvp(){
+  hubReportPlay();
+  G.mode = "pvp"; G.n = pvpSize; G.depthId = pvpDepth; G.limit = limitSecs(pvpLimit);
+  G.players = [];
+  for (var i = 0; i < pvpCount; i++){
+    var nm = (pvpNames[i] || "").trim();
+    G.players.push({name: nm || ("Player " + (i+1)), time:null, moves:0, dnf:false});
+  }
+  G.turn = 0;
+  pvpBoardData = freeBoard(G.n, G.depthId, Date.now() % 100000);
+  $("secondaryBtn").hidden = true;
+  $("hint").textContent = "Everyone races the same board. Fastest solve wins.";
+  show("gameScreen");
+  beginTurn();
+}
+function renderChips(){
+  var host = $("chips"); host.innerHTML = "";
+  G.players.forEach(function(p, i){
+    var c = document.createElement("span");
+    var state = i === G.turn ? " current" : ((p.time !== null || p.dnf) ? " done" : "");
+    c.className = "chip" + state;
+    c.textContent = p.name + (p.dnf ? " \u00b7 \u2014" : (p.time !== null ? " \u00b7 " + fmt(p.time) : ""));
+    host.appendChild(c);
+  });
+}
+function beginTurn(){
+  var p = G.players[G.turn];
+  $("gameTitle").innerHTML = "<span></span><small>" + G.n + " \u00d7 " + G.n + " \u00b7 Race</small>";
+  $("gameTitle").firstChild.textContent = p.name;
+  renderChips();
+  setBoard(pvpBoardData);
+  $("board").classList.add("veiled");
+  $("handName").textContent = p.name;
+  $("handNote").textContent = G.limit > 0
+    ? "Same board for everyone. You have " + (G.limit/60) + " minute" + (G.limit === 60 ? "" : "s") + "."
+    : "Same board for everyone. Fastest solve wins.";
+  openModal("handModal");
+}
+function finishTurn(ms, mvs){
+  var p = G.players[G.turn];
+  p.time = ms; p.moves = mvs;
+  renderChips();
+  $("winTitle").textContent = p.name + " solved it";
+  $("winNote").textContent = G.turn + 1 < G.players.length
+    ? "Pass the device to " + G.players[G.turn+1].name + "."
+    : "That's everyone.";
+  actions([{label: G.turn + 1 < G.players.length ? "Next player" : "See scores", primary:true, fn:function(){
+    closeModal("winModal"); advanceTurn();
+  }}]);
+  setTimeout(function(){ openModal("winModal"); }, 420);
+}
+function timeUp(){
+  if (G.done) return;
+  G.done = true; stopClock();
+  var p = G.players[G.turn];
+  p.dnf = true; p.moves = G.moves;
+  renderChips();
+  $("winTime").textContent = "\u2014";
+  $("winMoves").textContent = String(G.moves);
+  $("winTitle").textContent = "Time's up";
+  $("winNote").textContent = p.name + " ran out of time.";
+  actions([{label: G.turn + 1 < G.players.length ? "Next player" : "See scores", primary:true, fn:function(){
+    closeModal("winModal"); advanceTurn();
+  }}]);
+  openModal("winModal");
+}
+function advanceTurn(){
+  G.turn++;
+  if (G.turn < G.players.length) beginTurn();
+  else showResults();
+}
+function showResults(){
+  stopClock();
+  var ranked = G.players.slice().sort(function(a, b){
+    if (a.dnf && b.dnf) return 0;
+    if (a.dnf) return 1;
+    if (b.dnf) return -1;
+    return a.time - b.time;
+  });
+  var host = $("rankList"); host.innerHTML = "";
+  var rank = 0, prev = null;
+  ranked.forEach(function(p, i){
+    var val = p.dnf ? "dnf" : p.time;
+    if (val !== prev){ rank = i + 1; prev = val; }
+    var li = document.createElement("li");
+    if (rank === 1 && !p.dnf) li.className = "top";
+    li.innerHTML = '<span class="pos">' + (p.dnf ? "\u2014" : rank) + '</span><span class="who"></span>' +
+      '<span class="tm' + (p.dnf ? ' dnf' : '') + '">' + (p.dnf ? "out of time" : fmt(p.time)) + '</span>';
+    li.querySelector(".who").textContent = p.name;
+    host.appendChild(li);
+  });
+  $("resultSub").textContent = G.n + " \u00d7 " + G.n + " race";
+  show("resultScreen");
+}
+
+/* ---------- home ---------- */
+var mode = "levels";
+var levelsSize = SIZES[0];
+var zenSize = SIZES[0], zenDepth = "normal";
+var pvpSize = SIZES[0], pvpDepth = "normal", pvpLimit = "120", pvpCount = 2;
+var pvpNames = ["","","",""];
+
+function renderHome(){
+  /* §13 — "PvP" is retired as a UI label; the mode value stays "pvp". */
+  segment($("modeSeg"),
+    [{value:"levels",label:"Levels"},{value:"zen",label:"Zen"},{value:"pvp",label:"Pass & Play"}],
+    mode, function(v){ mode = v; renderHome(); });
+
+  $("tabLevels").classList.toggle("on", mode === "levels");
+  $("tabZen").classList.toggle("on", mode === "zen");
+  $("tabPvp").classList.toggle("on", mode === "pvp");
+
+  segment($("sizeSegLevels"), sizeItems, levelsSize, function(v){ levelsSize = v; renderHome(); });
+  var grid = $("levelGrid"); grid.innerHTML = "";
+  for (var i = 1; i <= LEVELS_PER_SIZE; i++){
+    (function(lvl){
+      var best = bestOf(levelsSize, lvl);
+      var b = document.createElement("button");
+      b.className = "lvl"; b.type = "button";
+      b.innerHTML = '<span class="n">' + lvl + '</span><span class="t' + (best !== null ? ' done' : '') + '">' +
+        (best !== null ? fmt(best) : "Not solved") + '</span>';
+      b.addEventListener("click", function(){ startLevel(levelsSize, lvl); });
+      grid.appendChild(b);
+    })(i);
+  }
+
+  segment($("sizeSegZen"), sizeItems, zenSize, function(v){ zenSize = v; renderHome(); });
+  segment($("zenDepthSeg"), depthItems, zenDepth, function(v){ zenDepth = v; renderHome(); });
+  var z = zenStore["z" + zenSize];
+  $("zenStat").textContent = (z && z.solved)
+    ? z.solved + " solved on this board size \u00b7 best " + fmt(z.best)
+    : "Nothing solved on this board size yet.";
+
+  segment($("sizeSegPvp"), sizeItems, pvpSize, function(v){ pvpSize = v; renderHome(); });
+  segment($("pvpDepthSeg"), depthItems, pvpDepth, function(v){ pvpDepth = v; renderHome(); });
+  segment($("pvpLimitSeg"), LIMITS.map(function(l){ return {value:l.id,label:l.label}; }), pvpLimit,
+    function(v){ pvpLimit = v; renderHome(); });
+  segment($("pvpCountSeg"), [2,3,4].map(function(c){ return {value:c,label:c + " players"}; }), pvpCount,
+    function(v){ pvpCount = v; renderHome(); });
+
+  var nameHost = $("pvpNames"); nameHost.innerHTML = "";
+  for (var k = 0; k < pvpCount; k++){
+    (function(idx){
+      var inp = document.createElement("input");
+      inp.type = "text"; inp.maxLength = 14;
+      inp.placeholder = "Player " + (idx+1);
+      inp.value = pvpNames[idx];
+      inp.setAttribute("aria-label", "Name for player " + (idx+1));
+      inp.addEventListener("input", function(){ pvpNames[idx] = inp.value; });
+      nameHost.appendChild(inp);
+    })(k);
+  }
+}
+
+/* ---------- wiring ---------- */
+$("handGo").addEventListener("click", function(){
+  closeModal("handModal");
+  countdown(function(){ $("board").classList.remove("veiled"); startClock(); });
+});
+$("zenStart").addEventListener("click", startZen);
+$("pvpStart").addEventListener("click", startPvp);
+$("resultHome").addEventListener("click", goHome);
+$("rematchBtn").addEventListener("click", startPvp);
+$("helpBtn").addEventListener("click", function(){ openModal("helpModal"); });
+$("homeHelpBtn").addEventListener("click", function(){ openModal("helpModal"); });
+$("secondaryBtn").addEventListener("click", function(){ if (G.mode === "zen") nextZen(); });
+
+var confirmAction = null;
+function askConfirm(title, body, yes, fn){
+  $("confirmTitle").textContent = title;
+  $("confirmBody").textContent = body;
+  $("confirmYes").textContent = yes;
+  confirmAction = fn;
+  openModal("confirmModal");
+}
+$("confirmYes").addEventListener("click", function(){
+  closeModal("confirmModal");
+  if (confirmAction) confirmAction();
+  confirmAction = null;
+});
+$("resetBtn").addEventListener("click", function(){
+  if (G.moves === 0){ restartBoard(); return; }
+  askConfirm("Reset this board?",
+    G.mode === "pvp" ? "The board goes back to the start. Your clock keeps running."
+                     : "The board goes back to the start and the clock returns to zero.",
+    "Reset", restartBoard);
+});
+$("backBtn").addEventListener("click", function(){
+  if (G.mode === "pvp" && !G.done){
+    askConfirm("End the match?", "Scores so far will be shown and the match ends.", "End match", function(){
+      stopClock();
+      for (var i = G.turn; i < G.players.length; i++){
+        if (G.players[i].time === null) G.players[i].dnf = true;
+      }
+      showResults();
+    });
+    return;
+  }
+  if (G.moves > 0 && !G.done){
+    askConfirm("Leave this board?", "Your progress on this board will be lost.", "Leave", goHome);
+    return;
+  }
+  goHome();
+});
+$("resetProgressBtn").addEventListener("click", function(){
+  askConfirm("Clear all saved times?", "Level bests and Zen counts go back to zero. This cannot be undone.",
+    "Clear", function(){
+      levelStore = {}; zenStore = {};
+      writeJSON(KEY_LEVELS, levelStore); writeJSON(KEY_ZEN, zenStore);
+      renderHome();
+    });
+});
+
+/* ---------- help demo boards ---------- */
+(function demos(){
+  var demo = levelBoard(4, 2);
+  paintBoard($("demoA"), 4, demo.rings, demo.balls);
+  paintBoard($("demoB"), 4, demo.rings, demo.rings);
+})();
+
+document.body.classList.add("at-home");
+renderHome();
+
+/* expose pure logic for offline tests */
+if (typeof window !== "undefined") window.__RM = {
+  mulberry32:mulberry32, hashSeed:hashSeed, makeRings:makeRings,
+  shiftRow:shiftRow, shiftCol:shiftCol, isSolved:isSolved, mismatchCount:mismatchCount,
+  solvableWithin:solvableWithin, scramble:scramble, allMoves:allMoves, applyMove:applyMove,
+  levelBoard:levelBoard, freeBoard:freeBoard, buildBoard:buildBoard,
+  SCRAMBLE:SCRAMBLE, SIZES:SIZES, DEPTHS:DEPTHS, LIMITS:LIMITS, PALETTE:PALETTE,
+  LEVELS_PER_SIZE:LEVELS_PER_SIZE, fmt:fmt, G:G,
+  doMove:doMove, startLevel:startLevel, startZen:startZen, startPvp:startPvp,
+  restartBoard:restartBoard, showResults:showResults, nextZen:nextZen,
+  goHome:goHome, renderHome:renderHome,
+  setPvp:function(o){
+    if(o.size) pvpSize=o.size; if(o.depth) pvpDepth=o.depth;
+    if(o.limit) pvpLimit=o.limit; if(o.count) pvpCount=o.count;
+    if(o.names) pvpNames=o.names;
+  },
+  setZen:function(o){ if(o.size) zenSize=o.size; if(o.depth) zenDepth=o.depth; },
+  setMode:function(m){ mode = m; renderHome(); }
+};
+</script>
+</body>
+</html>

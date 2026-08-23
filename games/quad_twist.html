@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Quad Twist</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+   Dark is the default (<html data-theme="dark">). Quad Twist keeps its own
+   blue / violet accent pair; light mode uses darker, more saturated variants
+   so they still carry against white.
+   --on-accent is the ink that sits on an accent fill: white reaches only
+   ~2.8:1 on the bright dark-mode blue, so that theme uses near-black ink. */
+:root[data-theme="dark"]{
+  --bg:#171a2e; --bg2:#232748; --surface:#1e2240; --card:#252a4d;
+  --border:#343a63; --line:#454b7d;
+  --accent:#4a9eff; --accent2:#7c6bff;
+  --accent-tint:rgba(74,158,255,.16); --on-accent:#0d1024;
+  --text:#eef1ff; --muted:#9aa2c9;
+  --success:#52d273; --danger:#ef476f; --warn:#f0a83c;
+  --btn-rot:#33c3f0; --btn-rot-b:#eaf7ff;
+  --board-line:#ffffff; --board-line-a:0.9;
+  --shadow:rgba(0,0,0,.45);
+}
+:root[data-theme="light"]{
+  --bg:#eef2fb; --bg2:#ffffff; --surface:#ffffff; --card:#ffffff;
+  --border:#d3dcee; --line:#c2cce4;
+  --accent:#1a6ed8; --accent2:#6a4ff0;
+  --accent-tint:rgba(26,110,216,.12); --on-accent:#ffffff;
+  --text:#1a2138; --muted:#68729a;
+  --success:#2f9d52; --danger:#d3355c; --warn:#a8620a;
+  --btn-rot:#22a7dd; --btn-rot-b:#ffffff;
+  --board-line:#ffffff; --board-line-a:1;
+  --shadow:rgba(30,50,90,.14);
+}
+
+/* §4 — system stack only, no external font ever. */
+body{
+  font-family:'Segoe UI', Arial, sans-serif;
+  background:radial-gradient(circle at 50% -10%,var(--bg2),var(--bg) 62%);
+  color:var(--text); min-height:100vh; min-height:100dvh;
+  display:flex; justify-content:center;
+  /* headroom so the fixed §2 toggle never lands on the header or topbar */
+  padding:56px 16px 24px;
+  transition:background .25s,color .25s; -webkit-tap-highlight-color:transparent;
+}
+.app{width:100%; max-width:720px;}
+
+/* §5 — the menu reads at the shared 720px width; the board screen keeps the
+   narrower 520px shell its grid + knobs were laid out for. */
+#screen-start{max-width:720px; margin:0 auto;}
+#screen-game{max-width:520px; margin:0 auto;}
+
+.screen{display:none;}
+.screen.active{display:block; animation:fade .3s ease;}
+@keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+.theme-toggle{
+  position:fixed; top:16px; right:16px; z-index:120;
+  background:var(--card); border:1px solid var(--border); border-radius:50px;
+  padding:6px 14px; cursor:pointer; display:flex; align-items:center; gap:7px;
+  font-size:13px; font-family:'Consolas','Courier New',monospace;
+  color:var(--muted); user-select:none; transition:.15s;
+}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* ── START SCREEN — §3 logo block: icon, h1, subtitle ── */
+.logo{text-align:center; margin:6px 0 4px;}
+.logo .logo-icon{display:flex; justify-content:center; margin:0 auto 8px;
+  color:var(--accent); width:32px; height:32px;}
+.logo h1{font-size:28px; letter-spacing:1px; font-weight:800; text-transform:uppercase;}
+.tagline{text-align:center; color:var(--muted); font-size:14px; margin:6px 0 18px;}
+
+.panel{
+  background:linear-gradient(160deg,var(--surface),var(--card));
+  border:1px solid var(--border); border-radius:18px; padding:20px;
+  box-shadow:0 12px 30px var(--shadow);
+}
+.panel + .panel{margin-top:14px;}
+.sec-title{font-size:13px; text-transform:uppercase; letter-spacing:1.4px;
+  color:var(--accent2); font-weight:800; margin-bottom:12px;}
+.sec-title.mt{margin-top:18px;}
+
+/* pill selector — §6: unselected = surface + border + muted;
+   selected = accent-tinted fill with accent border and text. */
+.pills{display:flex; gap:8px;}
+.pill{flex:1; text-align:center; padding:12px 6px; border-radius:10px; cursor:pointer;
+  font-size:13px; font-weight:700; transition:.15s; user-select:none;
+  background:var(--surface); border:1px solid var(--border); color:var(--muted);}
+.pill.active{background:var(--accent-tint); border-color:var(--accent); color:var(--accent);}
+.pill:not(.active):hover{border-color:var(--accent); color:var(--text);}
+
+.best-row{display:flex; justify-content:space-between; align-items:center;
+  padding:9px 4px; font-size:14px; border-bottom:1px solid var(--border);}
+.best-row:last-child{border-bottom:none;}
+.best-row .sz{color:var(--muted);}
+.best-row .tm{font-family:'Consolas','Courier New',monospace;
+  font-variant-numeric:tabular-nums; font-weight:700;}
+.best-row .tm.none{color:var(--muted); font-weight:400;}
+.best-head{font-size:12px; color:var(--muted); margin-bottom:6px;}
+
+/* ── HOW TO PLAY — §3. Always visible on the menu, right after the logo
+   block and before the settings panel. Never collapsed, never behind a
+   button. Four short lines covering the core loop. ── */
+ol.howto{margin:0; padding-left:0; list-style:none; counter-reset:step;}
+ol.howto li{position:relative; padding:7px 0 7px 38px; font-size:13px; line-height:1.6;
+  color:var(--muted); counter-increment:step;}
+ol.howto li b{color:var(--text);}
+ol.howto li::before{content:counter(step); position:absolute; left:0; top:6px;
+  width:24px; height:24px; border-radius:50%; background:var(--accent);
+  color:var(--on-accent); font-size:12px; font-weight:800; display:flex;
+  align-items:center; justify-content:center;}
+
+/* §6 — primary: solid accent fill, --on-accent ink, hover brightness + lift. */
+.big-btn{display:block; width:100%; margin-top:16px; padding:16px; border:none;
+  border-radius:14px; cursor:pointer; font-size:16px; font-weight:800; letter-spacing:.5px;
+  color:var(--on-accent); background:var(--accent);
+  box-shadow:0 10px 22px var(--shadow); transition:filter .15s, transform .15s;}
+.big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.big-btn:active{transform:translateY(0);}
+
+/* ── GAME SCREEN ── */
+.topbar{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.icon-btn{background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  color:var(--muted); cursor:pointer; padding:10px 14px; font-size:16px; font-weight:700;
+  line-height:1; transition:.15s; display:flex; align-items:center;}
+.icon-btn:hover{border-color:var(--accent); color:var(--accent);}
+.icon-btn svg{display:block;}
+.game-pills{flex:1; display:flex; gap:6px;}
+.game-pills .pill{padding:9px 4px; font-size:13px;}
+.reset-btn{background:var(--surface); border:1px solid var(--border); border-radius:12px;
+  color:var(--muted); cursor:pointer; padding:10px 15px; font-size:13px; font-weight:700;
+  transition:.15s; font-family:inherit;}
+.reset-btn:hover{border-color:var(--accent); color:var(--accent);}
+.mode-row{display:flex; justify-content:center; margin-bottom:14px;}
+.mode-pills{flex:0 1 260px;}
+
+/* board */
+.board-wrap{width:100%; display:flex; justify-content:center; margin-bottom:16px;}
+.board{position:relative; width:min(440px,94vw); aspect-ratio:1/1;
+  border-radius:14px; overflow:hidden; box-shadow:0 14px 34px var(--shadow);
+  background:var(--board-line); touch-action:manipulation; container-type:inline-size;}
+.grid{position:absolute; inset:0; display:grid;}
+.cell{border:1.5px solid var(--board-line); border-color:rgba(255,255,255,var(--board-line-a));
+  display:flex; align-items:center; justify-content:center; position:relative;}
+.cell .num{color:#fff; font-weight:800; line-height:1; user-select:none;
+  text-shadow:0 1px 3px rgba(0,0,0,.4); font-size:calc(46cqw / var(--n,4));}
+.board:not(.show-nums) .num{display:none;}
+
+/* rotation overlay (animated) */
+.rot-overlay{position:absolute; z-index:6; display:grid;
+  grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr;
+  transform-origin:50% 50%; will-change:transform;}
+.rot-overlay .cell{border-width:1.5px;}
+.rot-overlay .num{transition:transform .22s cubic-bezier(.4,0,.2,1);}
+
+/* rotation buttons */
+.rot-btn{position:absolute; z-index:8; transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  background:none; border:none; padding:0;}
+.rot-btn .knob{
+  width:var(--knob); height:var(--knob); border-radius:50%;
+  background:var(--btn-rot); border:3px solid var(--btn-rot-b);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 3px 8px rgba(0,0,0,.35); transition:transform .12s;
+  color:#fff; font-size:calc(var(--knob) * .62); line-height:1; font-weight:900;}
+/* §6 — inline SVG rather than a Unicode arrow: this glyph is rotated by the
+   spin animation and has to render identically on every platform. */
+.rot-btn .knob svg{width:62%; height:62%; display:block;}
+.rot-btn:active .knob{transform:scale(.86);}
+.rot-btn .knob.spin{animation:knobspin .22s ease;}
+@keyframes knobspin{from{transform:rotate(0);}to{transform:rotate(90deg);}}
+
+/* bottom info row */
+.info-row{display:flex; align-items:stretch; gap:14px;}
+.target-card{flex:0 0 auto; background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:12px; text-align:center;}
+.target-card .lbl{font-size:11px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--muted); margin-bottom:8px; font-weight:700;}
+.target-mini{width:120px; aspect-ratio:1/1; display:grid; border-radius:8px;
+  overflow:hidden; background:var(--board-line); margin:0 auto; container-type:inline-size;}
+.target-mini .mcell{border:1px solid rgba(255,255,255,var(--board-line-a));
+  display:flex; align-items:center; justify-content:center;}
+.target-mini .mcell .num{color:#fff; font-weight:800; line-height:1;
+  text-shadow:0 1px 2px rgba(0,0,0,.45); font-size:calc(40cqw / var(--n,4));}
+.target-mini:not(.show-nums) .num{display:none;}
+.timer-card{flex:1; background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:12px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;}
+.timer-card .lbl{font-size:11px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--muted); font-weight:700; margin-bottom:6px;}
+.timer-card .tval{font-size:34px; font-weight:800; font-variant-numeric:tabular-nums;
+  font-family:'Consolas','Courier New',monospace; color:var(--accent);}
+.timer-card .best-mini{font-size:12px; color:var(--muted); margin-top:6px;
+  font-family:'Consolas','Courier New',monospace;}
+
+/* win flourish */
+.board.solved-pulse{animation:pulse .55s ease;}
+@keyframes pulse{0%{transform:scale(1);}40%{transform:scale(1.04);}100%{transform:scale(1);}}
+
+/* ── MODALS — §6: theme-independent dark scrim, centred card ── */
+.modal-back{position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.82);
+  display:none; align-items:center; justify-content:center; padding:20px;
+  backdrop-filter:blur(2px);}
+.modal-back.show{display:flex; animation:fade .2s ease;}
+.modal{background:linear-gradient(160deg,var(--surface),var(--card));
+  border:1px solid var(--border); border-radius:18px; padding:24px; width:100%;
+  max-width:360px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.5);}
+.modal h2{font-size:22px; margin-bottom:8px;}
+.modal .win-time{font-size:40px; font-weight:800; color:var(--accent);
+  font-family:'Consolas','Courier New',monospace;
+  font-variant-numeric:tabular-nums; margin:6px 0;}
+.modal p{color:var(--muted); font-size:14px; line-height:1.5; margin-bottom:18px;}
+.modal .newbest{color:var(--success); font-weight:800; font-size:15px; margin-bottom:16px;}
+.modal-btns{display:flex; gap:10px;}
+.modal-btns button{flex:1; padding:13px; border-radius:12px; cursor:pointer;
+  font-size:15px; font-weight:700; border:1px solid var(--border); transition:.15s;
+  font-family:inherit;}
+.btn-primary{background:var(--accent); color:var(--on-accent); border:none;}
+.btn-primary:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.btn-ghost{background:var(--surface); color:var(--muted);}
+.btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+.confetti{font-size:40px; margin-bottom:4px;}
+
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  body{padding:52px 12px 20px;}
+  .logo h1{font-size:22px;}
+  .tagline{font-size:13px; margin-bottom:16px;}
+  .panel{padding:16px;}
+  ol.howto li{font-size:12.5px; padding-left:36px;}
+  .theme-toggle{font-size:12px; padding:5px 11px;}
+  .timer-card .tval{font-size:28px;}
+  .target-mini{width:100px;}
+  .icon-btn{padding:9px 12px;}
+  .reset-btn{padding:9px 12px;}
+}
+@media (max-width:380px){
+  .logo h1{font-size:19px; letter-spacing:.5px;}
+  .theme-toggle{padding:5px 9px; gap:5px;}
+  .pill{font-size:12.5px; padding:11px 4px;}
+  .game-pills .pill{font-size:12px; padding:9px 2px;}
+  .panel{padding:14px;}
+  .info-row{gap:10px;}
+  .target-card{padding:10px;}
+  .target-mini{width:86px;}
+  .timer-card .tval{font-size:24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- Theme toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="app">
+
+  <!-- START SCREEN — §3 order: logo block, How to Play, settings, Best Times -->
+  <div class="screen active" id="screen-start">
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 11-2.9-6.4"/><path d="M20.5 3.5V9H15"/><rect x="8" y="8" width="8" height="8" rx="1.5"/><path d="M12 8v8M8 12h8"/></svg></span>
+      <h1>Quad Twist</h1>
+    </div>
+    <div class="tagline">Rotate the tiles to rebuild the target pattern</div>
+
+    <div class="panel">
+      <div class="sec-title">How to Play</div>
+      <ol class="howto">
+        <li>Tap a <b>rotate knob</b> on the board to spin the four tiles around it one step clockwise.</li>
+        <li>Keep twisting until the board matches the <b>target</b> picture beside the clock.</li>
+        <li><b>Classic</b> matches colours only. <b>Numbers</b> makes every digit line up too.</li>
+        <li>The clock starts on your first twist. <b>Reset</b> replays the same puzzle.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <div class="sec-title">Mode</div>
+      <div class="pills" id="startModePills">
+        <button class="pill active" data-mode="classic">Classic</button>
+        <button class="pill" data-mode="numbers">Numbers</button>
+      </div>
+      <div class="sec-title mt">Grid Size</div>
+      <div class="pills" id="startPills">
+        <button class="pill active" data-size="4">4 × 4</button>
+        <button class="pill" data-size="6">6 × 6</button>
+        <button class="pill" data-size="8">8 × 8</button>
+      </div>
+      <button class="big-btn" id="startBtn">Start Puzzle</button>
+    </div>
+
+    <div class="panel">
+      <div class="sec-title">Best Times</div>
+      <div class="best-head" id="bestHead">Classic mode</div>
+      <div id="bestList"></div>
+    </div>
+  </div>
+
+  <!-- GAME SCREEN -->
+  <div class="screen" id="screen-game">
+    <div class="topbar">
+      <button class="icon-btn" id="backBtn" aria-label="Back to menu"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="game-pills" id="gamePills">
+        <button class="pill" data-size="4">4×4</button>
+        <button class="pill" data-size="6">6×6</button>
+        <button class="pill" data-size="8">8×8</button>
+      </div>
+      <button class="reset-btn" id="resetBtn">Reset</button>
+    </div>
+    <div class="mode-row">
+      <div class="game-pills mode-pills" id="gameModePills">
+        <button class="pill" data-mode="classic">Classic</button>
+        <button class="pill" data-mode="numbers">Numbers</button>
+      </div>
+    </div>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="info-row">
+      <div class="target-card">
+        <div class="lbl">Target</div>
+        <div class="target-mini" id="targetMini"></div>
+      </div>
+      <div class="timer-card">
+        <div class="lbl">Time</div>
+        <div class="tval" id="timerVal">00:00.00</div>
+        <div class="best-mini" id="gameBest"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Generic confirm modal -->
+<div class="modal-back" id="confirmBack">
+  <div class="modal">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p id="confirmMsg"></p>
+    <div class="modal-btns">
+      <button class="btn-ghost" id="confirmCancel">Cancel</button>
+      <button class="btn-primary" id="confirmOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Win modal -->
+<div class="modal-back" id="winBack">
+  <div class="modal">
+    <div class="confetti">🎉</div>
+    <h2>Solved!</h2>
+    <div class="win-time" id="winTime">00:00.00</div>
+    <div class="newbest" id="newBest" style="display:none;">🏆 New best time!</div>
+    <p id="winSub"></p>
+    <div class="modal-btns">
+      <button class="btn-ghost" id="winChangeSize">Change Size</button>
+      <button class="btn-primary" id="winPlayAgain">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ===================================================================
+   QUAD TWIST — single-file rotation puzzle (Classic + Numbers modes)
+   - Each tile is a {c: colorIndex, n: number} unit. In Classic mode the
+     number is hidden and ignored by the win check; in Numbers mode both
+     color AND number must match the target at every cell.
+   - applyRotation() is PURE and operates on the 2D tile array, so the same
+     logic can be replayed / broadcast over Firebase for future online play.
+   - Puzzles are seeded (mulberry32) and fully reproducible from a code.
+=================================================================== */
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12 (timed variant)
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   Portable: copy verbatim into another timed game, change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = "quad-twist";
+const HUB_DB = "https://kenmemorize-arcade-default-rtdb.firebaseio.com";
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:"PUT", body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ---------- Palette ---------- */
+const PALETTE = [
+  "#e6402e","#f5a623","#2d8cf0","#5cc72f",
+  "#9b51e0","#12b5a5","#ec4899","#f2c811"
+];
+
+/* scramble intensity per grid size (tunable) */
+const SCRAMBLE_MOVES = {4:20, 6:45, 8:80};
+
+/* ---------- Seeded PRNG (mulberry32) ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function hashSeed(str){
+  let h = 2166136261 >>> 0;
+  for (let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/* ---------- Pure puzzle logic ---------- */
+
+// Colour an (M x M) macro grid so no two orthogonally-adjacent cells match.
+function macroColoring(M, rng){
+  const macro = Array.from({length:M}, () => new Array(M).fill(-1));
+  for (let r=0;r<M;r++){
+    for (let c=0;c<M;c++){
+      const forbidden = new Set();
+      if (c>0) forbidden.add(macro[r][c-1]);
+      if (r>0) forbidden.add(macro[r-1][c]);
+      const order = [...PALETTE.keys()];
+      for (let i=order.length-1;i>0;i--){
+        const j = Math.floor(rng()*(i+1));
+        [order[i],order[j]] = [order[j],order[i]];
+      }
+      macro[r][c] = order.find(ci => !forbidden.has(ci));
+    }
+  }
+  return macro;
+}
+
+// Expand macro grid -> N x N target of {c, n}. Each 2x2 block numbered 1 2 / 3 4.
+function buildTarget(size, macro){
+  const t = Array.from({length:size}, () => new Array(size));
+  for (let r=0;r<size;r++)
+    for (let c=0;c<size;c++)
+      t[r][c] = { c: macro[Math.floor(r/2)][Math.floor(c/2)],
+                  n: (r % 2) * 2 + (c % 2) + 1 };
+  return t;
+}
+
+// PURE: rotate the 2x2 block at intersection (i,j) one step CLOCKWISE, in place.
+// Cells: TL=(i,j) TR=(i,j+1) BL=(i+1,j) BR=(i+1,j+1)
+function applyRotation(board, i, j){
+  const tl = board[i][j], tr = board[i][j+1],
+        bl = board[i+1][j], br = board[i+1][j+1];
+  board[i][j]     = bl;
+  board[i][j+1]   = tl;
+  board[i+1][j+1] = tr;
+  board[i+1][j]   = br;
+}
+
+function cloneBoard(b){ return b.map(row => row.map(t => ({c:t.c, n:t.n}))); }
+
+// Match: color always; number too when useNumbers is set.
+function boardsMatch(a, b, useNumbers){
+  for (let r=0;r<a.length;r++)
+    for (let c=0;c<a.length;c++){
+      if (a[r][c].c !== b[r][c].c) return false;
+      if (useNumbers && a[r][c].n !== b[r][c].n) return false;
+    }
+  return true;
+}
+
+function scramble(target, size, rng){
+  const board = cloneBoard(target);
+  const n = SCRAMBLE_MOVES[size] || 25;
+  let last = -1;
+  for (let k=0;k<n;k++){
+    let i, j, id;
+    do {
+      i = Math.floor(rng()*(size-1));
+      j = Math.floor(rng()*(size-1));
+      id = i*(size-1)+j;
+    } while (id === last && (size-1)*(size-1) > 1);
+    applyRotation(board, i, j);
+    last = id;
+  }
+  return board;
+}
+
+// Re-roll if the scramble already satisfies the win condition for this mode.
+function makePuzzle(size, seed, useNumbers){
+  const rng = mulberry32(seed);
+  const macro = macroColoring(size/2, rng);
+  const target = buildTarget(size, macro);
+  let board = scramble(target, size, rng);
+  let guard = 0;
+  while (boardsMatch(board, target, useNumbers) && guard++ < 12){
+    board = scramble(target, size, rng);
+  }
+  return { target, board, seed };
+}
+
+/* ---------- Game state ---------- */
+const state = {
+  size:4, mode:"classic", target:null, board:null, original:null, seed:0,
+  animating:false, started:false, solved:false,
+  elapsedMs:0, startTs:0, rafHandle:null, confirmAction:null
+};
+const useNums = () => state.mode === "numbers";
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const boardEl = $("board"), targetMiniEl = $("targetMini");
+
+/* ---------- Theme — STYLE_GUIDE.md §2 ----------
+   The sun/moon icons swap via CSS on [data-theme]; JS only sets the attribute
+   and the label. Persisted under quadtwist_theme, matching this game's own
+   quadtwist_* storage naming, and restored on load. */
+const THEME_KEY = "quadtwist_theme";
+function applyTheme(theme){
+  document.documentElement.setAttribute("data-theme", theme);
+  $("theme-label").textContent = theme === "dark" ? "Light" : "Dark";
+}
+function toggleTheme(){
+  const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+  applyTheme(next);
+  try { localStorage.setItem(THEME_KEY, next); } catch(e){}
+}
+(function initTheme(){
+  let saved = null;
+  try { saved = localStorage.getItem(THEME_KEY); } catch(e){}
+  applyTheme(saved === "light" ? "light" : "dark");
+})();
+
+/* ---------- Best times (localStorage, keyed by mode + size) ---------- */
+function bestKey(mode, size){ return "quadtwist_best_" + mode + "_" + size; }
+function getBest(mode, size){
+  const v = localStorage.getItem(bestKey(mode, size));
+  return v ? parseInt(v,10) : null;
+}
+function setBest(mode, size, ms){ localStorage.setItem(bestKey(mode, size), String(ms)); }
+
+/* ---------- Time formatting ---------- */
+function fmt(ms){
+  const cs = Math.floor((ms % 1000) / 10);
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  const p2 = n => String(n).padStart(2,"0");
+  return `${p2(m)}:${p2(s)}.${p2(cs)}`;
+}
+
+/* ---------- Timer (starts on first move) ---------- */
+function startTimer(){
+  if (state.started) return;
+  state.started = true;
+  state.startTs = performance.now();
+  const tick = () => {
+    state.elapsedMs = performance.now() - state.startTs;
+    $("timerVal").textContent = fmt(state.elapsedMs);
+    state.rafHandle = requestAnimationFrame(tick);
+  };
+  tick();
+}
+function stopTimer(){
+  if (state.rafHandle) cancelAnimationFrame(state.rafHandle);
+  state.rafHandle = null;
+}
+function resetTimerDisplay(){
+  stopTimer(); state.started = false; state.elapsedMs = 0;
+  $("timerVal").textContent = fmt(0);
+}
+
+/* ---------- Rendering ---------- */
+function knobSize(N){ if (N <= 4) return 42; if (N === 6) return 32; return 26; }
+
+function renderBoard(){
+  const N = state.size;
+  boardEl.style.setProperty("--knob", knobSize(N) + "px");
+  boardEl.style.setProperty("--n", N);
+  boardEl.classList.toggle("show-nums", useNums());
+  boardEl.innerHTML = "";
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  grid.style.gridTemplateColumns = `repeat(${N},1fr)`;
+  grid.style.gridTemplateRows = `repeat(${N},1fr)`;
+  for (let r=0;r<N;r++){
+    for (let c=0;c<N;c++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.r = r; cell.dataset.c = c;
+      cell.style.background = PALETTE[state.board[r][c].c];
+      cell.innerHTML = `<span class="num">${state.board[r][c].n}</span>`;
+      grid.appendChild(cell);
+    }
+  }
+  boardEl.appendChild(grid);
+
+  for (let i=0;i<N-1;i++){
+    for (let j=0;j<N-1;j++){
+      const btn = document.createElement("button");
+      btn.className = "rot-btn";
+      btn.style.left = ((j+1)/N*100) + "%";
+      btn.style.top  = ((i+1)/N*100) + "%";
+      const pad = Math.max(0, (44 - knobSize(N)) / 2);
+      btn.style.padding = pad + "px";
+      btn.innerHTML = `<span class="knob"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 11-2.6-5.9"/><path d="M20 3.5V9h-5.5"/></svg></span>`;
+      btn.addEventListener("click", () => onRotate(i, j, btn));
+      boardEl.appendChild(btn);
+    }
+  }
+}
+
+function paintCell(r,c){
+  const cell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  if (!cell) return;
+  cell.style.background = PALETTE[state.board[r][c].c];
+  const num = cell.querySelector(".num");
+  if (num) num.textContent = state.board[r][c].n;
+}
+
+function renderTargetMini(){
+  const N = state.size;
+  targetMiniEl.style.setProperty("--n", N);
+  targetMiniEl.classList.toggle("show-nums", useNums());
+  targetMiniEl.style.gridTemplateColumns = `repeat(${N},1fr)`;
+  targetMiniEl.style.gridTemplateRows = `repeat(${N},1fr)`;
+  targetMiniEl.innerHTML = "";
+  for (let r=0;r<N;r++){
+    for (let c=0;c<N;c++){
+      const m = document.createElement("div");
+      m.className = "mcell";
+      m.style.background = PALETTE[state.target[r][c].c];
+      m.innerHTML = `<span class="num">${state.target[r][c].n}</span>`;
+      targetMiniEl.appendChild(m);
+    }
+  }
+}
+
+/* ---------- Rotation with animation ---------- */
+function onRotate(i, j, btn){
+  if (state.animating || state.solved) return;
+  state.animating = true;
+  startTimer();
+
+  const N = state.size;
+  const knob = btn.querySelector(".knob");
+  knob.classList.remove("spin"); void knob.offsetWidth; knob.classList.add("spin");
+
+  const overlay = document.createElement("div");
+  overlay.className = "rot-overlay";
+  overlay.style.left   = (j/N*100) + "%";
+  overlay.style.top    = (i/N*100) + "%";
+  overlay.style.width  = (2/N*100) + "%";
+  overlay.style.height = (2/N*100) + "%";
+  const coords = [[i,j],[i,j+1],[i+1,j],[i+1,j+1]]; // TL TR BL BR (grid order)
+  const numSpans = [];
+  coords.forEach(([r,c]) => {
+    const t = document.createElement("div");
+    t.className = "cell";
+    t.style.background = PALETTE[state.board[r][c].c];
+    t.innerHTML = `<span class="num">${state.board[r][c].n}</span>`;
+    numSpans.push(t.querySelector(".num"));
+    overlay.appendChild(t);
+  });
+  boardEl.appendChild(overlay);
+
+  coords.forEach(([r,c]) => {
+    const cell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+    if (cell) cell.style.visibility = "hidden";
+  });
+
+  overlay.style.transition = "transform .22s cubic-bezier(.4,0,.2,1)";
+  requestAnimationFrame(() => {
+    overlay.style.transform = "rotate(90deg)";
+    // keep digits upright by counter-rotating them the same amount
+    numSpans.forEach(s => { s.style.transform = "rotate(-90deg)"; });
+  });
+
+  const finish = () => {
+    applyRotation(state.board, i, j);
+    coords.forEach(([r,c]) => {
+      const cell = boardEl.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+      if (cell) cell.style.visibility = "";
+      paintCell(r, c);
+    });
+    overlay.remove();
+    state.animating = false;
+    checkWin();
+  };
+  let done = false;
+  overlay.addEventListener("transitionend", () => { if(!done){ done=true; finish(); } }, {once:true});
+  setTimeout(() => { if(!done){ done=true; finish(); } }, 340);
+}
+
+/* ---------- Win ---------- */
+function checkWin(){
+  if (!boardsMatch(state.board, state.target, useNums())) return;
+  state.solved = true;
+  stopTimer();
+  const finalMs = state.elapsedMs;
+  $("timerVal").textContent = fmt(finalMs);
+
+  boardEl.classList.remove("solved-pulse"); void boardEl.offsetWidth;
+  boardEl.classList.add("solved-pulse");
+
+  const prev = getBest(state.mode, state.size);
+  const isBest = (prev === null) || (finalMs < prev);
+  if (isBest) setBest(state.mode, state.size, finalMs);
+
+  const modeLabel = state.mode === "numbers" ? "Numbers" : "Classic";
+  setTimeout(() => {
+    $("winTime").textContent = fmt(finalMs);
+    $("newBest").style.display = isBest ? "block" : "none";
+    $("winSub").textContent = isBest
+      ? `${modeLabel} ${state.size}×${state.size} conquered.`
+      : `Best ${modeLabel} ${state.size}×${state.size}: ${fmt(prev)}`;
+    showModal("winBack");
+    updateGameBest();
+  }, 560);
+}
+
+/* ---------- Puzzle lifecycle ---------- */
+function newPuzzle(size, mode, seed){
+  hubReportPlay();
+  state.size = size;
+  state.mode = mode;
+  state.seed = (seed == null) ? (Math.floor(Math.random()*0xFFFFFFFF) >>> 0) : seed;
+  const p = makePuzzle(size, state.seed, mode === "numbers");
+  state.target = p.target;
+  state.board = p.board;
+  state.original = cloneBoard(p.board);
+  state.solved = false; state.animating = false;
+  resetTimerDisplay();
+  renderBoard();
+  renderTargetMini();
+  syncGamePills();
+  updateGameBest();
+}
+
+function resetPuzzle(){
+  state.board = cloneBoard(state.original);
+  state.solved = false; state.animating = false;
+  resetTimerDisplay();
+  renderBoard();
+}
+
+function updateGameBest(){
+  const b = getBest(state.mode, state.size);
+  $("gameBest").textContent = b ? "Best: " + fmt(b) : "No best yet";
+}
+
+/* ---------- Screens ---------- */
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+/* ---------- Modals ---------- */
+function showModal(id){ $(id).classList.add("show"); }
+function hideModal(id){ $(id).classList.remove("show"); }
+function askConfirm(title, msg, okLabel, onOk){
+  $("confirmTitle").textContent = title;
+  $("confirmMsg").textContent = msg;
+  $("confirmOk").textContent = okLabel || "Confirm";
+  state.confirmAction = onOk;
+  showModal("confirmBack");
+}
+
+/* ---------- Best list (start screen, reflects selected mode) ---------- */
+function renderBestList(){
+  $("bestHead").textContent = (startSelectedMode === "numbers" ? "Numbers" : "Classic") + " mode";
+  const list = $("bestList");
+  list.innerHTML = "";
+  [4,6,8].forEach(sz => {
+    const b = getBest(startSelectedMode, sz);
+    const row = document.createElement("div");
+    row.className = "best-row";
+    row.innerHTML = `<span class="sz">${sz} × ${sz}</span>` +
+      (b ? `<span class="tm">${fmt(b)}</span>` : `<span class="tm none">—</span>`);
+    list.appendChild(row);
+  });
+}
+
+/* ---------- Pill selectors ---------- */
+let startSelectedSize = 4, startSelectedMode = "classic";
+
+function initStartPills(){
+  $("startPills").querySelectorAll(".pill").forEach(p => {
+    p.addEventListener("click", () => {
+      $("startPills").querySelectorAll(".pill").forEach(x => x.classList.remove("active"));
+      p.classList.add("active");
+      startSelectedSize = parseInt(p.dataset.size,10);
+    });
+  });
+  $("startModePills").querySelectorAll(".pill").forEach(p => {
+    p.addEventListener("click", () => {
+      $("startModePills").querySelectorAll(".pill").forEach(x => x.classList.remove("active"));
+      p.classList.add("active");
+      startSelectedMode = p.dataset.mode;
+      renderBestList();
+    });
+  });
+}
+
+function syncGamePills(){
+  $("gamePills").querySelectorAll(".pill").forEach(p => {
+    p.classList.toggle("active", parseInt(p.dataset.size,10) === state.size);
+  });
+  $("gameModePills").querySelectorAll(".pill").forEach(p => {
+    p.classList.toggle("active", p.dataset.mode === state.mode);
+  });
+}
+
+function inProgress(){ return state.started && !state.solved; }
+
+function initGamePills(){
+  $("gamePills").querySelectorAll(".pill").forEach(p => {
+    p.addEventListener("click", () => {
+      const sz = parseInt(p.dataset.size,10);
+      if (sz === state.size || state.animating) return;
+      if (inProgress()){
+        askConfirm("Switch to " + sz + "×" + sz + "?",
+          "Your current puzzle and time will be lost.",
+          "Switch", () => newPuzzle(sz, state.mode));
+      } else { newPuzzle(sz, state.mode); }
+    });
+  });
+  $("gameModePills").querySelectorAll(".pill").forEach(p => {
+    p.addEventListener("click", () => {
+      const mode = p.dataset.mode;
+      if (mode === state.mode || state.animating) return;
+      const label = mode === "numbers" ? "Numbers" : "Classic";
+      if (inProgress()){
+        askConfirm("Switch to " + label + " mode?",
+          "A new puzzle will be generated. Your current time will be lost.",
+          "Switch", () => newPuzzle(state.size, mode));
+      } else { newPuzzle(state.size, mode); }
+    });
+  });
+}
+
+/* ---------- Wire up ---------- */
+$("startBtn").addEventListener("click", () => {
+  newPuzzle(startSelectedSize, startSelectedMode);
+  showScreen("screen-game");
+});
+
+$("backBtn").addEventListener("click", () => {
+  const goBack = () => { showScreen("screen-start"); renderBestList(); };
+  if (inProgress()) askConfirm("Exit puzzle?", "Your current time will be lost.", "Exit", goBack);
+  else goBack();
+});
+
+$("resetBtn").addEventListener("click", () => {
+  if (state.animating) return;
+  if (inProgress())
+    askConfirm("Reset puzzle?", "Restart this puzzle from the beginning. Your time resets.",
+      "Reset", resetPuzzle);
+  else resetPuzzle();
+});
+
+$("confirmCancel").addEventListener("click", () => { hideModal("confirmBack"); state.confirmAction=null; });
+$("confirmOk").addEventListener("click", () => {
+  hideModal("confirmBack");
+  const act = state.confirmAction; state.confirmAction = null;
+  if (act) act();
+});
+$("confirmBack").addEventListener("click", e => {
+  if (e.target === $("confirmBack")){ hideModal("confirmBack"); state.confirmAction=null; }
+});
+
+$("winPlayAgain").addEventListener("click", () => { hideModal("winBack"); newPuzzle(state.size, state.mode); });
+$("winChangeSize").addEventListener("click", () => { hideModal("winBack"); showScreen("screen-start"); renderBestList(); });
+
+/* ---------- Init ---------- */
+initStartPills();
+initGamePills();
+renderBestList();
+
+/* expose pure helpers for future multiplayer / testing */
+window.QuadTwist = {
+  makePuzzle, applyRotation, boardsMatch, cloneBoard, buildTarget, macroColoring,
+  mulberry32, hashSeed, scramble, SCRAMBLE_MOVES, PALETTE
+};
+</script>
+</body>
+</html>

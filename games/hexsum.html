@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>HexaSum</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root[data-theme="dark"]{
+  --bg1:#0e1024; --bg2:#1b1f44; --panel:#181c34; --panel2:#20254a;
+  --surface:#11142a; --surface2:#15182f;
+  --text:#eef1ff; --muted:#9aa0c3; --accent:#ffd166; --accent2:#4cc9f0; --on-accent:#16182c;
+  --correct:#52d273; --wrong:#ef476f; --line:#2a2f55;
+  --hex-bg:#262b52; --hex-border:#3a4080; --hex-selected:#3a4ea3;
+  --shadow:rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --bg1:#eef1fb; --bg2:#ffffff; --panel:#ffffff; --panel2:#f3f5fc;
+  --surface:#f3f4fa; --surface2:#e9ebf5;
+  --text:#1b2040; --muted:#5b6280; --accent:#c98a00; --accent2:#0e86b3; --on-accent:#ffffff;
+  --correct:#1f9d52; --wrong:#d6294a; --line:#d7dced;
+  --hex-bg:#e3e6f5; --hex-border:#c3c8e8; --hex-selected:#b9c4ef;
+  --shadow:rgba(20,30,60,.12);
+}
+
+/* ── THEME TOGGLE (shared convention across all games) ── */
+.theme-toggle{
+  position:fixed; top:16px; right:16px; background:var(--panel); border:1px solid var(--line);
+  border-radius:50px; padding:6px 14px; cursor:pointer; display:flex; align-items:center; gap:7px;
+  font-size:13px; color:var(--muted); transition:all .15s; z-index:200; user-select:none;
+}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 60%);
+  color:var(--text); display:flex; justify-content:center; padding:20px;
+}
+.app{width:100%; max-width:980px;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadeIn .35s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+/* Settings screen reads at the shared 720px menu width; gameplay screens keep the wider .app shell for the board+sidebar layout */
+#screen-settings{max-width:720px; margin:0 auto;}
+
+.logo{text-align:center;}
+.logo-icon{display:flex; justify-content:center; margin:0 auto 6px; color:var(--accent); width:32px; height:32px;}
+h1{text-align:center; margin:6px 0 2px; font-size:28px; letter-spacing:1px;}
+.subtitle{text-align:center; color:var(--muted); margin-bottom:22px; font-size:14px;}
+
+.howto-box{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin-bottom:16px; text-align:left; box-shadow:0 10px 30px var(--shadow);}
+.howto-box .howto-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:10px; font-weight:700;}
+.howto-box p{font-size:13px; color:var(--muted); line-height:1.6; margin:0 0 8px;}
+.howto-box p:last-child{margin-bottom:0;}
+.howto-box strong{color:var(--text);}
+
+.panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:22px 26px; box-shadow:0 10px 30px var(--shadow);}
+.panel + .panel{margin-top:16px;}
+.section-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:12px; font-weight:700;}
+
+.row{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+.field{flex:1; min-width:180px;}
+.field label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px;}
+select, input[type=text]{
+  width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+  background:var(--surface); color:var(--text); font-size:14px;
+}
+select:disabled, input:disabled{opacity:.4; cursor:not-allowed;}
+
+.choice-group{display:flex; gap:8px; flex-wrap:wrap;}
+.choice-btn{
+  flex:1; min-width:84px; padding:10px 8px; border-radius:10px; border:1px solid var(--line); background:var(--surface);
+  color:var(--text); cursor:pointer; text-align:center; font-size:13px; transition:.15s;
+}
+.choice-btn.active{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:700;}
+.choice-btn:hover{border-color:var(--accent2);}
+
+#nameInputs{display:flex; flex-direction:column; gap:8px; margin-top:4px;}
+
+.big-btn{
+  display:block; width:100%; margin-top:6px; padding:14px; border-radius:12px; border:none;
+  background:linear-gradient(135deg,var(--accent),#ff9f6b); color:var(--on-accent); font-size:16px; font-weight:800;
+  letter-spacing:.5px; cursor:pointer; box-shadow:0 8px 18px rgba(255,209,102,.25);
+}
+.big-btn:hover{filter:brightness(1.06);}
+.ghost-btn{
+  padding:10px 18px; border-radius:10px; border:1px solid var(--line); background:var(--surface);
+  color:var(--text); cursor:pointer; font-size:14px;
+}
+.ghost-btn:hover{border-color:var(--accent2);}
+.danger-btn{border-color:var(--wrong); color:var(--wrong);}
+.danger-btn:hover{background:rgba(239,71,111,.12);}
+
+/* Confirm modal — STYLE_GUIDE.md §15 (never use native confirm()) */
+.modal-scrim{
+  position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:100;
+  display:none; align-items:center; justify-content:center; padding:20px;
+}
+.modal-scrim.open{display:flex;}
+.modal-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:18px;
+  padding:24px; max-width:380px; width:100%; text-align:center;
+  box-shadow:0 18px 40px rgba(0,0,0,.4);
+}
+.modal-card h3{margin:0 0 8px; font-size:18px; color:var(--text);}
+.modal-card p{margin:0 0 20px; font-size:14px; line-height:1.6; color:var(--muted);}
+.modal-actions{display:flex; gap:10px; justify-content:center;}
+.modal-actions .ghost-btn{flex:1;}
+
+/* Countdown */
+#screen-countdown{text-align:center; padding-top:120px;}
+#countdownNum{font-size:140px; font-weight:900; color:var(--accent); text-shadow:0 0 40px rgba(255,209,102,.5);}
+
+/* Top bar during play */
+.topbar{display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
+.target-box{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:10px 22px; text-align:center;}
+.target-box .label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px;}
+.target-box .value{font-size:34px; font-weight:900; color:var(--accent);}
+
+.players-bar{display:flex; gap:10px; flex-wrap:wrap;}
+.player-chip{
+  background:var(--surface); border:2px solid var(--line); border-radius:12px; padding:8px 14px; text-align:center; min-width:84px;
+  transition:.2s;
+}
+.player-chip.current{border-color:var(--accent2); box-shadow:0 0 14px rgba(76,201,240,.4); transform:translateY(-2px);}
+.player-chip .pname{font-size:12px; color:var(--muted);}
+.player-chip .pscore{font-size:20px; font-weight:800;}
+
+.ring-wrap{display:flex; align-items:center; gap:10px;}
+.ring-timer{
+  width:70px; height:70px; border-radius:50%; position:relative; display:flex; align-items:center; justify-content:center;
+  --pct:100; --ring-color:var(--accent2);
+}
+.ring-timer::before{
+  content:''; position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(var(--ring-color) calc(var(--pct)*1%), rgba(255,255,255,.12) 0);
+  transition:background .25s linear;
+}
+.ring-timer::after{content:''; position:absolute; inset:7px; border-radius:50%; background:var(--surface2);}
+.ring-timer span{position:relative; z-index:2; font-weight:800; font-size:18px;}
+.ring-label{font-size:12px; color:var(--muted); text-align:center;}
+
+/* board */
+.board-host{display:flex; justify-content:center; margin:14px 0; width:100%; overflow:visible;}
+.board-stage{position:relative;}
+.hex{position:absolute; transform:translate(-50%,-50%); cursor:pointer;}
+.hex-shape{
+  width:80px; height:92px; clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:var(--hex-bg); border:2px solid var(--hex-border); display:flex; align-items:center; justify-content:center;
+  transition:transform .15s, background .2s, border-color .2s; position:relative;
+}
+.hex:hover .hex-shape{transform:scale(1.06);}
+.hex.disabled{cursor:default;}
+.hex.disabled .hex-shape:hover{transform:none;}
+.hex-shape .face{font-size:26px; font-weight:800; color:var(--text); user-select:none;}
+.hex.selected .hex-shape{background:var(--hex-selected); border-color:var(--accent2); box-shadow:0 0 16px rgba(76,201,240,.55);}
+.hex.flip .hex-shape{transform:scaleX(0.05);}
+.hex.flash-correct .hex-shape{background:var(--correct)!important; border-color:#bff7cf!important; box-shadow:0 0 22px rgba(82,210,115,.8);}
+.hex.flash-wrong .hex-shape{background:var(--wrong)!important; border-color:#ffd0da!important; box-shadow:0 0 22px rgba(239,71,111,.8);}
+
+.bottom-actions{display:flex; justify-content:center; gap:12px; margin-top:10px; flex-wrap:wrap;}
+
+/* recall layout: board + history side by side on wide screens */
+.recall-layout{display:flex; gap:20px; align-items:flex-start;}
+.recall-board-col{flex:1; min-width:0;}
+.history-wrap{width:300px; flex-shrink:0; margin-top:0;}
+
+/* history table */
+table.history{width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;}
+table.history th{width:50%; background:var(--surface); color:var(--accent2); padding:8px; text-align:left; border-bottom:1px solid var(--line); box-sizing:border-box;}
+table.history td{width:50%; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; box-sizing:border-box;}
+table.history td.correct-cell{color:var(--correct);}
+table.history td.wrong-cell{color:var(--wrong);}
+.history-scroll{max-height:340px; overflow-y:auto; border-radius:10px; border:1px solid var(--line);}
+
+.solo-info{text-align:center; color:var(--muted); margin-bottom:8px; font-size:14px;}
+.solo-info b{color:var(--accent);}
+.warning-info{text-align:center; color:var(--accent); margin-bottom:8px; font-size:14px; font-weight:700;}
+
+#feedbackBanner{
+  text-align:center; min-height:26px; font-weight:700; margin-bottom:6px; transition:opacity .2s;
+}
+
+/* end summary (shown inline on the recall screen) */
+#gameOverPanel{margin-top:20px;}
+#endSummary{text-align:center;}
+#endSummary h2{font-size:28px; color:var(--accent); margin-bottom:6px;}
+#endSummary .winner-line{color:var(--muted); margin-bottom:18px;}
+#remainingSolutions{margin-top:16px; text-align:left;}
+#remainingSolutions ul{columns:2; list-style:none; padding:0; margin:0; color:var(--muted); font-size:13px;}
+#remainingSolutions li{margin-bottom:6px;}
+
+.legend{display:flex; gap:18px; justify-content:center; margin-top:10px; font-size:12px; color:var(--muted); flex-wrap:wrap;}
+.legend span{display:inline-flex; align-items:center; gap:6px;}
+.swatch{width:12px; height:12px; border-radius:3px; display:inline-block;}
+
+/* ============ MOBILE / RESPONSIVE ============ */
+@media (max-width:760px){
+  .recall-layout{flex-direction:column;}
+  .history-wrap{width:100%;}
+  .history-scroll{max-height:200px;}
+}
+@media (max-width:520px){
+  body{padding:10px;}
+  .panel{padding:16px 16px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px; margin-bottom:16px;}
+  .howto-box{padding:14px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .target-box{padding:8px 14px;}
+  .target-box .value{font-size:26px;}
+  .ring-timer{width:56px; height:56px;}
+  .ring-timer span{font-size:14px;}
+  .ring-label{font-size:10px;}
+  .player-chip{min-width:64px; padding:6px 10px;}
+  .player-chip .pscore{font-size:16px;}
+  .big-btn{font-size:15px; padding:12px;}
+  .ghost-btn{padding:9px 14px; font-size:13px;}
+  #countdownNum{font-size:90px;}
+  #screen-countdown{padding-top:80px;}
+  #remainingSolutions ul{columns:1;}
+}
+</style>
+</head>
+<body>
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+<div class="app">
+
+  <!-- SETTINGS SCREEN -->
+  <div class="screen active" id="screen-settings">
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2L21 7V17L12 22L3 17V7L12 2Z"/></svg></span>
+      <h1>HexaSum</h1>
+      <div class="subtitle">Memorize the board, then find 3 hexagons in a straight line that add up to the target number</div>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>Memorize the number inside every hexagon before time runs out. When the timer ends, the numbers flip face-down and only letters remain.</p>
+      <p>Select <strong>3 hexagons in a straight line</strong> whose numbers add up to the target sum shown above the board.</p>
+      <p><strong>Solo:</strong> find as many valid lines as you can. <strong>Pass &amp; Play:</strong> take turns — first to 5 points wins.</p>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Memorization Time</div>
+      <div class="choice-group" id="memoTimeGroup">
+        <div class="choice-btn" data-value="60">60s</div>
+        <div class="choice-btn" data-value="90">90s</div>
+        <div class="choice-btn" data-value="120">120s</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Difficulty</div>
+      <div class="choice-group" id="difficultyGroup">
+        <div class="choice-btn" data-value="easy">Easy (1–5)</div>
+        <div class="choice-btn" data-value="medium">Medium (1–7)</div>
+        <div class="choice-btn" data-value="hard">Hard (1–9)</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Mode</div>
+      <div class="choice-group" id="modeGroup">
+        <div class="choice-btn" data-value="solo">Solo</div>
+        <div class="choice-btn" data-value="pvp">Pass &amp; Play</div>
+      </div>
+
+      <div class="row" style="margin-top:14px;">
+        <div class="field">
+          <label for="numPlayers">Number of Players</label>
+          <select id="numPlayers" disabled>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="nameInputsWrap" style="display:none;">
+        <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:6px;">Player Names</label>
+        <div id="nameInputs"></div>
+      </div>
+    </div>
+
+    <button class="big-btn" id="startBtn">Start Game →</button>
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--hex-bg);border:1px solid var(--hex-border);"></span> Hexagon</span>
+      <span><span class="swatch" style="background:var(--accent2);"></span> Selected</span>
+      <span><span class="swatch" style="background:var(--correct);"></span> Correct</span>
+      <span><span class="swatch" style="background:var(--wrong);"></span> Wrong</span>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN SCREEN -->
+  <div class="screen" id="screen-countdown">
+    <div id="countdownNum">3</div>
+  </div>
+
+  <!-- MEMORIZE SCREEN -->
+  <div class="screen" id="screen-memorize">
+    <div class="topbar">
+      <div class="target-box"><div class="label">Memorize the Board</div><div class="value" style="font-size:18px;">Numbers will hide soon</div></div>
+      <div class="ring-wrap">
+        <div class="ring-timer" id="memoRing"><span id="memoRingText">60</span></div>
+        <div class="ring-label">Time Left</div>
+      </div>
+    </div>
+    <div id="boardWrap-memo" class="board-host"></div>
+    <div class="bottom-actions">
+      <button class="ghost-btn" id="readyBtn">I'm Ready →</button>
+      <button class="ghost-btn danger-btn" id="exitMemoBtn">✕ Exit</button>
+    </div>
+  </div>
+
+  <!-- RECALL SCREEN -->
+  <div class="screen" id="screen-recall">
+    <div class="topbar">
+      <div class="target-box"><div class="label">Target Number</div><div class="value" id="targetValue">--</div></div>
+      <div class="players-bar" id="playersBar"></div>
+      <div class="ring-wrap" id="turnRingWrap">
+        <div class="ring-timer" id="turnRing"><span id="turnRingText">20</span></div>
+        <div class="ring-label" id="turnRingLabel">Turn</div>
+      </div>
+    </div>
+    <div class="solo-info" id="soloInfo" style="display:none;"></div>
+    <div class="warning-info" id="lastSolutionNotice" style="display:none;">⚠ Only 1 solution left — find it before the game ends!</div>
+    <div id="feedbackBanner"></div>
+
+    <div class="recall-layout">
+      <div class="recall-board-col">
+        <div id="boardWrap-recall" class="board-host"></div>
+        <div class="bottom-actions">
+          <button class="ghost-btn danger-btn" id="endGameBtn">End Game</button>
+        </div>
+      </div>
+
+      <div class="history-wrap">
+        <div class="section-title" style="text-align:center;">Answer Log</div>
+        <div class="history-scroll">
+          <table class="history">
+            <thead><tr><th>✔ Correct</th><th>✘ Wrong</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER PANEL: shown inline on this same screen, no navigation away -->
+    <div id="gameOverPanel" style="display:none;">
+      <div class="panel" id="endSummary">
+        <h2 id="endTitle">Game Over</h2>
+        <div class="winner-line" id="endSubtitle"></div>
+        <div id="endScores"></div>
+        <div id="remainingSolutions"></div>
+        <button class="big-btn" id="backToMenuBtn" style="max-width:280px;margin:20px auto 0;">Return to Main Menu</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Confirm modal — STYLE_GUIDE.md §15 -->
+<div class="modal-scrim" id="confirmScrim">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Exit to main menu?</h3>
+    <p id="confirmBody">Your progress will be lost.</p>
+    <div class="modal-actions">
+      <button class="ghost-btn" id="confirmCancel">Cancel</button>
+      <button class="ghost-btn danger-btn" id="confirmOk">Exit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'hexasum';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ── THEME TOGGLE (shared convention across all games) ── */
+/* Persisted so the choice survives a reload (it previously reset to dark). */
+const THEME_KEY = 'hexsum_theme';
+let isDarkTheme = true;
+try{ isDarkTheme = localStorage.getItem(THEME_KEY) !== 'light'; }catch(e){}
+applyTheme();
+document.getElementById('theme-btn').addEventListener('click', ()=>{
+  isDarkTheme = !isDarkTheme;
+  try{ localStorage.setItem(THEME_KEY, isDarkTheme ? 'dark' : 'light'); }catch(e){}
+  applyTheme();
+});
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
+  document.getElementById('theme-label').textContent = isDarkTheme ? 'Light' : 'Dark';
+}
+
+/* ── CONFIRM MODAL — STYLE_GUIDE.md §15 ──
+   Replaces native confirm(). Calls onCancel so callers can resume paused
+   state (e.g. restart a memorize timer) exactly as before. */
+function askConfirm(opts, onOk, onCancel){
+  const scrim  = document.getElementById('confirmScrim');
+  const okBtn  = document.getElementById('confirmOk');
+  const cancel = document.getElementById('confirmCancel');
+  document.getElementById('confirmTitle').textContent = opts.title;
+  document.getElementById('confirmBody').textContent  = opts.body;
+  okBtn.textContent = opts.okLabel || 'Confirm';
+  scrim.classList.add('open');
+
+  function close(){
+    scrim.classList.remove('open');
+    okBtn.onclick = cancel.onclick = scrim.onclick = null;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape'){ close(); onCancel && onCancel(); } }
+
+  okBtn.onclick     = ()=>{ close(); onOk && onOk(); };
+  cancel.onclick    = ()=>{ close(); onCancel && onCancel(); };
+  scrim.onclick     = e =>{ if(e.target === scrim){ close(); onCancel && onCancel(); } };
+  document.addEventListener('keydown', onKey);
+}
+
+/* ============ BOARD GEOMETRY ============ */
+// 19 hexagons arranged 3-4-5-4-3, axial coords (q,r), s = -q-r
+const HEX_DEFS = [
+  ['A',0,-2],['B',1,-2],['C',2,-2],
+  ['D',-1,-1],['E',0,-1],['F',1,-1],['G',2,-1],
+  ['H',-2,0],['I',-1,0],['J',0,0],['K',1,0],['L',2,0],
+  ['M',-2,1],['N',-1,1],['O',0,1],['P',1,1],
+  ['Q',-2,2],['R',-1,2],['S',0,2]
+];
+const SIZE = 46; // hex radius (center to vertex)
+
+const HEXES = HEX_DEFS.map((d,i)=>{
+  const [letter,q,r] = d;
+  const s = -q-r;
+  const x = SIZE*(Math.sqrt(3)*q + Math.sqrt(3)/2*r);
+  const y = SIZE*(1.5*r);
+  return {id:i, letter, q, r, s, rawX:x, rawY:y};
+});
+
+// normalize positions into positive space with padding
+const PAD = 50;
+const minX = Math.min(...HEXES.map(h=>h.rawX));
+const maxX = Math.max(...HEXES.map(h=>h.rawX));
+const minY = Math.min(...HEXES.map(h=>h.rawY));
+const maxY = Math.max(...HEXES.map(h=>h.rawY));
+HEXES.forEach(h=>{
+  h.x = h.rawX - minX + PAD;
+  h.y = h.rawY - minY + PAD;
+});
+const STAGE_W = (maxX-minX) + PAD*2;
+const STAGE_H = (maxY-minY) + PAD*2;
+
+function buildLines(){
+  const byR={}, byQ={}, byS={};
+  HEXES.forEach(h=>{
+    (byR[h.r]=byR[h.r]||[]).push(h);
+    (byQ[h.q]=byQ[h.q]||[]).push(h);
+    (byS[h.s]=byS[h.s]||[]).push(h);
+  });
+  const lines=[];
+  function collect(groups, sortKey){
+    Object.values(groups).forEach(arr=>{
+      arr.sort((a,b)=>a[sortKey]-b[sortKey]);
+      for(let i=0;i+2<arr.length;i++){
+        lines.push([arr[i].id, arr[i+1].id, arr[i+2].id]);
+      }
+    });
+  }
+  collect(byR,'q');
+  collect(byQ,'r');
+  collect(byS,'q');
+  return lines;
+}
+const LINES = buildLines(); // 27 straight-line triples
+
+function lineKey(arr){ return arr.slice().sort((a,b)=>a-b).join('-'); }
+const LINE_SET = new Set(LINES.map(lineKey)); // for validating "is this a straight line"
+
+/* ============ STATE ============ */
+let state = null; // active game state, set on startGame()
+
+function diffRange(diff){
+  if(diff==='easy') return 5;
+  if(diff==='medium') return 7;
+  return 9;
+}
+
+function generateBoard(maxN, numPlayers){
+  const requiredMin = 4*numPlayers + 1;
+  let best = null;
+  for(let attempt=0; attempt<1500; attempt++){
+    const values = {};
+    HEXES.forEach(h=> values[h.id] = 1+Math.floor(Math.random()*maxN));
+    const sumGroups = {};
+    LINES.forEach(line=>{
+      const sum = line.reduce((s,id)=>s+values[id],0);
+      (sumGroups[sum]=sumGroups[sum]||[]).push(line);
+    });
+    let bestSum=null, bestLines=null;
+    Object.keys(sumGroups).forEach(sumStr=>{
+      const arr = sumGroups[sumStr];
+      if(!bestLines || arr.length>bestLines.length){ bestSum=Number(sumStr); bestLines=arr; }
+    });
+    if(!best || bestLines.length > best.lines.length){
+      best = {values, target: bestSum, lines: bestLines};
+    }
+    if(best.lines.length >= requiredMin) break;
+  }
+  return best;
+}
+
+/* ============ SETTINGS UI ============ */
+const settings = {memoTime:60, difficulty:'easy', mode:'solo', numPlayers:2, names:['Player 1']};
+
+function wireChoiceGroup(id, onPick, defaultValue){
+  const group = document.getElementById(id);
+  const btns = [...group.children];
+  btns.forEach(btn=>{
+    if(btn.dataset.value===defaultValue) btn.classList.add('active');
+    btn.addEventListener('click', ()=>{
+      btns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      onPick(btn.dataset.value);
+    });
+  });
+}
+wireChoiceGroup('memoTimeGroup', v=>{settings.memoTime=Number(v);}, '60');
+wireChoiceGroup('difficultyGroup', v=>{settings.difficulty=v;}, 'easy');
+wireChoiceGroup('modeGroup', v=>{ settings.mode=v; onModeChange(); }, 'solo');
+
+const numPlayersSel = document.getElementById('numPlayers');
+const nameInputsWrap = document.getElementById('nameInputsWrap');
+const nameInputsDiv = document.getElementById('nameInputs');
+
+function renderNameInputs(){
+  const n = settings.mode==='pvp' ? Number(numPlayersSel.value) : 1;
+  settings.numPlayers = n;
+  nameInputsDiv.innerHTML='';
+  if(settings.mode==='pvp'){
+    nameInputsWrap.style.display='block';
+    for(let i=0;i<n;i++){
+      const inp = document.createElement('input');
+      inp.type='text';
+      inp.placeholder = 'Player '+(i+1);
+      inp.value = (settings.names[i] && settings.mode==='pvp') ? settings.names[i] : '';
+      inp.dataset.idx = i;
+      nameInputsDiv.appendChild(inp);
+    }
+  } else {
+    nameInputsWrap.style.display='none';
+  }
+}
+
+function onModeChange(){
+  if(settings.mode==='pvp'){
+    numPlayersSel.disabled=false;
+  } else {
+    numPlayersSel.disabled=true;
+  }
+  renderNameInputs();
+}
+numPlayersSel.addEventListener('change', renderNameInputs);
+onModeChange();
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  if(settings.mode==='pvp'){
+    const inputs=[...nameInputsDiv.querySelectorAll('input')];
+    settings.names = inputs.map((inp,i)=> inp.value.trim() || ('Player '+(i+1)));
+  } else {
+    settings.names = ['You'];
+    settings.numPlayers = 1;
+  }
+  startGame();
+});
+
+/* ============ SCREEN MANAGEMENT ============ */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* ============ BOARD RENDERING ============ */
+function renderBoard(hostId, phase){
+  const host = document.getElementById(hostId);
+  host.innerHTML='';
+  const stage = document.createElement('div');
+  stage.className='board-stage';
+  stage.style.width = STAGE_W+'px';
+  stage.style.height = STAGE_H+'px';
+  HEXES.forEach(h=>{
+    const div = document.createElement('div');
+    div.className='hex';
+    div.dataset.id=h.id;
+    div.style.left=h.x+'px';
+    div.style.top=h.y+'px';
+    const shape = document.createElement('div');
+    shape.className='hex-shape';
+    const face = document.createElement('div');
+    face.className='face';
+    face.textContent = phase==='memorize' ? state.values[h.id] : h.letter;
+    shape.appendChild(face);
+    div.appendChild(shape);
+    stage.appendChild(div);
+  });
+  host.appendChild(stage);
+  fitBoardHost(hostId);
+}
+
+/* ============ RESPONSIVE BOARD SCALING ============ */
+function fitBoardHost(hostId){
+  const host = document.getElementById(hostId);
+  if(!host) return;
+  const stage = host.querySelector('.board-stage');
+  if(!stage) return;
+  const available = host.clientWidth || (window.innerWidth - 40);
+  const scale = Math.min(1, (available - 6) / STAGE_W);
+  stage.style.transformOrigin = 'top center';
+  stage.style.transform = 'scale(' + scale + ')';
+  host.style.height = (STAGE_H * scale) + 'px';
+}
+window.addEventListener('resize', ()=>{
+  fitBoardHost('boardWrap-memo');
+  fitBoardHost('boardWrap-recall');
+});
+
+/* ============ RING TIMER HELPER ============ */
+function setRing(ringEl, textEl, pct, color, label){
+  ringEl.style.setProperty('--pct', Math.max(0,Math.min(100,pct)));
+  if(color) ringEl.style.setProperty('--ring-color', color);
+  textEl.textContent = label;
+}
+
+/* ============ GAME START ============ */
+function startGame(){
+  hubReportPlay();          // §12 — count this play on the hub
+  const maxN = diffRange(settings.difficulty);
+  const board = generateBoard(maxN, settings.numPlayers);
+  state = {
+    values: board.values,
+    target: board.target,
+    solutionLines: board.lines.map(l=>l.slice()),
+    usedLineKeys: new Set(),
+    foundCount: 0,
+    players: settings.names.map(n=>({name:n, score:0})),
+    currentPlayer: 0,
+    mode: settings.mode,
+    memoTime: settings.memoTime,
+    selection: [],
+    boardLocked: false,
+    correctLog: [],
+    wrongLog: [],
+    memoTimerHandle: null,
+    turnTimerHandle: null,
+    turnSecondsLeft: 20,
+    consecutivePasses: 0,
+    ended: false
+  };
+  runCountdown(()=>startMemorize());
+}
+
+/* ============ COUNTDOWN ============ */
+function runCountdown(cb){
+  showScreen('screen-countdown');
+  const el = document.getElementById('countdownNum');
+  let n=3;
+  el.textContent=n;
+  const iv = setInterval(()=>{
+    n--;
+    if(n>0){ el.textContent=n; }
+    else if(n===0){ el.textContent='GO!'; }
+    else { clearInterval(iv); cb(); }
+  },700);
+}
+
+/* ============ MEMORIZE PHASE ============ */
+function startMemorize(){
+  showScreen('screen-memorize');
+  renderBoard('boardWrap-memo','memorize');
+  let total = state.memoTime;
+  let left = total;
+  const ring = document.getElementById('memoRing');
+  const txt = document.getElementById('memoRingText');
+  setRing(ring, txt, 100, '#ffd166', left);
+
+  function tick(){
+    setRing(ring, txt, (left/total)*100, '#ffd166', left);
+    if(left<=0){
+      clearInterval(state.memoTimerHandle);
+      transitionToRecall();
+    }
+    left--;
+  }
+  tick();
+  state.memoTimerHandle = setInterval(tick,1000);
+
+  document.getElementById('readyBtn').onclick = ()=>{
+    clearInterval(state.memoTimerHandle);
+    transitionToRecall();
+  };
+  document.getElementById('exitMemoBtn').onclick = ()=>{
+    clearInterval(state.memoTimerHandle);
+    askConfirm(
+      { title:'Exit to main menu?', body:'Your progress will be lost.', okLabel:'Exit' },
+      ()=> showScreen('screen-settings'),
+      ()=>{ state.memoTimerHandle = setInterval(tick,1000); }   // resume the paused timer
+    );
+  };
+}
+
+function transitionToRecall(){
+  // flip animation on the memorize board before switching screens
+  const hexEls = [...document.querySelectorAll('#boardWrap-memo .hex')];
+  let remaining = hexEls.length;
+  hexEls.forEach(el=>{
+    const delay = Math.random()*300;
+    setTimeout(()=>{
+      el.classList.add('flip');
+      setTimeout(()=>{
+        const id = Number(el.dataset.id);
+        el.querySelector('.face').textContent = HEXES[id].letter;
+        el.classList.remove('flip');
+        remaining--;
+        if(remaining===0){
+          setTimeout(startRecall, 250);
+        }
+      },150);
+    }, delay);
+  });
+}
+
+/* ============ RECALL PHASE ============ */
+function startRecall(){
+  showScreen('screen-recall');
+  document.getElementById('gameOverPanel').style.display = 'none';
+  document.getElementById('endGameBtn').style.display = '';
+  document.getElementById('targetValue').textContent = state.target;
+  renderBoard('boardWrap-recall','recall');
+  wireHexClicks();
+  renderPlayersBar();
+  renderHistory();
+
+  const soloInfo = document.getElementById('soloInfo');
+  if(state.mode==='solo'){
+    soloInfo.style.display='block';
+    document.getElementById('turnRingWrap').style.display='none';
+    document.getElementById('turnRingLabel').textContent='';
+    updateSoloInfo();
+  } else {
+    soloInfo.style.display='none';
+    document.getElementById('turnRingWrap').style.display='flex';
+    startTurnTimer();
+  }
+
+  document.getElementById('endGameBtn').onclick = ()=> endGame('manual');
+  updateLastSolutionNotice();
+}
+
+function updateSoloInfo(){
+  document.getElementById('soloInfo').innerHTML =
+    'Solutions found: <b>'+state.foundCount+'</b> / <b>'+state.solutionLines.length+'</b>';
+}
+
+function updateLastSolutionNotice(){
+  const el = document.getElementById('lastSolutionNotice');
+  const remaining = state.solutionLines.length - state.foundCount;
+  if(state.mode==='pvp' && remaining===1){
+    el.style.display='block';
+  } else {
+    el.style.display='none';
+  }
+}
+
+function renderPlayersBar(){
+  const bar = document.getElementById('playersBar');
+  bar.innerHTML='';
+  state.players.forEach((p,i)=>{
+    const chip = document.createElement('div');
+    chip.className='player-chip'+(i===state.currentPlayer && state.mode==='pvp' ? ' current':'');
+    chip.innerHTML = '<div class="pname">'+p.name+'</div><div class="pscore">'+p.score+'</div>';
+    bar.appendChild(chip);
+  });
+}
+
+function wireHexClicks(){
+  document.querySelectorAll('#boardWrap-recall .hex').forEach(el=>{
+    el.onclick = ()=> onHexClick(Number(el.dataset.id));
+  });
+}
+
+function onHexClick(id){
+  if(state.boardLocked) return;
+  const el = document.querySelector('#boardWrap-recall .hex[data-id="'+id+'"]');
+  const idx = state.selection.indexOf(id);
+  if(idx>=0){
+    state.selection.splice(idx,1);
+    el.classList.remove('selected');
+    return;
+  }
+  if(state.selection.length>=3) return;
+  state.selection.push(id);
+  el.classList.add('selected');
+  if(state.selection.length===3){
+    state.boardLocked = true;
+    setTimeout(evaluateSelection, 350);
+  }
+}
+
+function evaluateSelection(){
+  const sel = state.selection.slice();
+  const els = sel.map(id=>document.querySelector('#boardWrap-recall .hex[data-id="'+id+'"]'));
+  const player = state.players[state.currentPlayer];
+  const lettersStr = sel.map(id=>HEXES[id].letter).sort().join('');
+  const sum = sel.reduce((s,id)=>s+state.values[id],0);
+
+  // Hexagons CAN be reused across different straight lines. The only thing that
+  // can't be repeated is solving the exact same triple (same 3 hexagons) twice.
+  const selKey = lineKey(sel);
+  const alreadySolved = state.usedLineKeys.has(selKey);
+  const isLine = LINE_SET.has(selKey);
+  const correct = !alreadySolved && isLine && sum===state.target;
+
+  // any actual submission (right or wrong) resets the "no one is answering" drought counter
+  state.consecutivePasses = 0;
+
+  let banner='';
+  if(alreadySolved){
+    banner = '✘ That exact line was already solved! -1 point';
+    state.wrongLog.push({player:player.name, text:lettersStr+' (already solved)'});
+    player.score = Math.max(0, player.score-1);
+    els.forEach(el=>el.classList.add('flash-wrong'));
+  } else if(correct){
+    banner = '✔ Correct! '+lettersStr+' = '+sum+'  +1 point';
+    state.correctLog.push({player:player.name, text:lettersStr+' = '+sum});
+    player.score += 1;
+    state.usedLineKeys.add(selKey);
+    state.foundCount++;
+    els.forEach(el=>{ el.classList.add('flash-correct'); });
+  } else {
+    banner = '✘ Wrong — '+lettersStr+' = '+sum+' (target '+state.target+')'+(isLine?'':' — not a straight line')+'  -1 point';
+    state.wrongLog.push({player:player.name, text:lettersStr+' = '+sum});
+    player.score = Math.max(0, player.score-1);
+    els.forEach(el=>el.classList.add('flash-wrong'));
+  }
+  document.getElementById('feedbackBanner').textContent = banner;
+  document.getElementById('feedbackBanner').style.color = correct ? 'var(--correct)' : 'var(--wrong)';
+
+  renderHistory();
+  renderPlayersBar();
+  if(state.mode==='solo') updateSoloInfo();
+  updateLastSolutionNotice();
+
+  setTimeout(()=>{
+    els.forEach(el=>{
+      el.classList.remove('selected','flash-correct','flash-wrong');
+    });
+    state.selection = [];
+    state.boardLocked = false;
+    document.getElementById('feedbackBanner').textContent='';
+
+    if(checkWinConditions()) return;
+
+    if(state.mode==='pvp'){
+      nextTurn();
+    }
+  }, 900);
+}
+
+function renderHistory(){
+  const tbody = document.getElementById('historyBody');
+  const rows = Math.max(state.correctLog.length, state.wrongLog.length);
+  let html='';
+  for(let i=rows-1; i>=0; i--){
+    const c = state.correctLog[i];
+    const w = state.wrongLog[i];
+    html += '<tr>'+
+      '<td class="correct-cell">'+(c ? (escapeHtml(c.player)+': '+escapeHtml(c.text)) : '')+'</td>'+
+      '<td class="wrong-cell">'+(w ? (escapeHtml(w.player)+': '+escapeHtml(w.text)) : '')+'</td>'+
+      '</tr>';
+  }
+  tbody.innerHTML = html;
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ============ TURN TIMER (PvP) ============ */
+const PLAYER_COLORS = ['#4cc9f0','#ffd166','#52d273','#ef476f'];
+
+function startTurnTimer(){
+  clearInterval(state.turnTimerHandle);
+  state.turnSecondsLeft = 20;
+  const ring = document.getElementById('turnRing');
+  const txt = document.getElementById('turnRingText');
+  const label = document.getElementById('turnRingLabel');
+  const color = PLAYER_COLORS[state.currentPlayer % PLAYER_COLORS.length];
+  label.textContent = state.players[state.currentPlayer].name+"'s Turn";
+  setRing(ring, txt, 100, color, state.turnSecondsLeft);
+
+  function tick(){
+    setRing(ring, txt, (state.turnSecondsLeft/20)*100, color, state.turnSecondsLeft);
+    if(state.turnSecondsLeft<=0){
+      clearInterval(state.turnTimerHandle);
+      passTurnNoAnswer();
+    }
+    state.turnSecondsLeft--;
+  }
+  tick();
+  state.turnTimerHandle = setInterval(tick,1000);
+}
+
+function passTurnNoAnswer(){
+  state.selection.forEach(id=>{
+    const el = document.querySelector('#boardWrap-recall .hex[data-id="'+id+'"]');
+    if(el) el.classList.remove('selected');
+  });
+  state.selection=[];
+  state.boardLocked=false;
+
+  // Track full rounds where nobody submits anything. If every player passes
+  // for 2 full rounds in a row (numPlayers * 2 consecutive passes), auto-end.
+  state.consecutivePasses++;
+  if(state.players.length*2 > 0 && state.consecutivePasses >= state.players.length*2){
+    endGame('no-activity');
+    return;
+  }
+
+  nextTurn();
+}
+
+function nextTurn(){
+  if(checkWinConditions()) return;
+  state.currentPlayer = (state.currentPlayer+1) % state.players.length;
+  renderPlayersBar();
+  startTurnTimer();
+}
+
+/* ============ WIN CONDITIONS ============ */
+function checkWinConditions(){
+  if(state.mode==='pvp'){
+    const winner = state.players.find(p=>p.score>=5);
+    if(winner){ endGame('win', [winner]); return true; }
+    // Edge case: every possible solution has been found but nobody reached 5 points.
+    // The board is exhausted, so the game can't continue — decide the winner by
+    // highest score. If multiple players are tied for the top score, it's a joint win.
+    if(state.foundCount >= state.solutionLines.length){
+      const maxScore = Math.max(...state.players.map(p=>p.score));
+      const topPlayers = state.players.filter(p=>p.score===maxScore);
+      endGame('all-solutions-pvp', topPlayers);
+      return true;
+    }
+  } else {
+    if(state.foundCount >= state.solutionLines.length){
+      endGame('solo-complete'); return true;
+    }
+  }
+  return false;
+}
+
+/* ============ END GAME ============ */
+function endGame(reason, winners){
+  clearInterval(state.memoTimerHandle);
+  clearInterval(state.turnTimerHandle);
+  state.ended = true;
+  state.boardLocked = true; // stop accepting hex clicks, but stay on this screen
+
+  // hide controls that no longer make sense once the game is over
+  document.getElementById('endGameBtn').style.display = 'none';
+  document.getElementById('turnRingWrap').style.display = 'none';
+  document.querySelectorAll('#boardWrap-recall .hex').forEach(el=>{
+    el.style.pointerEvents = 'none';
+  });
+
+  const title = document.getElementById('endTitle');
+  const subtitle = document.getElementById('endSubtitle');
+  const scoresDiv = document.getElementById('endScores');
+  const remainingDiv = document.getElementById('remainingSolutions');
+
+  if(reason==='win'){
+    title.textContent = '🏆 '+winners[0].name+' Wins!';
+    subtitle.textContent = 'First to reach 5 points.';
+  } else if(reason==='all-solutions-pvp'){
+    if(winners.length>1){
+      title.textContent = '🏆 Joint Winners: '+winners.map(w=>escapeHtml(w.name)).join(' & ');
+      subtitle.textContent = 'All solutions were found — tied for the highest score.';
+    } else {
+      title.textContent = '🏆 '+winners[0].name+' Wins!';
+      subtitle.textContent = 'All solutions were found — highest score wins.';
+    }
+  } else if(reason==='solo-complete'){
+    title.textContent = '🎉 All Solutions Found!';
+    subtitle.textContent = 'You found every line that adds up to '+state.target+'.';
+  } else if(reason==='no-activity'){
+    title.textContent = 'Game Ended';
+    subtitle.textContent = 'No one submitted an answer for 2 full rounds.';
+  } else {
+    title.textContent = 'Game Ended';
+    subtitle.textContent = 'Ended manually.';
+  }
+
+  scoresDiv.innerHTML = state.players.map(p=>
+    '<div style="font-size:16px;margin:4px 0;"><b>'+escapeHtml(p.name)+'</b>: '+p.score+' pts</div>'
+  ).join('');
+
+  const remaining = state.solutionLines.filter(l=>!state.usedLineKeys.has(lineKey(l)));
+  if(remaining.length>0){
+    remainingDiv.innerHTML = '<div class="section-title">Remaining Solutions (target '+state.target+')</div>'+
+      '<ul>'+remaining.map(l=>{
+        const letters = l.map(id=>HEXES[id].letter).join(' + ');
+        return '<li>'+letters+' = '+state.target+'</li>';
+      }).join('')+'</ul>';
+  } else {
+    remainingDiv.innerHTML = '<div class="section-title">No remaining solutions — they were all found!</div>';
+  }
+
+  // show the results inline, right below the board/log — no screen change
+  document.getElementById('gameOverPanel').style.display = 'block';
+}
+
+document.getElementById('backToMenuBtn').addEventListener('click', ()=>{
+  document.getElementById('gameOverPanel').style.display = 'none';
+  showScreen('screen-settings');
+});
+
+})();
+</script>
+</body>
+</html>

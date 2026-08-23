@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Cart Recall</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+   Dark is the default (<html data-theme="dark">). Cart Recall keeps its own
+   warm-yellow accent; light mode uses a darker, more saturated amber so it
+   still carries on white. --on-accent is the text colour that sits on an
+   accent fill (§6 read as "text that contrasts with the accent" — white on
+   #ffcf5c is illegible). --paper/--paper-ink stay fixed in both themes: the
+   shopping list is a cream paper prop, not a themed surface. */
+:root[data-theme="dark"]{
+  --bg1:#0a3d47; --bg2:#0e5261; --ink:#eaf6f7; --muted:#8fb8bf;
+  --paper:#f7f1e0; --paper-ink:#233b40;
+  --shelf:#79aab3; --shelf-lip:#5d8f99; --pad:#6ee06a;
+  --accent:#ffcf5c; --accent-tint:rgba(255,207,92,.18); --on-accent:#12242a;
+  --wrong:#ff6b6b; --warn:#f0a83c; --line:#1a5f6d; --hud:#062f38;
+  --card:rgba(0,0,0,.18); --card2:rgba(0,0,0,.25); --panel:#0e5261;
+  --track:rgba(255,255,255,.18);
+  --shadow:rgba(0,0,0,.35);
+  --backdrop-line:#ffffff; --backdrop-op:.06;
+}
+:root[data-theme="light"]{
+  --bg1:#eef5f6; --bg2:#dceaed; --ink:#12333a; --muted:#57808a;
+  --paper:#f7f1e0; --paper-ink:#233b40;
+  --shelf:#8fbcc4; --shelf-lip:#66939d; --pad:#1a8f36;
+  --accent:#a86a00; --accent-tint:rgba(168,106,0,.13); --on-accent:#ffffff;
+  --wrong:#d13b3b; --warn:#a8620a; --line:#bcd4d9; --hud:#d3e6ea;
+  --card:#ffffff; --card2:#f2f8f9; --panel:#ffffff;
+  --track:rgba(18,51,58,.16);
+  --shadow:rgba(20,60,70,.12);
+  --backdrop-line:#0a3d47; --backdrop-op:.07;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+[hidden]{display:none !important;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:'Segoe UI', Arial, sans-serif;
+  background:var(--bg1); color:var(--ink); display:flex; justify-content:center; overflow-x:hidden;
+  transition:background .25s, color .25s;
+}
+.emoji{font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Android Emoji',sans-serif; line-height:1;}
+.mono{font-family:'Consolas','Courier New',monospace;}
+#backdrop{position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.5;}
+#backdrop svg{width:100%; height:100%;}
+#backdrop g{stroke:var(--backdrop-line); stroke-opacity:var(--backdrop-op);}
+/* §5 — the menu/settings screens read at the shared 720px width; the aisle
+   keeps the narrower 640px shell its 3-across shelf rows were laid out for.
+   The top padding clears the fixed theme toggle (§2) on every screen. */
+.app{position:relative; z-index:1; width:100%; max-width:720px;
+  padding:calc(56px + env(safe-area-inset-top)) 16px 28px;
+  display:flex; flex-direction:column; min-height:100dvh;}
+#s-play{max-width:640px; width:100%; margin:0 auto;}
+.screen{display:none; flex:1; flex-direction:column;}
+.screen.active{display:flex; animation:fade .3s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;}}
+
+/* HUD */
+.hud{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+.hud-btn{width:52px; height:52px; flex:none; border-radius:50%; border:none; cursor:pointer;
+  background:var(--shelf-lip); color:var(--ink); font-size:20px; font-weight:800; display:grid; place-items:center;}
+.hud-btn:hover{filter:brightness(1.12);}
+.hud-bar{flex:1; height:52px; border-radius:26px; background:var(--hud); display:flex; align-items:center;
+  justify-content:space-between; padding:0 20px; font-size:18px; font-weight:700; letter-spacing:.5px;}
+#hudScore{font-family:'Consolas','Courier New',monospace; font-variant-numeric:tabular-nums;}
+.hud-bar .lives{display:flex; gap:5px;}
+.dot{width:11px; height:11px; border-radius:50%; background:var(--wrong);}
+.dot.spent{background:transparent; box-shadow:inset 0 0 0 2px var(--muted);}
+
+/* ── MENU — §3 logo block: icon, h1, subtitle, then the How-to-Play card ── */
+.brand{text-align:center; margin:6px 0 4px;}
+.logo-icon{display:flex; justify-content:center; align-items:center; width:32px; height:32px;
+  margin:0 auto 6px; color:var(--accent);}
+h1{margin:6px 0 2px; font-size:28px; font-weight:800; letter-spacing:5px; text-transform:uppercase; text-align:center;}
+.tagline{text-align:center; color:var(--muted); font-size:14px; letter-spacing:2px; text-transform:uppercase; margin-bottom:20px;}
+
+/* §6 — panels: 1px border, 14–20px radius, shadow token */
+.card{background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px 18px;
+  box-shadow:0 4px 16px var(--shadow);}
+.card + .card{margin-top:12px;}
+.card h2{margin:0 0 10px; font-size:11.5px; letter-spacing:2.2px; text-transform:uppercase; color:var(--accent); font-weight:800;}
+
+/* ── HOW TO PLAY CARD — §3. Always visible on the menu, never collapsed.
+   The numbered walk-through, the scoring table and the mode notes live in
+   the "Full rules" sheet; this card is the summary. ── */
+.howto-box{background:var(--card); border:1px solid var(--line); border-radius:18px;
+  padding:18px 20px; text-align:left; box-shadow:0 4px 16px var(--shadow);}
+.howto-box .howto-title{margin:0 0 10px; font-size:11.5px; letter-spacing:2.2px;
+  text-transform:uppercase; color:var(--accent); font-weight:800;}
+.howto-box p{margin:0 0 8px; font-size:13px; line-height:1.6; color:var(--muted);}
+.howto-box p:last-of-type{margin-bottom:0;}
+.howto-box strong{color:var(--ink); font-weight:600;}
+.howto-box .full-rules{margin-top:13px; width:100%; padding:11px; font-size:13px;
+  letter-spacing:1px; text-transform:none;}
+
+ol.howto{margin:0; padding-left:20px; font-size:14.5px; line-height:1.7;}
+ol.howto b{color:var(--accent);}
+
+/* §6 — pills: unselected = surface + border + muted; selected = accent-tinted
+   fill with accent border and text. */
+.seg{display:flex; gap:8px;}
+.seg button{flex:1; padding:12px 6px; border-radius:12px; border:1px solid var(--line); background:var(--card2);
+  color:var(--muted); cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; transition:.15s;}
+.seg button:hover{border-color:var(--accent); color:var(--ink);}
+.seg button small{display:block; font-size:11px; color:var(--muted); font-weight:500; margin-top:3px;}
+.seg button[aria-pressed="true"]{background:var(--accent-tint); color:var(--accent); border-color:var(--accent);}
+.seg button[aria-pressed="true"] small{color:var(--accent); opacity:.85;}
+
+/* §6 — primary: solid accent + --on-accent text, hover brightness lift. */
+.play{margin-top:14px; width:100%; padding:17px; border:none; border-radius:14px; cursor:pointer;
+  background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800; letter-spacing:2px;
+  text-transform:uppercase; font-family:inherit; transition:filter .15s, transform .15s, border-color .15s, color .15s;}
+.play:hover{filter:brightness(1.1); transform:translateY(-1px);}
+.play:active{transform:translateY(0);}
+.play:disabled{opacity:.4; cursor:not-allowed; filter:none; transform:none;}
+/* Secondary/ghost — surface background, bordered, muted text, hover → accent */
+.play.alt{background:var(--card2); border:1px solid var(--line); color:var(--muted);}
+.play.alt:hover{border-color:var(--accent); color:var(--accent); filter:none;}
+.best{text-align:center; color:var(--muted); font-size:13px; margin-top:12px; letter-spacing:1px;}
+input[type=text]{width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--line);
+  background:var(--card2); color:var(--ink); font-size:16px; font-family:inherit;}
+input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px;}
+input[type=text]::placeholder{color:var(--muted);}
+input.code{text-align:center; letter-spacing:10px; font-size:26px; font-weight:800; text-transform:uppercase;
+  font-family:'Consolas','Courier New',monospace;}
+
+/* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+.theme-toggle{
+  position:fixed; top:calc(16px + env(safe-area-inset-top)); right:16px; z-index:45;
+  background:var(--card2); border:1px solid var(--line); border-radius:50px; padding:6px 14px;
+  cursor:pointer; display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted);
+  font-family:'Consolas','Courier New',monospace; transition:all .15s; user-select:none;
+}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* list */
+.stage{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;}
+.note{position:relative; background:var(--paper); border-radius:14px; padding:30px 26px 24px;
+  box-shadow:0 18px 40px rgba(0,0,0,.35); min-width:260px; animation:drop .45s cubic-bezier(.2,1.3,.5,1);}
+@keyframes drop{from{opacity:0; transform:translateY(-26px) rotate(-2deg);} to{opacity:1; transform:none;}}
+.note.leaving{animation:lift .35s ease forwards;}
+@keyframes lift{to{opacity:0; transform:translateY(-30px) scale(.94);}}
+.clip{position:absolute; top:-16px; left:26px; width:34px; height:52px;}
+.note-head{font-size:10.5px; letter-spacing:3px; text-transform:uppercase; color:#9a8f74; text-align:center; margin-bottom:14px; font-weight:700;}
+.note-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:18px 28px; justify-items:center;}
+.note-grid.wide{grid-template-columns:repeat(3,1fr); gap:14px 18px;}
+.note-item{font-size:44px;}
+.meter{width:270px; max-width:80vw; height:7px; border-radius:4px; background:var(--track); overflow:hidden;}
+.meter i{display:block; height:100%; background:var(--accent); width:100%;}
+.stage-hint{color:var(--muted); font-size:13px; letter-spacing:1.5px; text-transform:uppercase; text-align:center;}
+.count{font-size:92px; font-weight:800; animation:pop .6s ease;}
+@keyframes pop{from{opacity:0; transform:scale(.5);} to{opacity:1; transform:scale(1);}}
+
+/* shelves */
+.aisle{flex:1; display:flex; flex-direction:column; justify-content:center; gap:24px; padding:8px 0 4px;}
+.aisle[data-rows="5"]{gap:15px; --bh:23px;} .aisle[data-rows="6"]{gap:9px; --bh:20px;}
+.aisle[data-rows="5"] .art{font-size:clamp(30px,8vw,46px);}
+.aisle[data-rows="6"] .art{font-size:clamp(26px,7vw,40px);}
+.shelf{position:relative; display:flex; justify-content:space-around; align-items:flex-end;}
+.shelf .board{position:absolute; left:0; right:0; bottom:0; height:var(--bh,26px); background:var(--shelf); border-radius:5px;}
+.shelf .board::after{content:''; position:absolute; left:0; right:0; bottom:0; height:8px; background:var(--shelf-lip); border-radius:0 0 5px 5px;}
+.slot{position:relative; z-index:1; flex:1; display:grid; place-items:center; padding-bottom:var(--bh,26px);
+  border:none; background:none; cursor:pointer; color:inherit;}
+.slot .pad{position:absolute; bottom:0; left:12%; right:12%; height:var(--bh,26px); background:var(--pad);
+  clip-path:polygon(14% 0, 86% 0, 100% 100%, 0 100%); opacity:0; transition:opacity .18s;}
+.slot.found .pad{opacity:1;}
+.slot .art{font-size:clamp(34px,10vw,54px); transition:transform .18s; display:block; padding:6px;}
+.slot:hover .art{transform:translateY(-4px);}
+.slot.found{cursor:default;} .slot.found .art{transform:scale(1.06);}
+.slot.gone .art{opacity:.22; filter:grayscale(1);} .slot.gone{cursor:default;}
+.slot.shake .art{animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-9px) rotate(-7deg);}40%{transform:translateX(9px) rotate(7deg);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+
+.toast{position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:var(--hud); color:var(--ink);
+  padding:10px 20px; border-radius:22px; font-size:14px; font-weight:700; z-index:40; pointer-events:none;
+  opacity:0; transition:opacity .2s, transform .2s;}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-8px);}
+.toast.bad{color:var(--wrong);} .toast.good{color:var(--pad);}
+.tally{display:flex; justify-content:center; gap:6px; margin-top:6px; min-height:14px;}
+.tick{width:20px; height:5px; border-radius:3px; background:var(--track);}
+.tick.on{background:var(--pad);}
+
+/* rivals strip */
+.rivals{display:flex; gap:6px; margin-bottom:6px;}
+.rival{flex:1; background:var(--card2); border:1px solid var(--line); border-radius:11px; padding:6px 7px; min-width:0;}
+.rival .nm{font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:.3px;}
+.rival .bar{height:4px; border-radius:3px; background:var(--track); margin-top:5px; overflow:hidden;}
+.rival .bar i{display:block; height:100%; background:var(--pad); width:0; transition:width .25s;}
+.rival.out{opacity:.4;} .rival.out .bar i{background:var(--wrong);}
+.rival.me{border-color:var(--accent);}
+.rival .st{font-size:10px; color:var(--muted); margin-top:3px; display:flex; justify-content:space-between;}
+
+/* lobby */
+.plist{display:flex; flex-direction:column; gap:8px;}
+.prow{display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:var(--card2); font-size:15px;}
+.prow .badge{font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); font-weight:800; margin-left:auto;}
+.codebox{text-align:center; padding:18px 0 6px;}
+.codebox .big{font-size:52px; font-weight:800; letter-spacing:14px; text-indent:14px; color:var(--accent);
+  font-family:'Consolas','Courier New',monospace;}
+.codebox small{display:block; color:var(--muted); font-size:11.5px; letter-spacing:2.5px; text-transform:uppercase; margin-top:4px;}
+
+/* overlays — §6: theme-independent scrim, surface card, 16–20px radius */
+.veil{position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+  background:rgba(0,0,0,.84); padding:20px; backdrop-filter:blur(3px);}
+.veil.open{display:flex;}
+.sheet{background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:22px; max-width:400px; width:100%; text-align:center; max-height:88vh; overflow:auto;
+  box-shadow:0 18px 44px var(--shadow);}
+.sheet h3{margin:0 0 6px; font-size:21px; letter-spacing:1px;}
+.sheet p{margin:0 0 16px; color:var(--muted); font-size:14.5px; line-height:1.6;}
+.sheet .row{display:flex; gap:10px;} .sheet .row > *{flex:1;}
+.sheet ol{text-align:left;}
+.stat{display:flex; justify-content:space-between; gap:12px; padding:10px 2px; border-bottom:1px dashed var(--line); font-size:14.5px; text-align:left;}
+.stat:last-of-type{border-bottom:none;}
+.stat b{font-variant-numeric:tabular-nums; white-space:nowrap;}
+.stat .rk{color:var(--accent); font-weight:800; margin-right:8px;}
+.big-score{font-size:50px; font-weight:800; letter-spacing:2px; margin:4px 0 2px; font-variant-numeric:tabular-nums;
+  font-family:'Consolas','Courier New',monospace; color:var(--accent);}
+.err{color:var(--wrong); font-size:13.5px; min-height:18px; margin-top:8px;}
+.link{background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:10px;}
+
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  .app{padding-left:12px; padding-right:12px;}
+  h1{font-size:22px; letter-spacing:4px;}
+  .tagline{font-size:13px; letter-spacing:1.5px; margin-bottom:16px;}
+  .howto-box{padding:15px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .card{padding:14px 16px;}
+  .theme-toggle{font-size:12px; padding:5px 12px;}
+  .note{padding:26px 18px 20px; min-width:0;} .note-item{font-size:37px;} .note-grid{gap:13px 18px;}
+  .codebox .big{font-size:42px; letter-spacing:10px; text-indent:10px;}
+  .hud-bar{font-size:16px; padding:0 15px;}
+}
+@media (max-width:380px){
+  h1{font-size:19px; letter-spacing:2.5px;}
+  .tagline{font-size:12.5px; letter-spacing:1px;}
+  .howto-box{padding:14px;}
+  .theme-toggle{padding:5px 10px; gap:5px;}
+  .seg{gap:6px;} .seg button{padding:10px 4px; font-size:12.5px;}
+  .note-item{font-size:32px;} .note-grid{gap:11px 14px;}
+  .codebox .big{font-size:34px; letter-spacing:8px; text-indent:8px;}
+  .hud-btn{width:46px; height:46px;} .hud-bar{height:46px; font-size:15px; padding:0 13px;}
+  .play{padding:15px; font-size:15px; letter-spacing:1.5px;}
+}
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms !important; transition-duration:.01ms !important;} }
+</style>
+</head>
+<body>
+
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div id="backdrop" aria-hidden="true">
+  <svg viewBox="0 0 400 800" preserveAspectRatio="xMidYMax slice">
+    <g fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="3">
+      <path d="M0 170 H400 M0 200 H400"/>
+      <path d="M20 170 L60 200 M60 170 L20 200 M100 170 L140 200 M140 170 L100 200 M180 170 L220 200 M220 170 L180 200 M260 170 L300 200 M300 170 L260 200 M340 170 L380 200 M380 170 L340 200"/>
+      <path d="M0 430 H150 M0 470 H150 M0 560 H150 M0 650 H150"/>
+      <path d="M10 430 V680 M60 430 V680 M120 430 V680"/>
+      <rect x="14" y="596" width="16" height="50" rx="6"/><rect x="40" y="596" width="16" height="50" rx="6"/>
+      <rect x="70" y="600" width="14" height="46" rx="5"/><rect x="96" y="596" width="16" height="50" rx="6"/>
+      <path d="M170 640 L200 560 H370 L350 660 H190 Z"/>
+      <path d="M200 560 L350 660 M240 570 L240 655 M290 570 L290 660 M180 600 H360 M176 620 H358"/>
+      <circle cx="215" cy="700" r="16"/><circle cx="335" cy="700" r="16"/>
+      <path d="M170 640 L150 620 H130"/>
+    </g>
+  </svg>
+</div>
+
+<div class="app">
+
+<!-- ===================== MENU ===================== -->
+<section class="screen active" id="s-menu">
+  <div class="brand">
+    <!-- §3 — inline SVG, never emoji -->
+    <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2.4 11"/><path d="M6.6 14h11.2l2.2-7.5H5.1"/></svg></span>
+    <h1>Cart Recall</h1>
+    <div class="tagline">Read the list · Clear the aisle</div>
+  </div>
+
+  <div class="card">
+    <h2>How to play</h2>
+    <ol class="howto">
+      <li>A shopping list flashes on screen. <b>Memorize it.</b></li>
+      <li>The list vanishes, then the shelves appear.</li>
+      <li>Tap every item that was on your list.</li>
+      <li>Shelves are stocked with <b>lookalikes</b> — pear beside apple, bagel beside pretzel.</li>
+      <li>Three wrong grabs ends your run. The glance gets shorter every round.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Scoring</h2>
+    <div class="stat"><span>Each correct item</span><b>50 + 10 × round</b></div>
+    <div class="stat"><span>Clearing the round</span><b>100 + 25 × round</b></div>
+    <div class="stat"><span>Aisle speed vs par</span><b>up to 40 × items</b></div>
+    <div class="stat"><span>Race placement (1st/2nd/3rd)</span><b>200 / 120 / 60</b></div>
+    <div class="stat"><span>Wrong grab</span><b>a strike, no penalty</b></div>
+  </div>
+
+  <div class="card">
+    <h2>Glance time</h2>
+    <div class="seg" id="paceSeg">
+      <button data-pace="1.3" aria-pressed="false">Relaxed<small>+30% time</small></button>
+      <button data-pace="1" aria-pressed="true">Standard<small>as designed</small></button>
+      <button data-pace="0.75" aria-pressed="false">Brisk<small>−25% time</small></button>
+    </div>
+  </div>
+
+  <button class="play" id="btnSolo">Solo run</button>
+  <button class="play alt" id="btnMulti">Race · up to 4 phones</button>
+  <div class="best" id="bestLine">Best solo run — none yet</div>
+</section>
+
+<!-- ===================== ROOM SETUP ===================== -->
+<section class="screen" id="s-rooms">
+  <div class="brand" style="margin:14px 0 10px">
+    <h1 style="font-size:26px; letter-spacing:4px">Race</h1>
+    <div class="tagline" style="margin-bottom:4px">Same list · Same second · Own phone</div>
+  </div>
+
+  <div class="card">
+    <h2>Your name</h2>
+    <input type="text" id="inName" maxlength="12" placeholder="Tap to type" autocomplete="off">
+  </div>
+
+  <div class="card">
+    <h2>Start a new room</h2>
+    <button class="play" style="margin-top:4px" id="btnCreate">Create room</button>
+  </div>
+
+  <div class="card">
+    <h2>Join a room</h2>
+    <input type="text" class="code" id="inCode" maxlength="4" placeholder="CODE" autocomplete="off">
+    <button class="play alt" id="btnJoin">Join</button>
+  </div>
+
+  <div class="err" id="roomErr"></div>
+  <button class="link" id="btnBackMenu">Back to menu</button>
+</section>
+
+<!-- ===================== LOBBY ===================== -->
+<section class="screen" id="s-lobby">
+  <div class="codebox">
+    <div class="big" id="lobbyCode">----</div>
+    <small>Room code — share it</small>
+  </div>
+
+  <div class="card">
+    <h2>Shoppers <span id="lobbyCount"></span></h2>
+    <div class="plist" id="lobbyList"></div>
+  </div>
+
+  <div class="card" id="hostOpts">
+    <h2>Starting difficulty</h2>
+    <div class="seg" id="diffSeg">
+      <button data-start="1" aria-pressed="true">Warm-up<small>3 items · 3.8s</small></button>
+      <button data-start="4" aria-pressed="false">Standard<small>4 items · 4.3s</small></button>
+      <button data-start="7" aria-pressed="false">Sharp<small>6 items · 5.3s</small></button>
+      <button data-start="10" aria-pressed="false">Brutal<small>7 items · 4.8s</small></button>
+    </div>
+  </div>
+
+  <button class="play" id="btnLaunch">Start the race</button>
+  <div class="stage-hint" id="lobbyWait" style="margin-top:14px"></div>
+  <button class="link" id="btnLeave">Leave room</button>
+</section>
+
+<!-- ===================== PLAY ===================== -->
+<section class="screen" id="s-play">
+  <div class="rivals" id="rivals" hidden></div>
+  <div class="hud">
+    <button class="hud-btn" id="btnPause" aria-label="Pause">⏸</button>
+    <div class="hud-bar">
+      <span id="hudRound">Round 1</span>
+      <span class="lives" id="hudLives"></span>
+      <span id="hudScore">0</span>
+    </div>
+    <button class="hud-btn" id="btnHelp" aria-label="How to play">?</button>
+  </div>
+
+  <div class="stage" id="v-count" hidden>
+    <div class="count" id="countNum">3</div>
+    <div class="stage-hint" id="countHint">Get ready</div>
+  </div>
+
+  <div class="stage" id="v-list" hidden>
+    <div class="stage-hint">Today's list</div>
+    <div class="note" id="note">
+      <svg class="clip" viewBox="0 0 34 52" fill="none" stroke="var(--shelf)" stroke-width="4" stroke-linecap="round">
+        <path d="M11 44 V14 a6 6 0 0 1 12 0 V40"/>
+      </svg>
+      <div class="note-head">Shopping list</div>
+      <div class="note-grid" id="noteGrid"></div>
+    </div>
+    <div class="meter"><i id="meterFill"></i></div>
+    <div class="stage-hint" id="glanceHint"></div>
+  </div>
+
+  <div class="aisle" id="v-shelf" hidden></div>
+
+  <div class="stage" id="v-spectate" hidden>
+    <div class="count" style="font-size:56px">🛒</div>
+    <div class="stage-hint" id="spectateHint">You're out — watching the aisle</div>
+    <div class="card" style="width:100%"><div id="spectateList"></div></div>
+  </div>
+
+  <div class="tally" id="tally" hidden></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===================== OVERLAYS ===================== -->
+<div class="veil" id="veilPause">
+  <div class="sheet">
+    <h3>Paused</h3>
+    <p id="pauseNote">The aisle will wait.</p>
+    <div class="row">
+      <button class="ghost play alt" id="btnQuit">Quit run</button>
+      <button class="play" style="margin:0" id="btnResume">Resume</button>
+    </div>
+  </div>
+</div>
+
+<div class="veil" id="veilHelp">
+  <div class="sheet">
+    <h3>How to play</h3>
+    <ol class="howto" style="margin-bottom:16px">
+      <li>Memorize the list while it's on screen.</li>
+      <li>Tap each listed item on the shelves.</li>
+      <li>Watch for lookalikes.</li>
+      <li>Three wrong grabs ends your run.</li>
+    </ol>
+    <button class="play" style="margin:0" id="btnCloseHelp">Back to the aisle</button>
+  </div>
+</div>
+
+<div class="veil" id="veilRound">
+  <div class="sheet">
+    <h3 id="roundTitle">Round cleared</h3>
+    <div id="roundStats"></div>
+    <button class="play" id="btnNext">Next round</button>
+    <div class="stage-hint" id="roundWait" style="margin-top:12px"></div>
+  </div>
+</div>
+
+<div class="veil" id="veilOver">
+  <div class="sheet">
+    <h3 id="overTitle">Run over</h3>
+    <div class="big-score" id="finalScore">0</div>
+    <p id="finalLine"></p>
+    <div id="finalStats" style="margin-bottom:16px"></div>
+    <div class="row">
+      <button class="play alt" style="margin:0" id="btnMenu">Main menu</button>
+      <button class="play" style="margin:0" id="btnAgain">Again</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* =====================================================================
+   CART RECALL — solo + 4-player online race
+   Networking: Firebase Realtime Database over plain REST + EventSource.
+   No SDK, no bundler, no external script. The file stays self-contained.
+   ===================================================================== */
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   Portable: copy verbatim into another game and change HUB_ID only.
+   NOTE: since 2026-08-21 HUB_DB and DB_URL below point at the SAME
+   database (kenmemorize-arcade). They remain separate constants
+   because they serve different concerns — play counts vs. race
+   match-sync — and use different paths (/globalStats vs /rooms).
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'cart-recall';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ---------------------------------------------------------------
+   1. FIREBASE  —  race match-sync. Writes/reads under /rooms only.
+   Consolidated 2026-08-21 from the old standalone shopping-cart-pvp
+   database onto the arcade's own, so the whole suite is one project.
+   Requires a "rooms" rule on that database — without it every room
+   create/join fails with HTTP 401 and online play is dead.
+   --------------------------------------------------------------- */
+const DB_URL = "https://kenmemorize-arcade-default-rtdb.firebaseio.com";
+/* --------------------------------------------------------------- */
+
+const api = p => `${DB_URL}/${p}.json`;
+const net = {
+  get:  p        => fetch(api(p)).then(r => r.json()),
+  put:  (p,v)    => fetch(api(p), {method:'PUT',   body:JSON.stringify(v)}),
+  patch:(p,v)    => fetch(api(p), {method:'PATCH', body:JSON.stringify(v)}),
+  del:  p        => fetch(api(p), {method:'DELETE'})
+};
+
+/* live subscription: keeps a local mirror, calls back on every change */
+function subscribe(path, onChange, onError){
+  let mirror = null;
+  const es = new EventSource(api(path));
+  const walk = (obj, segs) => {
+    let o = obj;
+    for(let i=0;i<segs.length-1;i++){ o[segs[i]] ??= {}; o = o[segs[i]]; }
+    return o;
+  };
+  const applyPut = (p, d) => {
+    if(p === '/'){ mirror = d; return; }
+    const segs = p.split('/').filter(Boolean);
+    const parent = walk(mirror ??= {}, segs);
+    const key = segs[segs.length-1];
+    if(d === null) delete parent[key]; else parent[key] = d;
+  };
+  es.addEventListener('put', e => {
+    const m = JSON.parse(e.data); applyPut(m.path, m.data); onChange(mirror);
+  });
+  es.addEventListener('patch', e => {
+    const m = JSON.parse(e.data);
+    const base = m.path === '/' ? '' : m.path;
+    for(const k in m.data) applyPut((base + '/' + k).replace('//','/'), m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error', () => onError && onError());
+  return es;
+}
+
+/* ---------------- item pool, grouped into confusable families ---------------- */
+const FAMILIES = {
+  orchard: [['🍎','Apple'],['🍏','Green apple'],['🍐','Pear'],['🍑','Peach'],['🥭','Mango'],['🍊','Orange']],
+  berry:   [['🍓','Strawberry'],['🍒','Cherries'],['🍇','Grapes'],['🫐','Blueberries']],
+  green:   [['🥝','Kiwi'],['🥑','Avocado'],['🥒','Cucumber'],['🥬','Lettuce'],['🥦','Broccoli']],
+  bakery:  [['🍞','Bread'],['🥖','Baguette'],['🥐','Croissant'],['🥨','Pretzel'],['🥯','Bagel'],['🧇','Waffle']],
+  dairy:   [['🧀','Cheese'],['🥛','Milk'],['🧈','Butter'],['🥚','Egg']],
+  sweet:   [['🍦','Ice cream'],['🍩','Donut'],['🍪','Cookie'],['🧁','Cupcake'],['🍫','Chocolate'],['🍰','Cake']],
+  meat:    [['🥓','Bacon'],['🍗','Chicken'],['🥩','Steak'],['🌭','Hot dog'],['🍖','Meat'],['🍤','Prawn']],
+  veg:     [['🥕','Carrot'],['🌽','Corn'],['🥔','Potato'],['🧅','Onion'],['🧄','Garlic'],['🍅','Tomato'],['🍆','Aubergine']],
+  pantry:  [['🍚','Rice'],['🍜','Noodles'],['🍝','Pasta'],['🥟','Dumpling'],['🥫','Canned tomato'],['🍯','Honey'],['🧂','Salt']],
+  drink:   [['☕','Coffee'],['🧃','Juice'],['🍵','Tea'],['🥤','Soda']]
+};
+const POOL = [], BY_ID = {};
+for(const [fam, list] of Object.entries(FAMILIES))
+  list.forEach(([e,n]) => { const it = {e,n,fam,id:e}; POOL.push(it); BY_ID[e] = it; });
+
+/* ---------------- helpers ---------------- */
+const $ = id => document.getElementById(id);
+
+/* ── THEME TOGGLE — STYLE_GUIDE.md §2 ──
+   Persisted so the choice survives a reload. Wired with .onclick to match how
+   every other button in this file is wired. */
+const THEME_KEY = 'cartRecall_theme';
+let isDarkTheme = true;
+try{ isDarkTheme = localStorage.getItem(THEME_KEY) !== 'light'; }catch(e){}
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', isDarkTheme ? 'dark' : 'light');
+  const lbl = $('theme-label');
+  if(lbl) lbl.textContent = isDarkTheme ? 'Light' : 'Dark';
+}
+function toggleTheme(){
+  isDarkTheme = !isDarkTheme;
+  try{ localStorage.setItem(THEME_KEY, isDarkTheme ? 'dark' : 'light'); }catch(e){}
+  applyTheme();
+}
+applyTheme();
+
+const rnd = n => Math.floor(Math.random()*n);
+const pick = a => a[rnd(a.length)];
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; };
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return (this._m||{})[k]; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ (this._m ||= {})[k]=v; } }
+};
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* ---------------- state ---------------- */
+const MAX_MISTAKES = 3, PLACE_BONUS = [200,120,60,0];
+const S = { mode:'solo', round:1, score:0, mistakes:0, pace:1, list:[], shelf:[],
+            found:0, roundStart:0, roundScore:0, timer:null, raf:null, paused:false, done:false };
+const M = { code:null, pid:null, isHost:false, name:'', room:null, es:null, hb:null,
+            startRound:1, lastKey:'', joined:false, refereedRound:-1,
+            playReported:false };   // §12 — hub only: guards one play per race, not per round
+
+/* ---------------- difficulty ---------------- */
+function config(r){
+  const listSize = Math.min(8, 3 + Math.floor((r-1)/2));
+  let slots = Math.min(18, 6 + Math.round((r-1)*1.4));
+  slots = Math.max(Math.ceil((listSize+2)/3)*3, Math.ceil(slots/3)*3);
+  const perItem = Math.max(450, 1250 - (r-1)*62);
+  return {listSize, slots, glance: listSize*perItem*S.pace, perItem};
+}
+
+/* ---------------- round construction ---------------- */
+function buildRound(r){
+  const c = config(r), used = new Set(), list = [];
+  for(const it of shuffle([...POOL])){
+    if(list.length >= c.listSize) break;
+    if(!used.has(it.id)){ list.push(it); used.add(it.id); }
+  }
+  const decoys = [], need = c.slots - list.length;
+  let guard = 0;
+  while(decoys.length < need && guard++ < 400){
+    const seed = pick(list);
+    const sibs = FAMILIES[seed.fam].map(([e]) => BY_ID[e]).filter(x => !used.has(x.id));
+    const cand = sibs.length ? pick(sibs) : pick(POOL);
+    if(used.has(cand.id)) continue;
+    decoys.push(cand); used.add(cand.id);
+  }
+  return { list, shelf: shuffle([...list, ...decoys]), cfg:c };
+}
+function loadRound(listIds, shelfIds){
+  S.list  = listIds.map(id => BY_ID[id]);
+  S.shelf = shelfIds.map(id => BY_ID[id]);
+  S.found = 0; S.roundScore = 0; S.done = false;
+}
+
+/* ---------------- screens ---------------- */
+const show = id => document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+function view(name){
+  ['v-count','v-list','v-shelf','v-spectate'].forEach(v => $(v).hidden = (v !== name));
+  $('tally').hidden = (name !== 'v-shelf');
+}
+const veil = (id, open) => $(id).classList.toggle('open', open);
+
+function paintHud(){
+  $('hudRound').textContent = 'Round ' + S.round;
+  $('hudScore').textContent = S.score;
+  $('hudLives').innerHTML = Array.from({length:MAX_MISTAKES}, (_,i) =>
+    `<span class="dot${i < S.mistakes ? ' spent' : ''}"></span>`).join('');
+}
+function toast(msg, kind){
+  const t = $('toast');
+  t.textContent = msg; t.className = 'toast show ' + (kind||'');
+  clearTimeout(t._t); t._t = setTimeout(() => { t.className = 'toast ' + (kind||''); }, 1000);
+}
+
+/* =====================================================================
+   SOLO + SHARED ROUND FLOW
+   ===================================================================== */
+function startSolo(){
+  hubReportPlay();          // §12 — count this play on the hub
+  S.mode='solo'; S.round=1; S.score=0; S.mistakes=0;
+  $('rivals').hidden = true;
+  show('s-play'); paintHud(); soloRound();
+}
+function soloRound(){
+  const built = buildRound(S.round);
+  loadRound(built.list.map(i=>i.id), built.shelf.map(i=>i.id));
+  runSequence(built.cfg);
+}
+
+/* countdown → glance → aisle, with fixed local durations so every
+   device in a race stays in step without further messages */
+function runSequence(c){
+  paintHud();
+  view('v-count');
+  let n = 3;
+  $('countNum').textContent = n;
+  $('countHint').textContent = `${c.listSize} items · ${(c.glance/1000).toFixed(1)}s glance`;
+  clearInterval(S.timer);
+  S.timer = setInterval(() => {
+    n--;
+    if(n === 0){ clearInterval(S.timer); showList(c); return; }
+    $('countNum').textContent = n;
+    $('countNum').style.animation = 'none'; void $('countNum').offsetWidth; $('countNum').style.animation = '';
+  }, 700);
+}
+
+function showList(c){
+  const grid = $('noteGrid');
+  grid.className = 'note-grid' + (S.list.length > 4 ? ' wide' : '');
+  grid.innerHTML = S.list.map(i => `<div class="note-item emoji" role="img" aria-label="${i.n}">${i.e}</div>`).join('');
+  $('note').classList.remove('leaving');
+  $('glanceHint').textContent = (c.glance/1000).toFixed(1) + 's to memorize';
+  view('v-list');
+
+  const total = c.glance, t0 = performance.now();
+  let pausedFor = 0, pauseAt = 0;
+  const tick = now => {
+    if(S.paused){ pauseAt ||= now; S.raf = requestAnimationFrame(tick); return; }
+    if(pauseAt){ pausedFor += now - pauseAt; pauseAt = 0; }
+    const left = Math.max(0, total - (now - t0 - pausedFor));
+    $('meterFill').style.width = (left/total*100) + '%';
+    if(left <= 0){ toShelf(); return; }
+    S.raf = requestAnimationFrame(tick);
+  };
+  cancelAnimationFrame(S.raf);
+  S.raf = requestAnimationFrame(tick);
+}
+
+function toShelf(){
+  cancelAnimationFrame(S.raf);
+  $('note').classList.add('leaving');
+  setTimeout(() => {
+    renderShelf(); view('v-shelf');
+    S.roundStart = performance.now(); paintHud();
+  }, 260);
+}
+
+function renderShelf(){
+  const wrap = $('v-shelf');
+  wrap.innerHTML = '';
+  wrap.dataset.rows = Math.ceil(S.shelf.length/3);
+  for(let r=0; r<S.shelf.length; r+=3){
+    const row = document.createElement('div');
+    row.className = 'shelf';
+    row.innerHTML = '<div class="board"></div>';
+    S.shelf.slice(r, r+3).forEach(item => {
+      const b = document.createElement('button');
+      b.className = 'slot';
+      b.setAttribute('aria-label', item.n);
+      b.innerHTML = `<span class="pad"></span><span class="art emoji">${item.e}</span>`;
+      b.onclick = () => grab(item, b);
+      row.appendChild(b);
+    });
+    wrap.appendChild(row);
+  }
+  $('tally').innerHTML = S.list.map(() => '<span class="tick"></span>').join('');
+}
+
+function grab(item, el){
+  if(S.paused || S.done || el.classList.contains('found') || el.classList.contains('gone')) return;
+  const onList = S.list.some(i => i.id === item.id);
+  if(onList){
+    el.classList.add('found');
+    S.found++;
+    const pts = 50 + S.round*10;
+    S.score += pts; S.roundScore += pts;
+    $('tally').children[S.found-1].classList.add('on');
+    toast('+' + pts + ' ' + item.n, 'good');
+    paintHud(); pushMe();
+    if(S.found === S.list.length) setTimeout(clearRound, 380);
+  } else {
+    el.classList.add('shake');
+    setTimeout(() => { el.classList.remove('shake'); el.classList.add('gone'); }, 400);
+    S.mistakes++;
+    paintHud();
+    toast(item.n + " wasn't on the list", 'bad');
+    pushMe();
+    if(S.mistakes >= MAX_MISTAKES) setTimeout(bustOut, 650);
+  }
+}
+
+function roundBonuses(){
+  const secs = (performance.now() - S.roundStart)/1000;
+  const n = S.list.length, par = n*3.5;
+  const speed = Math.round(40 * n * Math.max(0, (par - secs)/par));
+  const clear = 100 + S.round*25;
+  return {secs, par, speed, clear, items:S.roundScore};
+}
+
+function clearRound(){
+  S.done = true;
+  const b = roundBonuses();
+  S.score += b.speed + b.clear; S.roundScore += b.speed + b.clear;
+  paintHud();
+  if(S.mode === 'race'){ finishRace(b); return; }
+
+  $('roundTitle').textContent = 'Round ' + S.round + ' cleared';
+  $('roundStats').innerHTML = `
+    <div class="stat"><span>${b.items/(50+S.round*10)} items × ${50+S.round*10}</span><b>+${b.items}</b></div>
+    <div class="stat"><span>Round bonus</span><b>+${b.clear}</b></div>
+    <div class="stat"><span>Aisle ${b.secs.toFixed(1)}s of ${b.par.toFixed(0)}s par</span><b>+${b.speed}</b></div>
+    <div class="stat" style="border-top:1px solid var(--line)"><span>Round total</span><b>+${S.roundScore}</b></div>
+    <div class="stat"><span>Score</span><b>${S.score}</b></div>`;
+  const nc = config(S.round+1);
+  $('btnNext').textContent = `Next round · ${nc.listSize} items · ${(nc.glance/1000).toFixed(1)}s`;
+  $('btnNext').disabled = false; $('roundWait').textContent = '';
+  veil('veilRound', true);
+}
+
+function bustOut(){
+  S.done = true;
+  if(S.mode === 'race'){ pushMe(true); spectate(); return; }
+  const best = parseInt(store.get('cartRecallBest')||'0', 10);
+  const isBest = S.score > best;
+  if(isBest) store.set('cartRecallBest', String(S.score));
+  $('overTitle').textContent = 'Run over';
+  $('finalScore').textContent = S.score;
+  $('finalLine').textContent = isBest ? 'New personal best.' : 'Best run: ' + best;
+  $('finalStats').innerHTML = `
+    <div class="stat"><span>Rounds cleared</span><b>${S.round-1}</b></div>
+    <div class="stat"><span>Longest list</span><b>${config(S.round).listSize} items</b></div>`;
+  veil('veilOver', true);
+  paintBest();
+}
+const paintBest = () => {
+  const b = parseInt(store.get('cartRecallBest')||'0', 10);
+  $('bestLine').textContent = b ? 'Best solo run — ' + b : 'Best solo run — none yet';
+};
+
+/* =====================================================================
+   RACE MODE
+   ===================================================================== */
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const newCode = () => Array.from({length:4}, () => pick(CODE_CHARS.split(''))).join('');
+const newPid = () => 'p' + Math.random().toString(36).slice(2,9);
+const P = () => (M.room && M.room.players) || {};
+const activePlayers = () => Object.entries(P()).filter(([,v]) => !v.out);
+const meNode = () => P()[M.pid] || {};
+
+function raceErr(msg){ $('roomErr').textContent = msg || ''; }
+
+async function createRoom(){
+  const name = $('inName').value.trim();
+  if(!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name = name; M.pid = newPid(); M.isHost = true;
+  store.set('cartRecallName', name);
+  let code, tries = 0;
+  do { code = newCode(); } while(await net.get('rooms/'+code) && ++tries < 6);
+  M.code = code;
+  const ok = await net.put('rooms/'+code, {
+    host: M.pid, phase: 'lobby', startRound: 1, createdAt: Date.now(),
+    players: { [M.pid]: freshPlayer(name) }
+  }).catch(() => null);
+  if(!ok || !ok.ok) return raceErr('Could not reach the database. Check DB_URL and that the Realtime Database exists.');
+  watchRoom();
+}
+
+async function joinRoom(){
+  const name = $('inName').value.trim();
+  const code = $('inCode').value.trim().toUpperCase();
+  if(!name) return raceErr('Type a name first.');
+  if(code.length !== 4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  const room = await net.get('rooms/'+code).catch(() => null);
+  if(!room) return raceErr('No room with that code.');
+  if(room.phase !== 'lobby') return raceErr('That race has already started.');
+  if(Object.keys(room.players||{}).length >= 4) return raceErr('That room is full.');
+  M.name = name; M.pid = newPid(); M.isHost = false; M.code = code;
+  store.set('cartRecallName', name);
+  await net.put(`rooms/${code}/players/${M.pid}`, freshPlayer(name));
+  watchRoom();
+}
+const freshPlayer = name => ({name, base:0, bonus:0, strikes:0, found:0, out:false, done:false, finishedAt:0, hb:Date.now()});
+
+function watchRoom(){
+  raceErr('');
+  M.joined = true; M.lastKey = '';
+  S.mode = 'race'; S.pace = 1;
+  M.es = subscribe('rooms/'+M.code, onRoom, () => toast('Connection dropped', 'bad'));
+  clearInterval(M.hb);
+  M.hb = setInterval(() => {
+    if(M.joined) net.patch(`rooms/${M.code}/players/${M.pid}`, {hb: Date.now()});
+  }, 5000);
+  show('s-lobby');
+}
+
+function leaveRoom(){
+  if(M.code && M.pid) net.del(`rooms/${M.code}/players/${M.pid}`);
+  if(M.isHost && M.code) net.del('rooms/'+M.code);
+  M.es && M.es.close(); clearInterval(M.hb);
+  M.joined = false; M.code = null; M.room = null;
+  show('s-menu');
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if(!room){ if(M.joined){ toast('Room closed', 'bad'); leaveRoom(); } return; }
+  M.room = room;
+
+  if(room.phase === 'lobby'){ M.playReported = false; paintLobby(); return; }   // §12 — arm the next race's play count
+  if(room.phase === 'over'){ paintFinal(); return; }
+
+  const key = room.phase + ':' + (room.round && room.round.n);
+  if(key !== M.lastKey && room.phase === 'playing' && room.round){
+    M.lastKey = key;
+    beginRaceRound(room.round);
+  }
+  paintRivals();
+  if(M.isHost) hostReferee();
+}
+
+/* ---- lobby ---- */
+function paintLobby(){
+  show('s-lobby');
+  $('lobbyCode').textContent = M.code;
+  const ps = Object.entries(P());
+  $('lobbyCount').textContent = `(${ps.length}/4)`;
+  $('lobbyList').innerHTML = ps.map(([id,p]) =>
+    `<div class="prow"><span class="emoji">🛒</span><span>${esc(p.name)}</span>
+      ${id === M.room.host ? '<span class="badge">Host</span>' : ''}
+      ${id === M.pid && id !== M.room.host ? '<span class="badge">You</span>' : ''}</div>`).join('');
+  $('hostOpts').hidden = !M.isHost;
+  $('btnLaunch').hidden = !M.isHost;
+  $('btnLaunch').disabled = ps.length < 2;
+  $('lobbyWait').textContent = M.isHost
+    ? (ps.length < 2 ? 'Waiting for at least one more shopper…' : '')
+    : 'Waiting for the host to start…';
+}
+
+/* ---- host launches ---- */
+async function launchRace(){
+  const ps = Object.keys(P());
+  if(ps.length < 2) return;
+  M.startRound = parseInt(document.querySelector('#diffSeg [aria-pressed="true"]').dataset.start, 10);
+  await net.patch(`rooms/${M.code}`, {startRound: M.startRound});
+  hostDealRound(M.startRound);
+}
+
+async function hostDealRound(rn){
+  const built = buildRound(rn);
+  const reset = {};
+  for(const [id,p] of Object.entries(P()))
+    reset[id] = {...p, found:0, done:false, finishedAt:0, bonus:p.bonus||0};
+  await net.patch(`rooms/${M.code}`, {
+    round: { n: rn, list: built.list.map(i=>i.id), shelf: built.shelf.map(i=>i.id), dealtAt: Date.now() },
+    players: reset,
+    phase: 'playing'
+  });
+}
+
+/* ---- every client runs the round locally ---- */
+function beginRaceRound(round){
+  if(!M.playReported){ M.playReported = true; hubReportPlay(); }   // §12 — once per race, not per round
+  veil('veilRound', false); veil('veilOver', false);
+  S.round = round.n;
+  S.mistakes = meNode().strikes || 0;
+  S.score = (meNode().base || 0) + (meNode().bonus || 0);
+  loadRound(round.list, round.shelf);
+  $('rivals').hidden = false;
+  show('s-play');
+  if(meNode().out){ spectate(); return; }
+  runSequence(config(round.n));
+}
+
+function spectate(){
+  view('v-spectate');
+  $('spectateHint').textContent = "You're out — watching the aisle";
+  paintRivals();
+}
+
+/* ---- push my state up ---- */
+function pushMe(justBusted){
+  if(S.mode !== 'race' || !M.code) return;
+  net.patch(`rooms/${M.code}/players/${M.pid}`, {
+    base: S.score - (meNode().bonus || 0),
+    strikes: S.mistakes, found: S.found,
+    out: !!(justBusted || S.mistakes >= MAX_MISTAKES), hb: Date.now()
+  });
+}
+function finishRace(b){
+  if(M.room && M.room.phase !== 'playing') return;
+  net.patch(`rooms/${M.code}/players/${M.pid}`, {
+    base: S.score - (meNode().bonus || 0),
+    found: S.found, done: true, finishedAt: Date.now(), hb: Date.now()
+  });
+  view('v-spectate');
+  $('spectateHint').textContent = 'Aisle cleared — waiting on the others';
+  paintRivals();
+}
+
+/* ---- host referees: placements, round end, run end ---- */
+async function hostReferee(){
+  const room = M.room;
+  if(room.phase !== 'playing' || !room.round) return;
+  const now = Date.now();
+  const entries = Object.entries(P());
+
+  /* drop anyone whose phone stopped reporting */
+  for(const [id,p] of entries)
+    if(!p.out && p.hb && now - p.hb > 25000)
+      await net.patch(`rooms/${M.code}/players/${id}`, {out:true});
+
+  const live = entries.filter(([,p]) => !p.out);
+  if(!live.every(([,p]) => p.done)) return;
+  if(M.refereedRound === room.round.n) return;   // pay placements once per round
+  M.refereedRound = room.round.n;
+
+  /* award placement to finishers in finish order */
+  const finishers = live.filter(([,p]) => p.done && p.finishedAt)
+                        .sort((a,b) => a[1].finishedAt - b[1].finishedAt);
+  const patch = {};
+  finishers.forEach(([id,p], i) => { patch[id + '/bonus'] = (p.bonus||0) + (PLACE_BONUS[i] || 0); });
+  if(Object.keys(patch).length) await net.patch(`rooms/${M.code}/players`, patch);
+
+  const stillIn = entries.filter(([,p]) => !p.out).length;
+  if(stillIn <= 1) await net.patch(`rooms/${M.code}`, {phase:'over'});
+  else            await net.patch(`rooms/${M.code}`, {phase:'result'});
+}
+
+/* result overlay is driven by phase change */
+function paintRaceResult(){
+  const rows = standings();
+  $('roundTitle').textContent = 'Round ' + S.round + ' standings';
+  $('roundStats').innerHTML = rows.map((r,i) =>
+    `<div class="stat"><span><span class="rk">${i+1}</span>${esc(r.name)}${r.out?' · out':''}</span><b>${r.total}</b></div>`).join('');
+  $('btnNext').hidden = !M.isHost;
+  $('btnNext').textContent = 'Next round';
+  $('roundWait').textContent = M.isHost ? '' : 'Waiting for the host…';
+  veil('veilRound', true);
+}
+function standings(){
+  return Object.entries(P())
+    .map(([id,p]) => ({id, name:p.name, total:(p.base||0)+(p.bonus||0), out:p.out, found:p.found||0, strikes:p.strikes||0}))
+    .sort((a,b) => b.total - a.total);
+}
+function paintFinal(){
+  const rows = standings(), me = rows.find(r => r.id === M.pid), i = rows.indexOf(me);
+  veil('veilRound', false);
+  $('overTitle').textContent = i === 0 ? 'You won the aisle' : 'Race over';
+  $('finalScore').textContent = me ? me.total : 0;
+  $('finalLine').textContent = i === 0 ? 'Last shopper standing.' : `Finished ${['1st','2nd','3rd','4th'][i] || '—'} of ${rows.length}`;
+  $('finalStats').innerHTML = rows.map((r,n) =>
+    `<div class="stat"><span><span class="rk">${n+1}</span>${esc(r.name)}</span><b>${r.total}</b></div>`).join('');
+  $('btnAgain').textContent = M.isHost ? 'New race' : 'Back to lobby';
+  veil('veilOver', true);
+}
+
+/* ---- rivals strip ---- */
+function paintRivals(){
+  if(S.mode !== 'race') return;
+  const total = S.list.length || 1;
+  $('rivals').innerHTML = Object.entries(P()).map(([id,p]) => {
+    const pct = Math.min(100, (p.found||0)/total*100);
+    return `<div class="rival${p.out?' out':''}${id===M.pid?' me':''}">
+      <div class="nm">${esc(p.name)}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="st"><span>${p.out?'out':(p.done?'done':(p.found||0)+'/'+total)}</span><span>${(p.base||0)+(p.bonus||0)}</span></div>
+    </div>`;
+  }).join('');
+  if(!$('v-spectate').hidden){
+    $('spectateList').innerHTML = standings().map((r,i) =>
+      `<div class="stat"><span><span class="rk">${i+1}</span>${esc(r.name)}</span><b>${r.total}</b></div>`).join('');
+  }
+}
+
+/* watch for the result phase */
+let _phaseSeen = '';
+setInterval(() => {
+  if(!M.room) return;
+  if(M.room.phase !== _phaseSeen){
+    _phaseSeen = M.room.phase;
+    if(_phaseSeen === 'result') paintRaceResult();
+  }
+}, 250);
+
+/* =====================================================================
+   WIRING
+   ===================================================================== */
+$('paceSeg').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  [...$('paceSeg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  S.pace = parseFloat(b.dataset.pace);
+};
+$('diffSeg').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  [...$('diffSeg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+};
+$('theme-btn').onclick = toggleTheme;
+$('btnSolo').onclick = startSolo;
+$('btnMulti').onclick = () => { $('inName').value = store.get('cartRecallName') || ''; raceErr(''); show('s-rooms'); };
+$('btnBackMenu').onclick = () => show('s-menu');
+$('btnCreate').onclick = createRoom;
+$('btnJoin').onclick = joinRoom;
+$('btnLeave').onclick = leaveRoom;
+$('btnLaunch').onclick = launchRace;
+$('inCode').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g,''); };
+
+$('btnNext').onclick = () => {
+  veil('veilRound', false);
+  if(S.mode === 'race'){ if(M.isHost) hostDealRound(S.round + 1); return; }
+  S.round++; soloRound();
+};
+$('btnAgain').onclick = () => {
+  veil('veilOver', false);
+  if(S.mode === 'race'){
+    if(M.isHost){ net.patch(`rooms/${M.code}`, {phase:'lobby', players:
+      Object.fromEntries(Object.entries(P()).map(([id,p]) => [id, freshPlayer(p.name)]))}); }
+    show('s-lobby');
+    return;
+  }
+  startSolo();
+};
+$('btnMenu').onclick = () => { veil('veilOver', false); if(S.mode === 'race') leaveRoom(); else show('s-menu'); };
+$('btnHelp').onclick = () => { if(S.mode === 'solo') S.paused = true; veil('veilHelp', true); };
+$('btnCloseHelp').onclick = () => { S.paused = false; veil('veilHelp', false); };
+$('btnPause').onclick = () => {
+  if(S.mode === 'race'){ $('pauseNote').textContent = "A race can't be paused — the others are still shopping."; }
+  else { $('pauseNote').textContent = 'The aisle will wait.'; S.paused = true; }
+  veil('veilPause', true);
+};
+$('btnResume').onclick = () => { S.paused = false; veil('veilPause', false); };
+$('btnQuit').onclick = () => {
+  S.paused = false; clearInterval(S.timer); cancelAnimationFrame(S.raf);
+  veil('veilPause', false);
+  if(S.mode === 'race') leaveRoom(); else show('s-menu');
+};
+window.addEventListener('beforeunload', () => { if(M.joined) leaveRoom(); });
+
+paintBest(); paintHud();
+</script>
+</body>
+</html>

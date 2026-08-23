@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>MemoMath</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+   Dark is the default (<html data-theme="dark">). The yellow/orange accent is
+   MemoMath's own hue; light mode uses a darker, more saturated variant so it
+   still carries on white. --on-accent is the text colour that sits on top of
+   an accent fill. */
+:root[data-theme="dark"]{
+  --bg1:#0e1024; --bg2:#1b1f44; --panel:#181c34; --panel2:#20254a;
+  --text:#eef1ff; --muted:#9aa0c3;
+  --accent:#ffd166; --accent2:#4cc9f0; --accent-tint:rgba(255,209,102,.16); --on-accent:#181421;
+  --correct:#52d273; --wrong:#ef476f; --warn:#f0a83c; --line:#2a2f55;
+  --shadow:rgba(0,0,0,.35);
+}
+:root[data-theme="light"]{
+  --bg1:#eef1fb; --bg2:#dfe4f7; --panel:#ffffff; --panel2:#f2f4fd;
+  --text:#1a1e38; --muted:#5b6288;
+  --accent:#b8730a; --accent2:#1c8bbf; --accent-tint:rgba(184,115,10,.12); --on-accent:#ffffff;
+  --correct:#2f9d52; --wrong:#d3355c; --warn:#a8620a; --line:#d4d9ef;
+  --shadow:rgba(20,30,60,.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;}
+button{touch-action:manipulation; font-family:inherit;}
+body{
+  min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 60%);
+  color:var(--text); display:flex; justify-content:center;
+  padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+  /* headroom for the fixed theme toggle / full-rules pills (§2) */
+  padding-top:calc(64px + env(safe-area-inset-top));
+  transition:background .3s,color .3s; -webkit-user-select:none; user-select:none;
+}
+.app{width:100%; max-width:720px;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadeIn .35s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+/* §5 — the menu reads at the shared 720px width; the play screens keep the
+   narrower 520px shell the tile grid and keypad were laid out for. */
+#screen-menu{max-width:720px; margin:0 auto;}
+#screen-howto,#screen-countdown,#screen-memorize,#screen-answer,#screen-result,#screen-summary{
+  max-width:520px; margin:0 auto;
+}
+
+/* ── LOGO BLOCK — §3 (icon, h1, subtitle) ── */
+.logo{text-align:center;}
+.logo-icon{display:flex; justify-content:center; margin:0 auto 6px; color:var(--accent); width:32px; height:32px;}
+h1{text-align:center; margin:2px 0; font-size:28px; letter-spacing:1px; font-weight:900;}
+h1 .m2{color:var(--accent);}
+.subtitle{text-align:center; color:var(--muted); margin-bottom:18px; font-size:14px; padding:0 6px;}
+
+/* ── HOW TO PLAY CARD — §3. Always visible on the menu, never collapsed.
+   The deeper walk-through lives in #screen-howto behind "Full rules". ── */
+.howto-box{
+  background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:18px 20px; margin-bottom:12px; text-align:left;
+  box-shadow:0 10px 30px var(--shadow);
+}
+.howto-box .howto-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:10px; font-weight:700;}
+.howto-box p{font-size:13px; color:var(--muted); line-height:1.6; margin:0 0 8px;}
+.howto-box p:last-of-type{margin-bottom:0;}
+.howto-box strong{color:var(--text);}
+.howto-box .full-rules{margin-top:12px; width:100%; font-size:13px; min-height:42px; padding:9px 14px;}
+
+.panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:18px 18px; box-shadow:0 10px 30px var(--shadow);}
+.panel + .panel{margin-top:12px;}
+.section-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:12px; font-weight:700;}
+
+/* Pill selectors */
+.field{margin-bottom:16px;}
+.field:last-child{margin-bottom:0;}
+.field > label{display:block; font-size:13px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;}
+.pill-group{display:flex; gap:8px; flex-wrap:wrap;}
+/* §6 — unselected: surface + border + muted. Selected: accent-tinted fill with
+   accent border and text. */
+.pill{
+  flex:1; min-width:80px; padding:11px 8px; border-radius:999px; border:1px solid var(--line);
+  background:var(--panel); color:var(--muted); cursor:pointer; text-align:center; font-size:13px; transition:.15s;
+  min-height:46px;
+}
+.pill .sub{display:block; font-size:11px; color:var(--muted); margin-top:2px;}
+.pill.active{background:var(--accent-tint); color:var(--accent); border-color:var(--accent); font-weight:700;}
+.pill.active .sub{color:var(--accent); opacity:.85;}
+.pill:active{transform:scale(.97);}
+.pill:hover:not(.active){border-color:var(--accent); color:var(--text);}
+
+.big-btn{
+  display:block; width:100%; margin-top:4px; padding:15px; border-radius:14px; border:none;
+  background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800;
+  letter-spacing:.5px; cursor:pointer; box-shadow:0 8px 18px var(--shadow); min-height:54px;
+  transition:filter .15s, transform .15s;
+}
+.big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.big-btn:active{transform:translateY(0); filter:brightness(1.05);}
+.ghost-btn{
+  padding:12px 18px; border-radius:12px; border:1px solid var(--line); background:var(--panel);
+  color:var(--muted); cursor:pointer; font-size:14px; min-height:46px; transition:.15s;
+}
+.ghost-btn:hover{border-color:var(--accent); color:var(--accent);}
+.ghost-btn:active{transform:scale(.98);}
+.danger-btn{border-color:var(--wrong); color:var(--wrong);}
+.danger-btn:hover{background:rgba(239,71,111,.12); border-color:var(--wrong); color:var(--wrong);}
+
+/* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+.theme-toggle{
+  position:fixed; top:calc(16px + env(safe-area-inset-top)); right:16px; background:var(--panel);
+  border:1px solid var(--line); border-radius:50px; padding:6px 14px; cursor:pointer; display:flex;
+  align-items:center; gap:7px; font-size:13px; color:var(--muted); transition:all .15s; z-index:60;
+  user-select:none; font-family:'Consolas','Courier New',monospace;
+}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* Full-rules launcher — mirrors the toggle on the opposite corner so it stays
+   reachable mid-round, exactly as the old "?" button was. */
+.help-fab{
+  position:fixed; top:calc(16px + env(safe-area-inset-top)); left:16px; background:var(--panel);
+  border:1px solid var(--line); border-radius:50px; padding:6px 14px; cursor:pointer; display:flex;
+  align-items:center; gap:7px; font-size:13px; color:var(--muted); transition:all .15s; z-index:60;
+  user-select:none; font-family:'Consolas','Courier New',monospace;
+}
+.help-fab:hover{border-color:var(--accent); color:var(--accent);}
+
+/* How to play */
+.howto{list-style:none; padding:0; margin:0; counter-reset:step;}
+.howto li{position:relative; padding:8px 0 8px 42px; color:var(--text); font-size:14px; line-height:1.5;}
+.howto li::before{
+  counter-increment:step; content:counter(step);
+  position:absolute; left:0; top:6px; width:28px; height:28px; border-radius:50%;
+  background:var(--accent); color:var(--on-accent); font-weight:800; display:flex; align-items:center; justify-content:center; font-size:13px;
+}
+.mini-tiles{display:flex; gap:8px; justify-content:center; margin:12px 0 4px; flex-wrap:wrap;}
+.mini-tiles .t{width:46px; height:46px; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:800; font-size:19px;}
+.mini-tiles .t small{font-size:11px; font-weight:700; opacity:.9;}
+.howto-cap{text-align:center; color:var(--muted); font-size:12px; margin:4px 0 2px;}
+
+/* Countdown */
+#screen-countdown{text-align:center; padding-top:70px;}
+#countdownNum{font-size:clamp(90px,30vw,130px); font-weight:900; color:var(--accent); text-shadow:0 0 40px rgba(255,209,102,.5); animation:pop .5s ease;}
+@keyframes pop{from{transform:scale(.5); opacity:0;} to{transform:scale(1); opacity:1;}}
+
+/* Play HUD */
+.hud{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; font-size:13px; color:var(--muted);}
+.hud .chip{background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:6px 14px; white-space:nowrap;}
+.hud .chip b{color:var(--text); font-size:15px; font-family:'Consolas','Courier New',monospace;}
+.phase-label{text-align:center; color:var(--accent2); text-transform:uppercase; letter-spacing:2px; font-size:13px; font-weight:700; margin-bottom:4px;}
+.phase-sub{text-align:center; color:var(--muted); font-size:13px; margin-bottom:14px; padding:0 6px;}
+
+/* Tile grid (shared by memorize + answer) */
+.tile-grid{display:grid; gap:10px; margin:6px 0 4px;}
+.mem-tile{
+  border-radius:16px; min-height:74px; display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:clamp(26px,9vw,38px); box-shadow:0 6px 14px var(--shadow);
+  font-variant-numeric:tabular-nums; animation:pop .35s ease;
+}
+.ans-tile{
+  position:relative; border-radius:16px; min-height:82px; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:2px; cursor:pointer; border:3px solid transparent;
+  box-shadow:0 6px 14px var(--shadow); padding:6px 4px; transition:transform .12s, box-shadow .12s;
+}
+.ans-tile .ans-op{font-size:15px; font-weight:800; letter-spacing:1px;}
+.ans-tile .ans-val{font-size:clamp(24px,8vw,34px); font-weight:900; line-height:1; font-variant-numeric:tabular-nums; min-height:1em;}
+.ans-tile .ans-val.empty::after{content:'·'; opacity:.55;}
+.ans-tile.active{transform:translateY(-3px); box-shadow:0 0 0 4px var(--accent), 0 8px 18px rgba(0,0,0,.4);}
+
+/* Timer */
+.timer-bar{height:10px; background:var(--line); border-radius:999px; overflow:hidden; margin:16px 0;}
+.timer-fill{height:100%; background:linear-gradient(90deg,var(--accent2),var(--correct)); width:100%;}
+
+/* Number pad */
+.pad{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:14px;}
+.pad button{
+  padding:16px 0; font-size:22px; font-weight:800; border-radius:14px; border:1px solid var(--line);
+  background:var(--panel); color:var(--text); cursor:pointer; min-height:54px; transition:.1s;
+}
+.pad button:hover{border-color:var(--accent2);}
+.pad button:active{transform:scale(.94);}
+.pad .pad-del{color:var(--wrong); font-size:20px;}
+.pad .pad-submit{background:var(--accent); color:var(--on-accent); border:none; font-weight:800; font-size:16px;}
+.pad .pad-submit:disabled{opacity:.4; cursor:not-allowed;}
+
+/* Result */
+.result-banner{text-align:center; font-size:26px; font-weight:900; margin:6px 0 10px;}
+.result-banner.ok{color:var(--correct);} .result-banner.no{color:var(--wrong);}
+.your-answer-line{text-align:center; font-size:14px; color:var(--muted); margin-bottom:12px;}
+.your-answer-line b{font-variant-numeric:tabular-nums;}
+.solution{display:flex; flex-direction:column; gap:6px; margin:6px 0 4px;}
+.sol-row{display:flex; align-items:center; gap:10px; font-size:14px; padding:8px 10px; background:var(--panel); border-radius:10px; border:1px solid var(--line);}
+.sol-row .sw{width:20px;height:20px;border-radius:6px; flex:none;}
+.sol-row .digit-out{margin-left:auto; font-weight:800; font-size:16px; font-variant-numeric:tabular-nums;}
+.result-actions{display:flex; gap:10px; margin-top:14px;}
+.result-actions .big-btn, .result-actions .ghost-btn{flex:1; margin-top:0;}
+
+/* Summary */
+.score-big{text-align:center; font-size:60px; font-weight:900; color:var(--accent); margin:4px 0; font-variant-numeric:tabular-nums; font-family:'Consolas','Courier New',monospace;}
+.score-label{text-align:center; color:var(--muted); text-transform:uppercase; letter-spacing:2px; font-size:12px; margin-bottom:14px;}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat-box{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center;}
+.stat-box .v{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; font-family:'Consolas','Courier New',monospace;}
+.stat-box .l{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px;}
+.best-flag{text-align:center; color:var(--correct); font-weight:800; margin-bottom:12px; font-size:15px;}
+
+/* Modal — §6: theme-independent scrim, surface card, 16–20px radius */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; z-index:70; padding:20px;}
+.overlay.active{display:flex;}
+.modal{background:var(--panel2); border:1px solid var(--line); border-radius:18px; padding:24px 24px; width:100%; max-width:340px; text-align:center; box-shadow:0 20px 50px var(--shadow);}
+.modal h3{margin:0 0 10px; font-size:20px;}
+.modal p{color:var(--muted); font-size:14px; margin:0 0 20px;}
+.modal-btns{display:flex; gap:10px; justify-content:center;}
+.modal-btns > button{flex:1;}
+
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  body{padding-left:12px; padding-right:12px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px; margin-bottom:16px;}
+  .howto-box{padding:14px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .panel{padding:16px 16px;}
+  .theme-toggle,.help-fab{font-size:12px; padding:5px 11px;}
+  #screen-countdown{padding-top:50px;}
+  .pad button{padding:14px 0;}
+}
+@media (max-width:380px){
+  h1{letter-spacing:.5px;}
+  .theme-toggle,.help-fab{padding:5px 9px; gap:5px;}
+  .pill{min-width:72px; padding:10px 6px;}
+  .howto-box{padding:13px 14px;}
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<!-- Full rules — the deep walk-through; the menu card is the summary (§3) -->
+<button class="help-fab" id="btnHelp" aria-label="Open the full rules">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.4 9a2.7 2.7 0 015.2 1c0 1.8-2.6 2.3-2.6 4"/><path d="M12 17.4h.01"/></svg>
+  <span>Full rules</span>
+</button>
+
+<div class="app">
+
+  <!-- MENU -->
+  <div class="screen active" id="screen-menu">
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="3"/><path d="M8 6.5h8"/><path d="M8.6 12h.01M12 12h.01M15.4 12h.01M8.6 16h.01M12 16h.01M15.4 16h.01"/></svg></span>
+      <h1>Memo<span class="m2">Math</span></h1>
+      <div class="subtitle">Memorise each coloured digit. Then recall it and do the maths</div>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>Coloured tiles flash up, each holding <strong>one digit</strong>. Memorise them before the bar runs out.</p>
+      <p>The digits hide and every tile shows a rule instead, like <strong>− 3</strong>. Apply it to the digit that was there and keep only the <strong>last digit</strong> of the answer.</p>
+      <p>Tap a tile, key in its result, fill them all, then press Enter.</p>
+      <button class="ghost-btn full-rules" id="btnHowtoOpen">Full rules &amp; worked example →</button>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Difficulty</div>
+      <div class="pill-group" id="diffGroup">
+        <button class="pill active" data-diff="easy">Easy<span class="sub">4 digits · +/−</span></button>
+        <button class="pill" data-diff="medium">Medium<span class="sub">6 digits · +/−/×</span></button>
+        <button class="pill" data-diff="hard">Hard<span class="sub">8 digits · all</span></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Mode</div>
+      <div class="pill-group" id="modeGroup">
+        <button class="pill active" data-mode="practice">Practice<span class="sub">No pressure</span></button>
+        <button class="pill" data-mode="competition">Competition<span class="sub">Scored</span></button>
+      </div>
+      <div class="field" id="sessionField" style="margin-top:16px; display:none;">
+        <label>Session type</label>
+        <div class="pill-group" id="sessionGroup">
+          <button class="pill active" data-session="rounds">Rounds<span class="sub">Best of 10</span></button>
+          <button class="pill" data-session="timed">Timed<span class="sub">60 sec</span></button>
+          <button class="pill" data-session="streak">Streak<span class="sub">Until a miss</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="bestPanel" style="display:none;">
+      <div class="section-title">Personal best</div>
+      <div id="bestText" style="text-align:center; font-size:15px;"></div>
+    </div>
+
+    <button class="big-btn" id="btnPlay">Play</button>
+  </div>
+
+  <!-- FULL RULES — the deeper reference view (§3). The menu keeps its own
+       always-visible summary card; this screen is the manual. -->
+  <div class="screen" id="screen-howto">
+    <h1>Full <span class="m2">Rules</span></h1>
+    <div class="subtitle">The complete round, step by step.</div>
+    <div class="panel">
+      <ol class="howto">
+        <li>Each digit flashes inside its own coloured tile. Memorise them before the timer runs out.</li>
+        <li>The digits then hide. Each tile now shows only an operation, like <b>− 3</b>.</li>
+        <li>Recall the digit that was in that tile, apply its operation, and keep only the last digit of the result.</li>
+        <li>Tap a tile and key in its result. Fill every tile, then submit.</li>
+      </ol>
+
+      <div class="howto-cap" style="margin-top:14px;">Memorise — number <b>0297</b>:</div>
+      <div class="mini-tiles">
+        <div class="t" style="background:#e5384d;color:#fff;">0</div>
+        <div class="t" style="background:#3b82f6;color:#fff;">2</div>
+        <div class="t" style="background:#22a558;color:#fff;">9</div>
+        <div class="t" style="background:#f5c518;color:#1a1a2e;">7</div>
+      </div>
+      <div class="howto-cap">Recall — digits hidden, apply each rule:</div>
+      <div class="mini-tiles">
+        <div class="t" style="background:#e5384d;color:#fff;"><small>− 3</small></div>
+        <div class="t" style="background:#3b82f6;color:#fff;"><small>− 2</small></div>
+        <div class="t" style="background:#22a558;color:#fff;"><small>+ 3</small></div>
+        <div class="t" style="background:#f5c518;color:#1a1a2e;"><small>+ 3</small></div>
+      </div>
+      <div class="howto-cap">0−3=<b>7</b>, 2−2=<b>0</b>, 9+3=<b>2</b>, 7+3=<b>0</b> &nbsp;→&nbsp; answer <b style="color:var(--accent); letter-spacing:2px;">7020</b></div>
+      <div class="howto-cap" style="margin-top:6px;">(Wrap-around: anything past 9 keeps only the last digit.)</div>
+    </div>
+    <button class="big-btn" id="btnHowtoBack">Got it</button>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div class="screen" id="screen-countdown">
+    <div id="countdownNum">3</div>
+  </div>
+
+  <!-- MEMORIZE -->
+  <div class="screen" id="screen-memorize">
+    <div class="hud">
+      <span class="chip" id="memHudLeft">Practice</span>
+      <span class="chip" id="memHudRight"></span>
+    </div>
+    <div class="phase-label">Memorise</div>
+    <div class="phase-sub">Remember each digit and its colour.</div>
+    <div class="tile-grid" id="memGrid"></div>
+    <div class="timer-bar"><div class="timer-fill" id="memTimerFill"></div></div>
+    <button class="ghost-btn" id="btnSkipMem" style="width:100%;">Skip memorisation →</button>
+  </div>
+
+  <!-- RECALL + ANSWER -->
+  <div class="screen" id="screen-answer">
+    <div class="hud">
+      <span class="chip" id="ansHudLeft"></span>
+      <span class="chip" id="ansHudRight"></span>
+    </div>
+    <div class="phase-label">Apply the rules</div>
+    <div class="phase-sub">Tap a tile, then key its result. The original digits are hidden.</div>
+    <div class="tile-grid" id="ansGrid"></div>
+    <div class="pad" id="numPad"></div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen" id="screen-result">
+    <div class="result-banner" id="resultBanner">Correct!</div>
+    <div class="your-answer-line" id="yourAnswerLine"></div>
+    <div class="panel">
+      <div class="section-title">Working</div>
+      <div class="solution" id="solutionList"></div>
+    </div>
+    <div class="result-actions" id="resultActions"></div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="screen" id="screen-summary">
+    <h1>Session <span class="m2">Over</span></h1>
+    <div class="panel">
+      <div class="score-big" id="sumScore">0</div>
+      <div class="score-label" id="sumScoreLabel">Total score</div>
+      <div class="best-flag" id="sumBestFlag" style="display:none;">★ New personal best!</div>
+      <div class="stat-grid" id="sumStats"></div>
+      <div style="text-align:center; color:var(--muted); font-size:13px;" id="sumBestLine"></div>
+    </div>
+    <button class="big-btn" id="btnPlayAgain" style="margin-bottom:10px;">Play again</button>
+    <button class="ghost-btn" id="btnSumMenu" style="width:100%;">Back to menu</button>
+  </div>
+
+</div>
+
+<!-- EXIT MODAL -->
+<div class="overlay" id="exitOverlay">
+  <div class="modal">
+    <h3>Leave this round?</h3>
+    <p id="exitMsg">Your progress in this session will be lost.</p>
+    <div class="modal-btns">
+      <button class="ghost-btn" id="btnExitCancel">Stay</button>
+      <button class="ghost-btn danger-btn" id="btnExitConfirm">Leave</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'memomath';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ---------- Seeded PRNG (mulberry32) — suite convention ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let rng = mulberry32((Date.now() ^ (Math.random()*1e9)) | 0);
+function rint(min, max){ return Math.floor(rng() * (max - min + 1)) + min; }
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rng() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* ---------- Config ---------- */
+const DIFFS = {
+  easy:   { digits:4, ops:['+','-'],         memTime:4, mult:1.0, label:'Easy' },
+  medium: { digits:6, ops:['+','-','*'],     memTime:5, mult:1.6, label:'Medium' },
+  hard:   { digits:8, ops:['+','-','*','/'], memTime:6, mult:2.4, label:'Hard' }
+};
+const SESSIONS = {
+  rounds: { label:'Rounds', totalRounds:10 },
+  timed:  { label:'Timed',  seconds:60 },
+  streak: { label:'Streak' }
+};
+/* Palette: red, blue, green, yellow first (Easy uses exactly these four),
+   then orange, purple, teal, pink for Medium (6) and Hard (8). */
+const PALETTE = [
+  { name:'Red',    hex:'#e5384d', text:'#ffffff' },
+  { name:'Blue',   hex:'#3b82f6', text:'#ffffff' },
+  { name:'Green',  hex:'#22a558', text:'#ffffff' },
+  { name:'Yellow', hex:'#f5c518', text:'#1a1a2e' },
+  { name:'Orange', hex:'#f0891f', text:'#ffffff' },
+  { name:'Purple', hex:'#9b5df0', text:'#ffffff' },
+  { name:'Teal',   hex:'#14b6ac', text:'#ffffff' },
+  { name:'Pink',   hex:'#ef6ea0', text:'#ffffff' }
+];
+function colsFor(n){ return n === 6 ? 3 : 4; } // 4→4 cols, 6→3, 8→4 (even rows)
+
+/*
+  SCORING (Competition) — documented constants
+  Per correct answer: base + difficultyBonus + speedBonus.
+    base = 100
+    difficultyBonus = base * (mult - 1)   // Easy +0, Medium +60, Hard +140
+    speedBonus decays linearly SPEED_MAX→0 from FAST_SEC to SLOW_SEC.
+    points = round(...), never negative. Wrong answer = 0 (ends Streak sessions).
+*/
+const SCORE = { base:100, speedMax:80, fastSec:3, slowSec:15 };
+function speedBonus(sec){
+  if(sec <= SCORE.fastSec) return SCORE.speedMax;
+  if(sec >= SCORE.slowSec) return 0;
+  return SCORE.speedMax * ((SCORE.slowSec - sec) / (SCORE.slowSec - SCORE.fastSec));
+}
+function roundPoints(diffKey, sec){
+  const d = DIFFS[diffKey];
+  const diffBonus = SCORE.base * (d.mult - 1);
+  return Math.max(0, Math.round(SCORE.base + diffBonus + speedBonus(sec)));
+}
+
+/* ---------- Rule generation ----------
+   Colours are the first N palette entries (Easy = R/B/G/Y), shuffled across
+   positions so the colour is a genuine memory anchor. Operations line up
+   left-to-right with the memorised digits (positional). */
+function generateRound(diffKey){
+  const d = DIFFS[diffKey];
+  const colors = shuffle(PALETTE.slice(0, d.digits)); // distinct, position-shuffled
+  const rules = [];
+  for(let i = 0; i < d.digits; i++){
+    const digit = rint(0, 9);
+    let op, operand, result;
+    let ops = d.ops.slice();
+    while(true){
+      op = ops[Math.floor(rng() * ops.length)];
+      if(op === '/'){
+        const divisors = [];
+        for(let k = 2; k <= 9; k++){ if(digit !== 0 && digit % k === 0) divisors.push(k); }
+        if(divisors.length === 0){
+          ops = ops.filter(o => o !== '/');
+          if(ops.length === 0){ op = '+'; } else { continue; }
+        } else {
+          operand = divisors[Math.floor(rng() * divisors.length)];
+          result = (digit / operand) % 10; break;
+        }
+      }
+      if(op === '+'){ operand = rint(1,9); result = ((digit + operand) % 10 + 10) % 10; break; }
+      if(op === '-'){ operand = rint(1,9); result = ((digit - operand) % 10 + 10) % 10; break; }
+      if(op === '*'){ operand = rint(2,9); result = (digit * operand) % 10; break; }
+    }
+    rules.push({ digit, op, operand, result, color: colors[i] });
+  }
+  return { rules, answer: rules.map(r => r.result).join('') };
+}
+function opSymbol(op){ return op === '*' ? '×' : op === '/' ? '÷' : op; }
+
+/* ---------- Game state ---------- */
+const G = {
+  diff:'easy', mode:'practice', session:'rounds',
+  round:null, nDigits:0, answerDigits:[], activeTile:0,
+  roundIndex:0, score:0, correctCount:0, attempts:0, streak:0, bestStreak:0,
+  ansStartTs:0, memTimer:null, sessionTimer:null,
+  sessionEndsAt:0, memEndsAt:0, _helpReturn:'screen-menu'
+};
+
+/* ---------- Safe storage ---------- */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+
+/* ---------- DOM helpers ---------- */
+const $ = id => document.getElementById(id);
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+/* ---------- Theme — STYLE_GUIDE.md §2 ----------
+   Icons swap via CSS on [data-theme]; JS only sets the attribute and the label.
+   Persisted under the game's existing key, memomath_theme. */
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  $('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+}
+(function initTheme(){
+  applyTheme(store.get('memomath_theme') === 'light' ? 'light' : 'dark');
+})();
+$('theme-btn').addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  store.set('memomath_theme', next);
+});
+
+/* ---------- Menu selectors ---------- */
+function bindPills(groupId, key, onChange){
+  $(groupId).addEventListener('click', e => {
+    const btn = e.target.closest('.pill'); if(!btn) return;
+    [...$(groupId).children].forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    G[key] = btn.dataset[Object.keys(btn.dataset)[0]];
+    if(onChange) onChange();
+  });
+}
+bindPills('diffGroup', 'diff', updateBest);
+bindPills('modeGroup', 'mode', () => {
+  $('sessionField').style.display = G.mode === 'competition' ? '' : 'none';
+  updateBest();
+});
+bindPills('sessionGroup', 'session', updateBest);
+
+function bestKey(){ return `memomath_best_${G.diff}_${G.session}`; }
+function getBest(){ const v = store.get(bestKey()); return v ? parseInt(v,10) : 0; }
+function updateBest(){
+  if(G.mode !== 'competition'){ $('bestPanel').style.display = 'none'; return; }
+  $('bestPanel').style.display = '';
+  const best = getBest();
+  const sLabel = SESSIONS[G.session].label;
+  const unit = G.session === 'streak' ? (best === 1 ? 'round' : 'rounds') : 'pts';
+  $('bestText').innerHTML = best > 0
+    ? `<b style="color:var(--accent); font-size:20px;">${best}</b> ${unit} &nbsp;·&nbsp; ${DIFFS[G.diff].label} / ${sLabel}`
+    : `No best yet for ${DIFFS[G.diff].label} / ${sLabel}`;
+}
+
+/* ---------- Full rules (§3 — the menu card is the summary, this is the manual) ---------- */
+function openHowto(){
+  const here = document.querySelector('.screen.active');
+  if(here && here.id !== 'screen-howto') G._helpReturn = here.id;
+  showScreen('screen-howto');
+}
+$('btnHelp').addEventListener('click', openHowto);
+$('btnHowtoOpen').addEventListener('click', openHowto);
+$('btnHowtoBack').addEventListener('click', () => showScreen(G._helpReturn || 'screen-menu'));
+
+/* ---------- Start / countdown ---------- */
+$('btnPlay').addEventListener('click', startSession);
+function startSession(){
+  hubReportPlay();          // §12 — count this play on the hub
+  G.roundIndex = 0; G.score = 0; G.correctCount = 0; G.attempts = 0; G.streak = 0; G.bestStreak = 0;
+  if(G.mode === 'competition' && G.session === 'timed'){ G.sessionEndsAt = Date.now() + SESSIONS.timed.seconds * 1000; }
+  beginRound();
+}
+function beginRound(){
+  if(G.mode === 'competition' && G.session === 'timed' && Date.now() >= G.sessionEndsAt){ endSession(); return; }
+  G.round = generateRound(G.diff);
+  G.nDigits = G.round.rules.length;
+  runCountdown(enterMemorize);
+}
+function runCountdown(done){
+  showScreen('screen-countdown');
+  const el = $('countdownNum');
+  const seq = ['3','2','1','GO'];
+  let i = 0; el.textContent = seq[0];
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'pop .5s ease';
+  const tick = () => {
+    i++;
+    if(i < seq.length){
+      el.textContent = seq[i];
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'pop .5s ease';
+      setTimeout(tick, i === seq.length - 1 ? 500 : 700);
+    } else setTimeout(done, 250);
+  };
+  setTimeout(tick, 700);
+}
+
+/* ---------- Memorize phase ---------- */
+function enterMemorize(){
+  showScreen('screen-memorize');
+  updateHud('memHudLeft', 'memHudRight');
+  const grid = $('memGrid');
+  grid.style.gridTemplateColumns = `repeat(${colsFor(G.nDigits)}, 1fr)`;
+  grid.innerHTML = '';
+  G.round.rules.forEach(r => {
+    const t = document.createElement('div');
+    t.className = 'mem-tile';
+    t.style.background = r.color.hex; t.style.color = r.color.text;
+    t.textContent = r.digit;
+    grid.appendChild(t);
+  });
+  const durMs = DIFFS[G.diff].memTime * 1000;
+  G.memEndsAt = Date.now() + durMs;
+  const fill = $('memTimerFill');
+  fill.style.transition = 'none'; fill.style.width = '100%'; void fill.offsetWidth;
+  fill.style.transition = `width ${durMs}ms linear`; fill.style.width = '0%';
+  clearInterval(G.memTimer);
+  G.memTimer = setInterval(() => { if(Date.now() >= G.memEndsAt){ clearInterval(G.memTimer); enterAnswer(); } }, 60);
+}
+$('btnSkipMem').addEventListener('click', () => { clearInterval(G.memTimer); enterAnswer(); });
+
+/* ---------- Answer phase (hidden digits, op-labelled coloured tiles) ---------- */
+function enterAnswer(){
+  showScreen('screen-answer');
+  G.ansStartTs = Date.now();
+  G.answerDigits = new Array(G.nDigits).fill(null);
+  G.activeTile = 0;
+  updateHud('ansHudLeft', 'ansHudRight');
+
+  const grid = $('ansGrid');
+  grid.style.gridTemplateColumns = `repeat(${colsFor(G.nDigits)}, 1fr)`;
+  grid.innerHTML = '';
+  G.round.rules.forEach((r, i) => {
+    const t = document.createElement('button');
+    t.className = 'ans-tile';
+    t.style.background = r.color.hex; t.style.color = r.color.text;
+    t.dataset.idx = i;
+    t.innerHTML = `<span class="ans-op">${r.digit === undefined ? '' : opSymbol(r.op) + ' ' + r.operand}</span>`
+      + `<span class="ans-val empty"></span>`;
+    t.addEventListener('click', () => setActive(i));
+    grid.appendChild(t);
+  });
+  buildPad();
+  refreshTiles();
+}
+
+function setActive(i){ G.activeTile = i; refreshTiles(); }
+
+function refreshTiles(){
+  const tiles = $('ansGrid').children;
+  for(let i = 0; i < tiles.length; i++){
+    const val = tiles[i].querySelector('.ans-val');
+    const d = G.answerDigits[i];
+    if(d === null){ val.textContent = ''; val.classList.add('empty'); }
+    else { val.textContent = d; val.classList.remove('empty'); }
+    tiles[i].classList.toggle('active', i === G.activeTile);
+  }
+  const sub = $('padSubmit');
+  if(sub) sub.disabled = G.answerDigits.some(d => d === null);
+}
+
+function enterDigit(d){
+  G.answerDigits[G.activeTile] = d;
+  // advance to next empty tile (wrap), else stay
+  let next = -1;
+  for(let k = 1; k <= G.nDigits; k++){
+    const idx = (G.activeTile + k) % G.nDigits;
+    if(G.answerDigits[idx] === null){ next = idx; break; }
+  }
+  if(next !== -1) G.activeTile = next;
+  refreshTiles();
+}
+function deleteDigit(){
+  if(G.answerDigits[G.activeTile] !== null){ G.answerDigits[G.activeTile] = null; }
+  else if(G.activeTile > 0){ G.activeTile--; G.answerDigits[G.activeTile] = null; }
+  refreshTiles();
+}
+
+function buildPad(){
+  const pad = $('numPad'); pad.innerHTML = '';
+  const layout = ['1','2','3','4','5','6','7','8','9','del','0','ok'];
+  layout.forEach(k => {
+    const b = document.createElement('button');
+    if(k === 'del'){ b.className = 'pad-del'; b.textContent = '⌫'; b.onclick = deleteDigit; }
+    else if(k === 'ok'){ b.className = 'pad-submit'; b.id = 'padSubmit'; b.textContent = 'Enter'; b.onclick = submitAnswer; }
+    else { b.textContent = k; b.onclick = () => enterDigit(k); }
+    pad.appendChild(b);
+  });
+}
+
+/* keyboard (desktop) */
+document.addEventListener('keydown', e => {
+  if(!$('screen-answer').classList.contains('active')) return;
+  if(e.key >= '0' && e.key <= '9'){ enterDigit(e.key); }
+  else if(e.key === 'Backspace'){ e.preventDefault(); deleteDigit(); }
+  else if(e.key === 'Enter'){ if(!G.answerDigits.some(d => d === null)) submitAnswer(); }
+  else if(e.key === 'ArrowRight'){ G.activeTile = (G.activeTile + 1) % G.nDigits; refreshTiles(); }
+  else if(e.key === 'ArrowLeft'){ G.activeTile = (G.activeTile - 1 + G.nDigits) % G.nDigits; refreshTiles(); }
+});
+
+/* ---------- Submit / result ---------- */
+function submitAnswer(){
+  if(G.answerDigits.some(d => d === null)) return;
+  const entered = G.answerDigits.join('');
+  const sec = (Date.now() - G.ansStartTs) / 1000;
+  const correct = entered === G.round.answer;
+  G.attempts++;
+  let earned = 0;
+  // G.bestStreak is the high-water mark: the miss below resets G.streak to 0, and a
+  // Streak session ends on that very miss, so endSession() must not read G.streak.
+  if(correct){ G.correctCount++; G.streak++; if(G.streak > G.bestStreak) G.bestStreak = G.streak; if(G.mode === 'competition'){ earned = roundPoints(G.diff, sec); G.score += earned; } }
+  else { G.streak = 0; }
+  showResult(correct, earned, entered);
+}
+
+function showResult(correct, earned, entered){
+  showScreen('screen-result');
+  const banner = $('resultBanner');
+  banner.className = 'result-banner ' + (correct ? 'ok' : 'no');
+  banner.textContent = correct ? (G.mode === 'competition' ? `Correct!  +${earned}` : 'Correct!') : 'Not quite';
+
+  $('yourAnswerLine').innerHTML = correct
+    ? `Answer: <b style="color:var(--correct)">${G.round.answer}</b>`
+    : `You entered <b style="color:var(--wrong)">${entered}</b> · answer was <b style="color:var(--correct)">${G.round.answer}</b>`;
+
+  const sol = $('solutionList'); sol.innerHTML = '';
+  G.round.rules.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'sol-row';
+    row.innerHTML = `<span class="sw" style="background:${r.color.hex}"></span>`
+      + `<span>${r.color.name}: ${r.digit} ${opSymbol(r.op)} ${r.operand}</span>`
+      + `<span class="digit-out" style="color:${r.color.hex}">${r.result}</span>`;
+    sol.appendChild(row);
+  });
+
+  const actions = $('resultActions'); actions.innerHTML = '';
+  const endsSession =
+    (G.mode === 'competition' && G.session === 'streak' && !correct) ||
+    (G.mode === 'competition' && G.session === 'rounds' && (G.roundIndex + 1) >= SESSIONS.rounds.totalRounds) ||
+    (G.mode === 'competition' && G.session === 'timed' && Date.now() >= G.sessionEndsAt);
+
+  if(G.mode === 'practice'){
+    actions.appendChild(mkBtn('Next round', 'big-btn', beginRound));
+    actions.appendChild(mkBtn('Menu', 'ghost-btn', backToMenu));
+  } else if(endsSession){
+    actions.appendChild(mkBtn('See results', 'big-btn', endSession));
+  } else {
+    actions.appendChild(mkBtn('Next round', 'big-btn', () => { G.roundIndex++; beginRound(); }));
+  }
+}
+function mkBtn(text, cls, fn){ const b = document.createElement('button'); b.className = cls; b.textContent = text; b.onclick = fn; return b; }
+
+/* ---------- End session / summary ---------- */
+function endSession(){
+  clearInterval(G.sessionTimer);
+  showScreen('screen-summary');
+  let scoreVal, scoreLabel, unit;
+  // Read the high-water mark, not G.streak — the run-ending miss already zeroed
+  // G.streak, which used to make memomath_best_*_streak save 0 every time.
+  if(G.session === 'streak'){ scoreVal = G.bestStreak; scoreLabel = 'Best streak'; unit = 'rounds'; }
+  else { scoreVal = G.score; scoreLabel = 'Total score'; unit = 'pts'; }
+  $('sumScore').textContent = scoreVal;
+  $('sumScoreLabel').textContent = scoreLabel;
+
+  const prevBest = getBest();
+  const isBest = scoreVal > prevBest && scoreVal > 0;
+  if(isBest) store.set(bestKey(), String(scoreVal));
+  $('sumBestFlag').style.display = isBest ? '' : 'none';
+
+  const stats = $('sumStats'); stats.innerHTML = '';
+  const acc = G.attempts ? Math.round(100 * G.correctCount / G.attempts) : 0;
+  [['Correct', G.correctCount],['Attempts', G.attempts],['Accuracy', acc + '%'],['Difficulty', DIFFS[G.diff].label]]
+    .forEach(([l,v]) => { const box = document.createElement('div'); box.className = 'stat-box'; box.innerHTML = `<div class="v">${v}</div><div class="l">${l}</div>`; stats.appendChild(box); });
+
+  const shownBest = Math.max(prevBest, scoreVal);
+  $('sumBestLine').innerHTML = `Personal best (${DIFFS[G.diff].label} / ${SESSIONS[G.session].label}): <b style="color:var(--accent)">${shownBest} ${unit}</b>`;
+}
+$('btnPlayAgain').addEventListener('click', startSession);
+$('btnSumMenu').addEventListener('click', backToMenu);
+
+/* ---------- HUD ---------- */
+function updateHud(leftId, rightId){
+  let left, right = '';
+  if(G.mode === 'practice'){ left = 'Practice'; right = DIFFS[G.diff].label; }
+  else {
+    if(G.session === 'timed'){ left = `Timed · ${DIFFS[G.diff].label}`; startTimedHud(rightId); $(leftId).innerHTML = left; return; }
+    left = `${SESSIONS[G.session].label} · ${DIFFS[G.diff].label}`;
+    if(G.session === 'rounds') right = `Round <b>${G.roundIndex + 1}</b>/10`;
+    else if(G.session === 'streak') right = `Streak <b>${G.streak}</b>`;
+  }
+  $(leftId).innerHTML = left; $(rightId).innerHTML = right;
+}
+function startTimedHud(rightId){
+  clearInterval(G.sessionTimer);
+  const upd = () => {
+    const remain = Math.max(0, Math.ceil((G.sessionEndsAt - Date.now())/1000));
+    $(rightId).innerHTML = `⏱ <b>${remain}s</b> · ${G.score}`;
+    if(remain <= 0) clearInterval(G.sessionTimer);
+  };
+  upd(); G.sessionTimer = setInterval(upd, 250);
+}
+
+/* ---------- Exit modal ---------- */
+function backToMenu(){ clearInterval(G.memTimer); clearInterval(G.sessionTimer); showScreen('screen-menu'); updateBest(); }
+
+/* init */
+updateBest();
+</script>
+</body>
+</html>

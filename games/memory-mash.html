@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Memory Mash</title>
+<style>
+  /* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+     Dark is the default (<html data-theme="dark">). Memory Mash keeps its own
+     pink + yellow identity; light mode uses darker, more saturated variants of
+     both so they still carry against a near-white ground.
+
+     The six category hues (--pink/--teal/--purple/--navy/--yellow/--cyan) are
+     referenced by name from the LEVELS table and double as full-bleed board
+     fills with white-tinted cells sitting on top, so each light variant is
+     DEEPENED rather than lightened — a pale board would lose the cells.
+
+     --on-accent / --on-accent-2 are the text colours that sit on a pink /
+     yellow fill. §6's literal "white text" is wrong for a pale yellow
+     (white on #f4b91e is ~1.8:1), so the suite's --on-accent convention is
+     used here too. */
+  :root{
+    /* non-themed geometry */
+    --radius:18px;
+    --tap:48px;
+  }
+  :root[data-theme="dark"]{
+    --bg:#1a1330;
+    --bg-2:#2a1d55;
+    --panel:#241a44;
+    --panel-2:#2e2255;
+    --ink:#f4f1ff;
+    --muted:#a99fd6;
+    --line:#3d2f6b;
+
+    /* category hues — also the two brand accents */
+    --pink:#ff4d94;
+    --yellow:#f4b91e;
+    --navy:#2b3a8f;
+    --cyan:#22c1c3;
+    --teal:#1fa66a;
+    --purple:#8b5cf6;
+
+    --accent:var(--pink);
+    --accent-2:var(--yellow);
+    /* kept faint on purpose: the selected pill draws its accent text on this
+       fill, and a heavier tint pushes pink-on-pink under 4.5:1. The accent
+       border + inset ring carry the selected state. */
+    --accent-tint:rgba(255,77,148,.08);
+    --accent-2-tint:rgba(244,185,30,.20);
+    --on-accent:#ffffff;
+    --on-accent-2:#2a1230;
+
+    --good:#37d67a;
+    --bad:#ff5c6c;
+    --warn:#f0a83c;
+    --shadow:rgba(0,0,0,.42);
+  }
+  :root[data-theme="light"]{
+    --bg:#f5f2fc;
+    --bg-2:#e6dff8;
+    --panel:#ffffff;
+    --panel-2:#f3effc;
+    --ink:#221942;
+    --muted:#575083;
+    --line:#dbd2ef;
+
+    --pink:#c4185f;
+    --yellow:#8f6104;
+    --navy:#233795;
+    --cyan:#0a7375;
+    --teal:#0f6b45;
+    --purple:#6335d6;
+
+    --accent:var(--pink);
+    --accent-2:var(--yellow);
+    --accent-tint:rgba(196,24,95,.13);
+    --accent-2-tint:rgba(143,97,4,.15);
+    --on-accent:#ffffff;
+    --on-accent-2:#ffffff;
+
+    --good:#0f7a45;
+    --bad:#c32636;
+    --warn:#a05e05;
+    --shadow:rgba(45,25,85,.14);
+  }
+
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  button{font-family:inherit;touch-action:manipulation}
+  body{
+    background:
+      radial-gradient(120% 90% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%) fixed;
+    color:var(--ink);
+    /* §4 — system stack only, no external font */
+    font-family:'Segoe UI', Arial, sans-serif;
+    min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+    transition:background .25s, color .25s;
+  }
+
+  /* §5 — the menu reads at the shared 720px width; the play screens keep the
+     narrower 520px shell the board/bank grids were laid out for.
+     The top padding clears the fixed theme toggle (§2) on every screen — the
+     gameplay Quit buttons sit in that same corner. */
+  .app{
+    width:100%;max-width:720px;margin:0 auto;
+    padding:calc(56px + env(safe-area-inset-top)) 16px calc(env(safe-area-inset-bottom) + 16px);
+    display:flex;flex-direction:column;min-height:100dvh;
+  }
+  #home{width:100%;max-width:720px;margin:0 auto}
+  #ready,#memorise,#recall,#missing,#results,#leaderboard{width:100%;max-width:520px;margin:0 auto}
+
+  /* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+  .theme-toggle{
+    position:fixed;top:calc(16px + env(safe-area-inset-top));right:16px;
+    background:var(--panel);border:1px solid var(--line);border-radius:50px;
+    padding:6px 14px;cursor:pointer;display:flex;align-items:center;gap:7px;
+    font-size:13px;font-family:'Consolas','Courier New',monospace;color:var(--muted);
+    transition:all .15s;z-index:200;user-select:none;
+  }
+  .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+  .theme-toggle .toggle-icon{display:inline-flex}
+  .theme-toggle .icon-moon{display:none}
+  :root[data-theme="light"] .theme-toggle .icon-sun{display:none}
+  :root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex}
+
+  /* ── LOGO BLOCK — §3 (icon, h1, subtitle, then How to Play, then settings) ── */
+  .logo{text-align:center;padding:0 0 2px}
+  .logo-icon{display:flex;justify-content:center;align-items:center;margin:0 auto 8px;color:var(--accent);width:32px;height:32px}
+  .logo h1{font-size:28px;margin:0;line-height:1.15;font-weight:900;letter-spacing:.8px;color:var(--ink)}
+  .logo h1 .m2{color:var(--accent)}
+  .subtitle{color:var(--muted);font-size:14px;margin:6px 0 16px;line-height:1.45}
+
+  /* secondary headings on the ready / leaderboard screens */
+  .brand{text-align:center;padding:8px 0}
+  .brand h1{font-size:24px;margin:0;line-height:1.2;font-weight:900;letter-spacing:.5px;color:var(--ink)}
+  .brand .tag{color:var(--muted);font-size:14px;margin-top:6px;font-weight:600;letter-spacing:.3px}
+
+  /* ── HOW TO PLAY — §3. Always visible on the menu, never collapsed. ── */
+  .howto-box{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:18px 20px;margin-bottom:14px;text-align:left;box-shadow:0 10px 30px var(--shadow);
+  }
+  .howto-box .howto-title{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;color:var(--accent);font-weight:800;margin-bottom:10px}
+  .howto-box p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 8px}
+  .howto-box p:last-child{margin-bottom:0}
+  .howto-box strong{color:var(--ink)}
+
+  .card{
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin-bottom:14px;box-shadow:0 10px 30px var(--shadow);
+  }
+  .label{font-size:13px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);font-weight:800;margin-bottom:10px}
+
+  /* §6 — choice buttons: unselected = surface + border + muted;
+     selected = accent-tinted fill with accent border. */
+  .seg{display:flex;gap:8px}
+  .seg button{
+    flex:1;min-height:var(--tap);border:1px solid var(--line);background:var(--panel-2);
+    color:var(--muted);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;
+    transition:transform .08s ease,background .15s,border-color .15s,color .15s;
+  }
+  .seg button:hover{border-color:var(--accent);color:var(--ink)}
+  .seg button:active{transform:scale(.97)}
+  .seg button[aria-pressed="true"]{background:var(--accent-tint);border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .lvl{
+    min-height:var(--tap);border:1px solid var(--line);background:var(--panel-2);color:var(--muted);
+    border-radius:12px;cursor:pointer;font-weight:700;font-size:13px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:2px;
+    padding:8px 4px;transition:transform .08s,border-color .15s,background .15s,color .15s;
+  }
+  .lvl:hover{border-color:var(--catcolor,var(--accent))}
+  .lvl:active{transform:scale(.97)}
+  .lvl small{font-size:11px;color:var(--muted);font-weight:700;line-height:1.2}
+  /* the selected tile keeps --ink text: several category hues (navy, teal) are
+     too dark to read as text on their own tint in dark mode. */
+  .lvl[aria-pressed="true"]{color:var(--ink);border-color:var(--catcolor,var(--accent));background:color-mix(in srgb,var(--catcolor,var(--accent)) 20%,var(--panel-2));box-shadow:0 0 0 1px color-mix(in srgb,var(--catcolor,var(--accent)) 45%,transparent) inset}
+  .lvl[aria-pressed="true"] small{color:var(--ink)}
+  .lvl .num{font-size:15px;font-weight:900}
+
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .row + .row{margin-top:12px}
+  .row .name{font-size:14px;font-weight:700;color:var(--ink)}
+  .row .name small{display:block;color:var(--muted);font-weight:600;font-size:12px;margin-top:2px}
+
+  .switch{position:relative;width:58px;height:32px;flex:0 0 auto}
+  .switch input{opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .switch .track{position:absolute;inset:0;background:var(--panel-2);border:1px solid var(--line);border-radius:20px;transition:.2s;pointer-events:none}
+  /* fixed white thumb + hairline so it stays visible on a near-white light
+     track as well as on the purple checked track */
+  .switch .thumb{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.14);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s;pointer-events:none}
+  .switch input:checked + .track{background:linear-gradient(135deg,var(--purple),color-mix(in srgb,var(--purple) 65%,#fff));border-color:transparent}
+  .switch input:checked + .track + .thumb{left:31px}
+
+  .stepper{display:flex;align-items:center;gap:8px}
+  .stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--panel-2);color:var(--ink);font-size:20px;font-weight:800;cursor:pointer;transition:border-color .15s,color .15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent)}
+  .stepper button:active{transform:scale(.94)}
+  .stepper .val{min-width:58px;text-align:center;font-weight:800;font-size:16px}
+  .stepper .val b{font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums;color:var(--ink)}
+  .stepper .val small{color:var(--muted);font-size:11px;display:block;font-weight:700;font-family:'Segoe UI',Arial,sans-serif}
+  .disabled{opacity:.4;pointer-events:none}
+
+  /* §6 — primary CTA: solid accent fill, --on-accent text, 14px radius,
+     hover = brightness lift + translateY(-1px). */
+  .cta{
+    margin-top:auto;
+    width:100%;min-height:56px;border:none;border-radius:14px;cursor:pointer;
+    font-size:16px;font-weight:800;letter-spacing:.3px;
+    color:var(--on-accent-2);background:var(--accent-2);
+    box-shadow:0 8px 24px var(--shadow);
+    transition:filter .15s, transform .15s, border-color .15s, color .15s;
+  }
+  .cta:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .cta:active{transform:translateY(0) scale(.98)}
+  .cta.secondary{background:var(--panel-2);color:var(--muted);border:1px solid var(--line);box-shadow:none;font-weight:700;font-size:16px;min-height:52px}
+  .cta.secondary:hover{filter:none;border-color:var(--accent);color:var(--accent)}
+
+  /* screens */
+  .screen{display:none;flex-direction:column;flex:1}
+  .screen.active{display:flex}
+
+  .phase-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 12px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:6px 12px;border-radius:999px;font-size:13px;font-weight:800}
+  .pill .dot{width:9px;height:9px;border-radius:50%;background:var(--catcolor,var(--accent));flex:0 0 auto}
+  .ghost{background:none;border:none;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;padding:8px;border-radius:10px;transition:color .15s}
+  .ghost:hover{color:var(--accent)}
+
+  /* Confirm modal — STYLE_GUIDE.md §15, styled per §6 */
+  .modal-scrim{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:300;
+    display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-scrim.open{display:flex}
+  .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:24px;max-width:380px;width:100%;text-align:center;box-shadow:0 18px 40px var(--shadow)}
+  .modal-card h3{margin:0 0 8px;font-size:18px;color:var(--ink)}
+  .modal-card p{margin:0 0 20px;font-size:14px;line-height:1.6;color:var(--muted)}
+  .modal-actions{display:flex;gap:10px}
+  .modal-actions .cta{flex:1;margin:0}
+
+  .timerbar{height:8px;border-radius:8px;background:var(--panel-2);overflow:hidden;margin-bottom:10px;border:1px solid var(--line)}
+  .timerbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--good),var(--warn),var(--bad));transition:width 1s linear}
+  .clock{text-align:center;font-size:15px;font-weight:800;margin-bottom:10px;color:var(--muted)}
+  .clock b{color:var(--ink);font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums}
+
+  .board{
+    background:var(--catcolor,var(--accent));border-radius:var(--radius);
+    padding:14px;display:grid;gap:10px;
+    grid-template-columns:repeat(auto-fill,minmax(64px,1fr));
+    align-content:start;
+  }
+  .board .cell{
+    aspect-ratio:1;background:rgba(255,255,255,.16);border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:clamp(26px,8vw,38px);
+    user-select:none;transition:transform .12s,background .15s;
+  }
+  .board .cell.blank{background:rgba(0,0,0,.28);cursor:pointer;position:relative}
+  .board .cell.blank::after{content:"?";font-size:26px;color:rgba(255,255,255,.5);font-weight:900}
+  .board .cell.blank.picked{background:rgba(255,255,255,.16)}
+  .board .cell.blank.picked::after{content:none}
+  .board .cell.tapok{transform:scale(1.06)}
+
+  .instruction{text-align:center;font-size:14px;font-weight:700;color:var(--muted);margin:14px 0 10px;line-height:1.45}
+
+  .bank{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+  .bank .opt{
+    aspect-ratio:1;border:1px solid var(--line);background:var(--panel);border-radius:12px;
+    font-size:clamp(24px,7vw,32px);display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:transform .08s,border-color .15s,background .15s;
+  }
+  .bank .opt:hover{border-color:var(--accent-2)}
+  .bank .opt:active{transform:scale(.94)}
+  .bank .opt.sel{border-color:var(--accent-2);background:var(--accent-2-tint);box-shadow:0 0 0 1px var(--accent-2) inset}
+  .bank .opt.sel::after{content:"✓";position:absolute}
+  .bank-wrap{position:relative}
+  .bank .opt{position:relative}
+  .bank .opt.sel .badge{position:absolute;top:2px;right:4px;font-size:12px;color:var(--accent-2);font-weight:900}
+
+  .selcount{text-align:center;color:var(--muted);font-size:13px;font-weight:700;margin:12px 0 8px}
+
+  /* results */
+  .scorebig{text-align:center;padding:18px 0 6px}
+  .scorebig .n{font-size:64px;font-weight:900;line-height:1;color:var(--accent);font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums}
+  .scorebig .of{color:var(--muted);font-weight:700;font-size:15px;margin-top:4px}
+  .breakdown{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:8px;margin-top:8px}
+  .breakdown .b{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:26px;position:relative;border:1px solid var(--line)}
+  .breakdown .b.hit{background:color-mix(in srgb,var(--good) 22%,var(--panel));border-color:color-mix(in srgb,var(--good) 55%,transparent)}
+  .breakdown .b.miss{background:color-mix(in srgb,var(--bad) 18%,var(--panel));border-color:color-mix(in srgb,var(--bad) 50%,transparent)}
+  .breakdown .b .mk{position:absolute;bottom:1px;right:3px;font-size:11px;font-weight:900}
+  .breakdown .b.hit .mk{color:var(--good)}
+  .breakdown .b.miss .mk{color:var(--bad)}
+  .legend{display:flex;gap:16px;justify-content:center;color:var(--muted);font-size:12px;font-weight:700;margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  /* leaderboard */
+  .lb{list-style:none;margin:0;padding:0}
+  .lb li{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid var(--line);font-size:14px}
+  .lb li:last-child{border-bottom:none}
+  .lb .rank{width:26px;height:26px;border-radius:8px;background:var(--panel-2);color:var(--ink);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;flex:0 0 auto}
+  .lb li.best .rank{background:var(--accent-2);color:var(--on-accent-2)}
+  .lb .meta{flex:1;min-width:0}
+  .lb .meta b{font-weight:800}
+  .lb .meta small{display:block;color:var(--muted);font-size:12px}
+  .lb .sc{font-weight:900;font-size:16px;font-family:'Consolas','Courier New',monospace;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted);text-align:center;padding:24px 0;font-weight:600;line-height:1.6}
+
+  .foot{text-align:center;color:var(--muted);font-size:11px;padding:14px 0 4px;opacity:.8;line-height:1.5}
+
+  /* ── MOBILE — §9 ── */
+  @media (max-width:520px){
+    .app{padding-left:12px;padding-right:12px;padding-top:calc(52px + env(safe-area-inset-top))}
+    .logo h1{font-size:22px}
+    .subtitle{font-size:13px;margin:5px 0 14px}
+    .howto-box{padding:14px 16px}
+    .howto-box p{font-size:12.5px}
+    .card{padding:14px}
+    .brand h1{font-size:21px}
+    .brand .tag{font-size:13px}
+    .theme-toggle{font-size:12px;padding:5px 11px}
+    .scorebig .n{font-size:54px}
+    .board{padding:12px;gap:8px;grid-template-columns:repeat(auto-fill,minmax(58px,1fr))}
+    .bank{grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}
+  }
+  @media (max-width:380px){
+    :root{--tap:44px}
+    .logo h1{font-size:19px;letter-spacing:.4px}
+    .brand h1{font-size:19px}
+    .theme-toggle{padding:5px 9px;gap:5px}
+    .howto-box{padding:13px 14px}
+    .card{padding:12px}
+    .board{padding:10px;gap:7px;grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}
+    .bank{gap:7px;grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
+    .breakdown{grid-template-columns:repeat(auto-fill,minmax(46px,1fr))}
+    .lvl small{font-size:10px}
+    .row .name{font-size:13px}
+    .stepper{gap:6px}
+    .stepper button{width:34px;height:34px;font-size:18px}
+    .stepper .val{min-width:50px;font-size:15px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<!-- Theme toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="app">
+
+  <!-- ============ HOME ============ -->
+  <section class="screen active" id="home">
+    <!-- §3 — icon, h1, subtitle, then the always-visible How to Play card -->
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.6" height="7.6" rx="2.2"/><rect x="13.4" y="3" width="7.6" height="7.6" rx="2.2"/><rect x="3" y="13.4" width="7.6" height="7.6" rx="2.2"/><rect x="13.4" y="13.4" width="7.6" height="7.6" rx="2.2" stroke-dasharray="2.4 2.6"/></svg></span>
+      <h1>Memory <span class="m2">Mash</span></h1>
+      <div class="subtitle">Study the board, then recall what was on it</div>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>A board of items appears. Memorise as many of them as you can before it goes.</p>
+      <p>In <strong>How Many?</strong> the whole board hides, and you tap every item you saw from a mixed bank of options.</p>
+      <p>In <strong>What's Missing?</strong> a few items vanish from the board — tap each gap and pick what used to be there.</p>
+      <p>One point per correct item. <strong>Competition mode</strong> adds fixed timers and gives you a single attempt.</p>
+    </div>
+
+    <div class="card">
+      <div class="label">Mode</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="A" aria-pressed="true">🔢 How Many?</button>
+        <button data-mode="B" aria-pressed="false">🔍 What's Missing?</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Level &amp; Category</div>
+      <div class="levels" id="levelGrid"></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="name">Competition mode
+          <small id="fmtDesc">Off — self-paced practice, retries allowed</small>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="compToggle">
+          <span class="track"></span><span class="thumb"></span>
+        </label>
+      </div>
+
+      <div class="row" id="memRow">
+        <div class="name">Memorise time</div>
+        <div class="stepper" data-key="mem">
+          <button data-d="-1">−</button>
+          <span class="val"><b id="memVal">60</b><small>seconds</small></span>
+          <button data-d="1">+</button>
+        </div>
+      </div>
+      <div class="row" id="recRow">
+        <div class="name">Answer time</div>
+        <div class="stepper" data-key="rec">
+          <button data-d="-1">−</button>
+          <span class="val"><b id="recVal">40</b><small>seconds</small></span>
+          <button data-d="1">+</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="cta" id="startBtn">Start</button>
+    <button class="cta secondary" id="lbBtn" style="margin-top:10px">View session scores</button>
+    <div class="foot">Based on the Memory Mash card game · a Kim's-Game recall challenge</div>
+  </section>
+
+  <!-- ============ READY ============ -->
+  <section class="screen" id="ready">
+    <div class="phase-head">
+      <button class="ghost" id="readyBack">‹ Back</button>
+      <span class="pill"><span class="dot"></span><span id="readyPill"></span></span>
+    </div>
+    <div class="brand" style="padding-top:8px">
+      <h1 id="readyCat"></h1>
+      <div class="tag" id="readyMode"></div>
+    </div>
+    <!-- §3 — the general rules live on the menu; this card is only the
+         round-specific brief (item count, timers, this level's category). -->
+    <div class="card" style="margin-top:8px">
+      <div class="label">This round</div>
+      <div id="readyRules" style="font-size:14px;line-height:1.55;color:var(--ink)"></div>
+    </div>
+    <button class="cta" id="goBtn">I'm ready — show the board</button>
+  </section>
+
+  <!-- ============ MEMORISE ============ -->
+  <section class="screen" id="memorise">
+    <div class="phase-head">
+      <span class="pill"><span class="dot"></span>Memorise</span>
+      <button class="ghost" id="memQuit">Quit</button>
+    </div>
+    <div id="memTimerWrap">
+      <div class="timerbar"><i id="memBar"></i></div>
+      <div class="clock">Board hides in <b id="memClock">60</b>s</div>
+    </div>
+    <div class="board" id="memBoard"></div>
+    <button class="cta" id="doneMem" style="margin-top:16px">Done memorising ›</button>
+  </section>
+
+  <!-- ============ RECALL (Mode A) ============ -->
+  <section class="screen" id="recall">
+    <div class="phase-head">
+      <span class="pill"><span class="dot"></span>Recall</span>
+      <button class="ghost" id="recQuit">Quit</button>
+    </div>
+    <div id="recTimerWrap">
+      <div class="timerbar"><i id="recBar"></i></div>
+      <div class="clock">Time left <b id="recClock">40</b>s</div>
+    </div>
+    <div class="instruction">Tap every item you saw on the board.</div>
+    <div class="bank-wrap"><div class="bank" id="recBank"></div></div>
+    <div class="selcount" id="recSel">0 selected</div>
+    <button class="cta" id="submitRecall">Check answers</button>
+  </section>
+
+  <!-- ============ MISSING (Mode B) ============ -->
+  <section class="screen" id="missing">
+    <div class="phase-head">
+      <span class="pill"><span class="dot"></span>What's missing?</span>
+      <button class="ghost" id="misQuit">Quit</button>
+    </div>
+    <div id="misTimerWrap">
+      <div class="timerbar"><i id="misBar"></i></div>
+      <div class="clock">Time left <b id="misClock">40</b>s</div>
+    </div>
+    <div class="instruction" id="misInstr">Some items are gone. Tap a gap, then pick what was there.</div>
+    <div class="board" id="misBoard"></div>
+    <div class="selcount" id="misSel"></div>
+    <div class="bank-wrap"><div class="bank" id="misBank"></div></div>
+    <button class="cta" id="submitMissing" style="margin-top:14px">Check answers</button>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="screen" id="results">
+    <div class="phase-head">
+      <span class="pill"><span class="dot"></span><span id="resPill"></span></span>
+      <span class="ghost" id="resFmt"></span>
+    </div>
+    <div class="scorebig">
+      <div class="n" id="resScore">0</div>
+      <div class="of" id="resOf">out of 0</div>
+    </div>
+    <div class="card">
+      <div class="label" id="resLabel">Your answers</div>
+      <div class="breakdown" id="resBreak"></div>
+      <div class="legend">
+        <span><i style="background:var(--good)"></i>Correct</span>
+        <span><i style="background:var(--bad)"></i>Missed / wrong</span>
+      </div>
+    </div>
+    <button class="cta" id="nextBtn">Next level ›</button>
+    <button class="cta secondary" id="retryBtn" style="margin-top:10px">Try again</button>
+    <button class="cta secondary" id="homeBtn" style="margin-top:10px">Home</button>
+  </section>
+
+  <!-- ============ LEADERBOARD ============ -->
+  <section class="screen" id="leaderboard">
+    <div class="phase-head">
+      <button class="ghost" id="lbBack">‹ Back</button>
+      <span class="pill"><span class="dot"></span>Session scores</span>
+    </div>
+    <div class="brand" style="padding:8px 0"><h1>🏆 Best runs</h1></div>
+    <div class="card"><ul class="lb" id="lbList"></ul></div>
+    <button class="cta secondary" id="lbClear">Clear scores</button>
+  </section>
+
+</div>
+
+<!-- Confirm modal — STYLE_GUIDE.md §15 -->
+<div class="modal-scrim" id="confirmScrim">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Quit this round?</h3>
+    <p id="confirmBody">Your progress will be lost.</p>
+    <div class="modal-actions">
+      <button class="cta secondary" id="confirmCancel">Keep Playing</button>
+      <button class="cta secondary" id="confirmOk" style="color:var(--bad);border-color:var(--bad)">Quit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'memory-mash';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ---------- CONFIG ---------- */
+const LEVELS = [
+  {side:"A",level:1,cat:"Party & Snacks", color:"--pink",  n:8,  miss:2},
+  {side:"A",level:2,cat:"Night & Games",  color:"--teal",  n:10, miss:3},
+  {side:"A",level:3,cat:"Space & Cosmos", color:"--purple",n:12, miss:4},
+  {side:"B",level:1,cat:"Animals",        color:"--navy",  n:8,  miss:2},
+  {side:"B",level:2,cat:"Travel",         color:"--yellow",n:10, miss:3},
+  {side:"B",level:3,cat:"Beach & Toys",   color:"--cyan",  n:12, miss:4},
+];
+const POOLS = {
+  "Party & Snacks":["🍌","🎉","🍗","🎺","⭐","🪭","🪇","🩴","🎈","🍩","🧁","🍭"],
+  "Night & Games":["🌙","🤖","🎮","⏰","🎲","🎀","🥊","🪩","📼","🔑","💡","🃏"],
+  "Space & Cosmos":["🚀","👽","🌠","☀️","🚩","🪐","☄️","🧑‍🚀","🛰️","🛸","🌌","🔭"],
+  "Animals":["🐘","🦒","🦁","🐙","🐠","🐦","🐢","🦓","🐒","🦘","🐊","🦩"],
+  "Travel":["🚌","🧳","📷","🎒","🛂","🗺️","✈️","🕶️","👒","🎫","⛽","🚕"],
+  "Beach & Toys":["🎨","⛑️","🏖️","🦀","⭐","🏐","🪁","🪣","🐚","🧴","🩱","🏄"],
+};
+// distractor bank per pool = the leftover emojis + a few cross-theme ones
+const EXTRA = ["🍎","🎸","🐬","🧩","🎁","🍕","🚲","🌈","🎪","🦉","🍔","🥁","🪀","🧭","🌵","🍉"];
+
+const cfg = {mode:"A", levelIdx:0, comp:false, mem:60, rec:40};
+const MIN={mem:5,rec:5}, MAX={mem:120,rec:90}, STEP=5;
+
+/* ---------- STATE ---------- */
+let boardItems=[], missingItems=[], picks=new Set(), activeGap=null, timer=null, leaderboard=[];
+
+/* ---------- HELPERS ---------- */
+const $=id=>document.getElementById(id);
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;};
+const cur=()=>LEVELS[cfg.levelIdx];
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');window.scrollTo(0,0);}
+
+/* ---------- THEME — STYLE_GUIDE.md §2 ----------
+   The sun/moon icons swap purely via CSS on [data-theme]; JS only sets the
+   attribute and the button label. Persisted under memoryMash_theme, restored
+   on load. Wired with .onclick to match how every other button in this file
+   is wired. */
+const store={
+  get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+};
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme',theme);
+  $('theme-label').textContent = theme==='dark' ? 'Light' : 'Dark';
+}
+function toggleTheme(){
+  const next = document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light';
+  applyTheme(next);
+  store.set('memoryMash_theme',next);
+}
+applyTheme(store.get('memoryMash_theme')==='light' ? 'light' : 'dark');
+$('theme-btn').onclick=toggleTheme;
+
+/* Confirm dialog — STYLE_GUIDE.md §15. onCancel lets callers resume a paused timer. */
+function askConfirm(opts,onOk,onCancel){
+  const scrim=$('confirmScrim'), ok=$('confirmOk'), cancel=$('confirmCancel');
+  $('confirmTitle').textContent=opts.title;
+  $('confirmBody').textContent=opts.body;
+  ok.textContent=opts.okLabel||'Confirm';
+  cancel.textContent=opts.cancelLabel||'Cancel';
+  scrim.classList.add('open');
+  function close(){scrim.classList.remove('open');ok.onclick=cancel.onclick=scrim.onclick=null;document.removeEventListener('keydown',onKey);}
+  function onKey(e){if(e.key==='Escape'){close();onCancel&&onCancel();}}
+  ok.onclick=()=>{close();onOk&&onOk();};
+  cancel.onclick=()=>{close();onCancel&&onCancel();};
+  scrim.onclick=e=>{if(e.target===scrim){close();onCancel&&onCancel();}};
+  document.addEventListener('keydown',onKey);
+}
+function setCatColor(el){el.style.setProperty('--catcolor',`var(${cur().color})`);}
+function stopTimer(){if(timer){clearInterval(timer);timer=null;}}
+
+/* ---------- HOME BUILD ---------- */
+function buildLevels(){
+  const g=$('levelGrid');g.innerHTML='';
+  LEVELS.forEach((L,i)=>{
+    const b=document.createElement('button');
+    b.className='lvl';b.setAttribute('aria-pressed',i===cfg.levelIdx);
+    b.style.setProperty('--catcolor',`var(${L.color})`);
+    b.innerHTML=`<span class="num">${L.side}${L.level}</span><small>${L.cat}</small>`;
+    b.onclick=()=>{cfg.levelIdx=i;buildLevels();};
+    g.appendChild(b);
+  });
+}
+$('modeSeg').querySelectorAll('button').forEach(btn=>{
+  btn.onclick=()=>{
+    cfg.mode=btn.dataset.mode;
+    $('modeSeg').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b===btn));
+  };
+});
+$('compToggle').onchange=e=>{
+  cfg.comp=e.target.checked;
+  $('fmtDesc').textContent=cfg.comp
+    ? 'On — fixed timers, one shot, score is logged'
+    : 'Off — self-paced practice, retries allowed';
+  document.querySelectorAll('[data-key]').forEach(s=>s.classList.toggle('disabled',!cfg.comp));
+};
+document.querySelectorAll('.stepper').forEach(s=>{
+  const key=s.dataset.key;
+  s.querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      let v=cfg[key]+ (parseInt(b.dataset.d)*STEP);
+      v=Math.max(MIN[key],Math.min(MAX[key],v));
+      cfg[key]=v;$(key+'Val').textContent=v;
+    };
+  });
+});
+
+/* ---------- READY ---------- */
+$('startBtn').onclick=()=>{
+  const L=cur();
+  $('readyPill').textContent=`${L.side}${L.level} · ${cfg.comp?'Competition':'Practice'}`;
+  $('readyCat').textContent=L.cat;
+  $('readyMode').textContent=cfg.mode==='A'?'HOW MANY CAN YOU REMEMBER?':"WHAT'S MISSING?";
+  let rules;
+  if(cfg.mode==='A'){
+    rules=`Study the ${L.n} items on the board${cfg.comp?` for ${cfg.mem}s`:''}. Then the board hides and you tap every item you remember from a mixed bank. One point per correct item.`;
+  }else{
+    rules=`Study the ${L.n} items${cfg.comp?` for ${cfg.mem}s`:''}. ${L.miss} of them vanish. Tap each gap and name what was there. One point per correct guess.`;
+  }
+  if(cfg.comp) rules+=` You get ${cfg.rec}s to answer — no peeking back.`;
+  else rules+=` Take your time — you can retry as often as you like.`;
+  $('readyRules').textContent=rules;
+  [$('ready'),$('memorise'),$('recall'),$('missing'),$('results')].forEach(setCatColor);
+  show('ready');
+};
+$('readyBack').onclick=()=>show('home');
+$('goBtn').onclick=startMemorise;
+
+/* ---------- MEMORISE ---------- */
+function startMemorise(){
+  hubReportPlay();          // §12 — count this play on the hub
+  const L=cur();
+  boardItems=shuffle(POOLS[L.cat]).slice(0,L.n);
+  const bd=$('memBoard');bd.innerHTML='';
+  boardItems.forEach(e=>{
+    const c=document.createElement('div');c.className='cell';c.textContent=e;bd.appendChild(c);
+  });
+  $('memTimerWrap').style.display=cfg.comp?'block':'none';
+  show('memorise');
+  stopTimer();
+  if(cfg.comp) runTimer(cfg.mem,$('memBar'),$('memClock'),endMemorise);
+}
+$('doneMem').onclick=()=>{stopTimer();endMemorise();};
+function endMemorise(){cfg.mode==='A'?startRecall():startMissing();}
+
+/* ---------- RECALL (A) ---------- */
+function startRecall(){
+  const L=cur();picks=new Set();
+  // option bank: correct items + distractors (not on board)
+  const poolExtra=POOLS[L.cat].filter(e=>!boardItems.includes(e));
+  const distractCount=Math.min(L.n, poolExtra.length+ EXTRA.length);
+  let distract=shuffle(poolExtra.concat(EXTRA)).slice(0,Math.max(4,Math.round(L.n*0.6)));
+  const opts=shuffle([...boardItems,...distract]);
+  const bank=$('recBank');bank.innerHTML='';
+  opts.forEach(e=>{
+    const o=document.createElement('div');o.className='opt';o.textContent=e;
+    o.onclick=()=>{
+      if(picks.has(o)){picks.delete(o);o.classList.remove('sel');}
+      else{picks.add(o);o.classList.add('sel');}
+      $('recSel').textContent=`${picks.size} selected`;
+    };
+    bank.appendChild(o);
+  });
+  $('recSel').textContent='0 selected';
+  $('recTimerWrap').style.display=cfg.comp?'block':'none';
+  show('recall');
+  stopTimer();
+  if(cfg.comp) runTimer(cfg.rec,$('recBar'),$('recClock'),()=>submitRecall());
+}
+$('submitRecall').onclick=()=>submitRecall();
+function submitRecall(){
+  stopTimer();
+  const chosen=[...picks].map(o=>o.textContent);
+  const correct=boardItems.filter(e=>chosen.includes(e));
+  const wrong=chosen.filter(e=>!boardItems.includes(e));
+  // breakdown: every board item hit/miss, plus false picks flagged
+  const rows=boardItems.map(e=>({e,ok:chosen.includes(e)}));
+  wrong.forEach(e=>rows.push({e,ok:false,false:true}));
+  showResults(correct.length, boardItems.length, rows, 'items you got');
+}
+
+/* ---------- MISSING (B) ---------- */
+function startMissing(){
+  const L=cur();
+  missingItems=shuffle(boardItems).slice(0,L.miss);
+  const grid=boardItems.map(e=>({e,gone:missingItems.includes(e)}));
+  const bd=$('misBoard');bd.innerHTML='';
+  activeGap=null;picks=new Map(); // gapIndex -> emoji
+  grid.forEach((g,i)=>{
+    const c=document.createElement('div');c.className='cell';
+    if(g.gone){
+      c.classList.add('blank');c.dataset.i=i;
+      c.onclick=()=>{activeGap=i;renderMisState();};
+    }else{c.textContent=g.e;}
+    bd.appendChild(c);
+  });
+  // bank = the missing items + distractors, shuffled
+  const distract=shuffle(POOLS[L.cat].filter(e=>!boardItems.includes(e)).concat(EXTRA)).slice(0,L.miss+2);
+  const opts=shuffle([...missingItems,...distract]);
+  const bank=$('misBank');bank.innerHTML='';
+  opts.forEach(e=>{
+    const o=document.createElement('div');o.className='opt';o.textContent=e;o.dataset.e=e;
+    o.onclick=()=>pickForGap(e,o);
+    bank.appendChild(o);
+  });
+  $('misTimerWrap').style.display=cfg.comp?'block':'none';
+  renderMisState();
+  show('missing');
+  stopTimer();
+  if(cfg.comp) runTimer(cfg.rec,$('misBar'),$('misClock'),()=>submitMissing());
+}
+function pickForGap(e,o){
+  if(activeGap===null){
+    // auto-select first empty gap
+    const firstEmpty=[...$('misBoard').children].findIndex(c=>c.classList.contains('blank')&&!picks.has(+c.dataset.i));
+    if(firstEmpty>=0)activeGap=+$('misBoard').children[firstEmpty].dataset.i;
+  }
+  if(activeGap===null)return;
+  // remove this emoji from any other gap
+  for(const[k,v]of picks){if(v===e)picks.delete(k);}
+  picks.set(activeGap,e);
+  // advance to next empty gap
+  const gaps=[...$('misBoard').children].filter(c=>c.classList.contains('blank')).map(c=>+c.dataset.i);
+  const next=gaps.find(g=>!picks.has(g));
+  activeGap=next!==undefined?next:null;
+  renderMisState();
+}
+function renderMisState(){
+  [...$('misBoard').children].forEach(c=>{
+    if(!c.classList.contains('blank'))return;
+    const i=+c.dataset.i;
+    c.classList.toggle('picked',picks.has(i));
+    c.textContent=picks.has(i)?picks.get(i):'';
+    c.style.outline=(i===activeGap)?'3px solid var(--yellow)':'none';
+  });
+  [...$('misBank').children].forEach(o=>{
+    const used=[...picks.values()].includes(o.dataset.e);
+    o.classList.toggle('sel',used);
+  });
+  const filled=picks.size, total=cur().miss;
+  $('misSel').textContent = activeGap!==null
+    ? `Filling a gap · ${filled}/${total} placed`
+    : `${filled}/${total} gaps filled`;
+}
+$('submitMissing').onclick=()=>submitMissing();
+function submitMissing(){
+  stopTimer();
+  let score=0;
+  const rows=[];
+  // for each missing slot, was the right emoji placed in a gap?
+  const placed=[...picks.values()];
+  missingItems.forEach(e=>{
+    const ok=placed.includes(e);
+    if(ok)score++;
+    rows.push({e,ok});
+  });
+  showResults(score, missingItems.length, rows, 'missing items found');
+}
+
+/* ---------- TIMER ---------- */
+/* Timer state is held module-side (not in a local) so a confirm dialog can
+   pause and then resume it from the same remaining time — STYLE_GUIDE.md §15. */
+let timerState=null;
+function runTimer(secs,bar,clock,onEnd){
+  timerState={t:secs,secs,bar,clock,onEnd};
+  bar.style.width='100%';clock.textContent=secs;
+  resumeTimer();
+}
+function resumeTimer(){
+  if(!timerState)return;
+  stopTimer();
+  const s=timerState;
+  timer=setInterval(()=>{
+    s.t--;s.clock.textContent=Math.max(0,s.t);
+    s.bar.style.width=(Math.max(0,s.t)/s.secs*100)+'%';
+    if(s.t<=0){stopTimer();timerState=null;s.onEnd();}
+  },1000);
+}
+
+/* ---------- RESULTS ---------- */
+function showResults(score,total,rows,label){
+  const L=cur();
+  $('resPill').textContent=`${L.cat} · ${L.side}${L.level}`;
+  $('resFmt').textContent=cfg.comp?'Competition':'Practice';
+  $('resScore').textContent=score;
+  $('resOf').textContent=`out of ${total} ${label}`;
+  const bk=$('resBreak');bk.innerHTML='';
+  rows.forEach(r=>{
+    const d=document.createElement('div');
+    d.className='b '+(r.ok?'hit':'miss');
+    d.innerHTML=`${r.e}<span class="mk">${r.ok?'✓':(r.false?'✕':'○')}</span>`;
+    bk.appendChild(d);
+  });
+  $('resLabel').textContent = cfg.mode==='A' ? 'Board items · ✓ found, ○ missed, ✕ false pick' : 'Missing items · ✓ found, ○ missed';
+  // leaderboard (competition only)
+  if(cfg.comp){
+    leaderboard.push({cat:L.cat,tag:`${L.side}${L.level}`,mode:cfg.mode==='A'?'How Many':"Missing",score,total,when:new Date()});
+  }
+  // next-level button availability
+  $('nextBtn').style.display = cfg.levelIdx<LEVELS.length-1 ? 'block':'none';
+  show('results');
+}
+$('retryBtn').onclick=()=>{cfg.mode==='A'?startMemorise():startMemorise();};
+$('nextBtn').onclick=()=>{if(cfg.levelIdx<LEVELS.length-1){cfg.levelIdx++;buildLevels();[$('ready'),$('memorise'),$('recall'),$('missing'),$('results')].forEach(setCatColor);startMemorise();}};
+$('homeBtn').onclick=()=>{stopTimer();buildLevels();show('home');};
+
+/* ---------- QUIT BUTTONS ---------- */
+/* §15 — confirm before abandoning a round; Cancel resumes the paused timer.
+   (The Home button on the results screen needs no confirm — nothing is lost.) */
+['memQuit','recQuit','misQuit'].forEach(id=>$(id).onclick=()=>{
+  stopTimer();
+  askConfirm(
+    {title:'Quit this round?',body:'Your progress will be lost and this run will not be scored.',
+     okLabel:'Quit',cancelLabel:'Keep Playing'},
+    ()=>{timerState=null;show('home');},
+    ()=>resumeTimer()
+  );
+});
+
+/* ---------- LEADERBOARD ---------- */
+$('lbBtn').onclick=()=>{renderLB();show('leaderboard');};
+$('lbBack').onclick=()=>show('home');
+$('lbClear').onclick=()=>{leaderboard=[];renderLB();};
+function renderLB(){
+  const list=$('lbList');list.innerHTML='';
+  if(!leaderboard.length){list.innerHTML='<li class="empty">No competition runs yet.<br>Turn on Competition mode and play a level.</li>';return;}
+  const sorted=[...leaderboard].map((r,i)=>({...r,pct:r.total?r.score/r.total:0})).sort((a,b)=>b.pct-a.pct||b.score-a.score);
+  const bestPct=sorted[0].pct;
+  sorted.forEach((r,i)=>{
+    const li=document.createElement('li');
+    if(r.pct===bestPct)li.classList.add('best');
+    const time=r.when.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    li.innerHTML=`<span class="rank">${i+1}</span>
+      <span class="meta"><b>${r.cat}</b><small>${r.tag} · ${r.mode} · ${time}</small></span>
+      <span class="sc">${r.score}/${r.total}</span>`;
+    list.appendChild(li);
+  });
+}
+
+/* ---------- INIT ---------- */
+buildLevels();
+document.querySelectorAll('[data-key]').forEach(s=>s.classList.add('disabled'));
+</script>
+</body>
+</html>

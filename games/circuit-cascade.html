@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Circuit Cascade</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+     Dark is the default (<html data-theme="dark">). Circuit Cascade keeps its
+     own purple shell + cyan accent; light mode swaps the cyan for a darker,
+     more saturated teal so it still carries on white. --on-accent is the text
+     colour that sits on an accent fill (§6 read as "text that contrasts with
+     the accent" — white on #38e1ff is illegible). --sig-* are the functional
+     signal colours and already have both variants. */
+  :root[data-theme="dark"] {
+    --bg: #14102e;
+    --surface: #1c1740;
+    --card: #241d52;
+    --board: #2a2360;
+    --border: #3b3378;
+    --accent: #38e1ff;
+    --accent-dim: #1d4c66;
+    --accent2: #b98cff;
+    --on-accent: #07202b;
+    --text: #eceaff;
+    --muted: #9a94c8;
+    --sig-off: #f2b307;
+    --sig-on: #ff3f5e;
+    --sig-none: #565087;
+    --slot-fill: #322a70;
+    --slot-stroke: #38bdf8;
+    --shadow: rgba(0,0,0,0.45);
+    --ok: #3ecf8e;
+    --danger: #ff3f5e;
+    --warn: #ff8a5c;
+  }
+  :root[data-theme="light"] {
+    --bg: #eef0fb;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --board: #dfe2f7;
+    --border: #c3c8ea;
+    --accent: #06708f;
+    --accent-dim: #d3eefa;
+    --accent2: #6d28d9;
+    --on-accent: #ffffff;
+    --text: #1a1740;
+    --muted: #5f5c90;
+    --sig-off: #d99400;
+    --sig-on: #e0203f;
+    --sig-none: #a9a5c8;
+    --slot-fill: #c9cdec;
+    --slot-stroke: #1673b8;
+    --shadow: rgba(20,16,46,0.12);
+    --ok: #128a5c;
+    --danger: #cf1b38;
+    --warn: #c25a20;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    display: flex; justify-content: center;
+    padding: 14px 12px 32px;
+    transition: background .25s, color .25s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mono { font-family: 'Consolas', 'Courier New', monospace; }
+
+  /* §5 — the menu reads at the shared 720px width. The play screen keeps the
+     same shell so the Expert board (8 lanes × 6 columns) gets every pixel it
+     can, backed by .board-wrap's horizontal scroll. */
+  #app { width: 100%; max-width: 720px; }
+  #screen-menu { max-width: 720px; margin: 0 auto; }
+
+  /* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 300;
+    background: var(--card); border: 1px solid var(--border); border-radius: 50px;
+    padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+    font-size: 13px; color: var(--muted);
+    font-family: 'Consolas', 'Courier New', monospace;
+    transition: all .15s; user-select: none;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .theme-toggle .toggle-icon { display: inline-flex; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-moon { display: inline-flex; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; }
+  .screen.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ── MENU — §3 logo block: icon, h1, subtitle, then the How-to-Play card ── */
+  .logo { text-align: center; margin: 26px 0 22px; }
+  .logo-icon {
+    display: flex; justify-content: center; align-items: center;
+    width: 32px; height: 32px; margin: 0 auto 8px; color: var(--accent);
+  }
+  .logo h1 {
+    font-size: 28px; font-weight: 900; letter-spacing: .16em;
+    line-height: 1.05; text-transform: uppercase;
+  }
+  .logo h1 span { color: var(--accent); }
+  .logo p { margin-top: 10px; font-size: 14px; color: var(--muted); letter-spacing: .02em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 14px;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  .card-title {
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+
+  /* ── HOW TO PLAY — §3. Always visible on the menu, never collapsed. The
+     chip truth-table and the per-mode notes stay in #help-sheet behind
+     "Full rules"; this card is the summary. ── */
+  .howto-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; margin-bottom: 14px; text-align: left;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  .howto-box .howto-title {
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--accent2); font-weight: 700; margin-bottom: 10px;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .howto-box p { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+  .howto-box p:last-of-type { margin-bottom: 0; }
+  .howto-box strong { color: var(--text); font-weight: 600; }
+  .howto-box .full-rules { margin-top: 13px; width: 100%; font-size: 13px; }
+  .setting-group { margin-bottom: 16px; }
+  .setting-group:last-child { margin-bottom: 0; }
+  .setting-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  #screen-menu .card-title,
+  #screen-menu .setting-label { text-align: center; }
+  #screen-menu .pill-group { justify-content: center; }
+
+  /* §6 — unselected: surface + border + muted. Selected: accent-tinted fill
+     with accent border and text. */
+  .pill-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    padding: 9px 15px; border-radius: 50px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer;
+    transition: all .15s; user-select: none;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .pill small { display: block; font-size: 10.5px; opacity: .75; font-weight: 400; }
+
+  /* §6 — primary: solid accent + --on-accent text, hover brightness lift. */
+  .btn {
+    padding: 12px 20px; border-radius: 11px; border: 1px solid transparent;
+    background: var(--accent); color: var(--on-accent); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: transform .12s, filter .15s, opacity .15s; font-family: inherit;
+  }
+  .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn:active { transform: scale(.97); }
+  .btn.secondary { background: var(--surface); border-color: var(--border); color: var(--muted); font-weight: 500; }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--accent); filter: none; }
+  .btn.danger { background: var(--danger); color: #fff; }
+  .btn.ghost { background: var(--surface); border-color: var(--border); color: var(--muted); font-weight: 500; }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); filter: none; }
+  .btn:disabled { opacity: .35; cursor: not-allowed; transform: none; filter: none; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .btn-block { width: 100%; padding: 15px; font-size: 16px; letter-spacing: .06em; }
+
+  /* ── PLAY HEADER ── */
+  .play-bar {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  }
+  .play-bar .tag {
+    font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 50px; padding: 5px 11px;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .timer { margin-left: auto; font-size: 22px; font-weight: 700; letter-spacing: .04em;
+    font-family: 'Consolas', 'Courier New', monospace; }
+  .turn-banner {
+    text-align: center; font-size: 13px; padding: 8px; border-radius: 10px;
+    background: var(--accent-dim); color: var(--accent); margin-bottom: 10px; font-weight: 600;
+  }
+
+  /* ── BOARD ── */
+  .board-wrap {
+    background: var(--board); border: 1px solid var(--border); border-radius: 16px;
+    padding: 6px; overflow-x: auto; overflow-y: hidden; margin-bottom: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .board-wrap svg { display: block; width: 100%; height: auto; }
+  .wire { fill: none; stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; transition: stroke .28s ease; }
+  .slot-hit { cursor: pointer; }
+  .slot-hex { transition: fill .2s, stroke .2s; }
+  .hexlabel { font-family: 'Consolas', 'Courier New', monospace; font-weight: 800; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .slot-empty { stroke: var(--slot-stroke); stroke-width: 5; fill: var(--slot-fill); }
+  .slot-empty.armed { stroke: var(--accent); stroke-dasharray: 9 7; animation: dash 1s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -32; } }
+  .bulb-glow { opacity: 0; transition: opacity .3s; }
+  .bulb-glow.on { opacity: 1; }
+  .chip-drop { animation: drop .22s cubic-bezier(.3,1.5,.6,1); transform-origin: center; }
+  @keyframes drop { from { transform: scale(.4); opacity: .2; } to { transform: scale(1); opacity: 1; } }
+
+  /* ── TRAY ── */
+  .scroll-hint {
+    font-size: 11.5px; color: var(--muted); text-align: center; margin: -6px 0 10px;
+    letter-spacing: .04em;
+  }
+  .scroll-hint[hidden] { display: none; }
+  .tray {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 10px; margin-bottom: 12px; min-height: 86px;
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center;
+  }
+  .tray-hint { font-size: 12px; color: var(--muted); }
+  .tray.dense .chip { width: 46px; height: 46px; }
+  .tray.dense { gap: 6px; }
+  .chip {
+    width: 58px; height: 58px; border: none; background: none; padding: 0; cursor: pointer;
+    transition: transform .12s; flex: 0 0 auto;
+  }
+  .chip:active { transform: scale(.92); }
+  .chip.selected { transform: translateY(-5px) scale(1.06); filter: drop-shadow(0 0 9px var(--accent)); }
+  .chip svg { display: block; width: 100%; height: 100%; }
+
+  .action-row { display: flex; gap: 8px; }
+  .action-row .btn { flex: 1; padding: 12px 6px; font-size: 13px; }
+
+  /* ── OVERLAYS — §6: theme-independent scrim, surface card, 16–20px radius ── */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.84); z-index: 400;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(3px);
+  }
+  .overlay.active { display: flex; }
+  .modal {
+    background: var(--card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 24px; width: 100%; max-width: 380px; text-align: center;
+  }
+  .modal h3 { font-size: 17px; margin-bottom: 10px; }
+  .modal p { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+  .modal input {
+    width: 100%; padding: 12px 14px; border-radius: 11px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 17px; text-align: center;
+    letter-spacing: .22em; margin-bottom: 14px; text-transform: uppercase;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .modal input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  #countdown-overlay { flex-direction: column; }
+  .cd-num { font-size: 96px; font-weight: 900; color: var(--accent); line-height: 1;
+    font-family: 'Consolas', 'Courier New', monospace; animation: pop .5s ease; }
+  @keyframes pop { from { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } to { transform: scale(1); } }
+  .cd-label { margin-top: 14px; font-size: 12px; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
+
+  /* ── HELP PANEL ── */
+  .sheet {
+    position: fixed; inset: 0; z-index: 500; background: var(--bg); overflow-y: auto;
+    padding: 18px 16px 40px; display: none;
+  }
+  .sheet.active { display: block; }
+  .sheet-inner { max-width: 620px; margin: 0 auto; }
+  .sheet-head { display: flex; align-items: center; margin-bottom: 16px; gap: 10px; }
+  .sheet-head h2 { font-size: 17px; letter-spacing: .1em; text-transform: uppercase; }
+  .sheet-head .btn { margin-left: auto; }
+  .steps { list-style: none; counter-reset: s; }
+  .steps li {
+    counter-increment: s; position: relative; padding-left: 38px; margin-bottom: 14px;
+    font-size: 13.5px; line-height: 1.65; color: var(--text);
+  }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: -1px;
+    width: 26px; height: 26px; border-radius: 8px; background: var(--accent-dim);
+    color: var(--accent); font-size: 12px; font-weight: 700; display: grid; place-items: center;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .ref-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ref-name { width: 82px; flex: 0 0 82px; font-size: 12px; color: var(--muted); }
+  .ref-name b { display: block; color: var(--text); font-size: 13.5px; }
+  .ref-cells { display: flex; gap: 6px; flex: 1; min-width: 0; }
+  .ref-cells svg { flex: 1; min-width: 0; height: auto; }
+  .sig-key { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; font-size: 12.5px; color: var(--muted); }
+  .sig-key i { width: 22px; height: 6px; border-radius: 3px; display: inline-block; }
+
+  /* ── RESULTS ── */
+  .big-time { font-size: 46px; font-weight: 800; letter-spacing: .02em; text-align: center;
+    font-family: 'Consolas', 'Courier New', monospace; }
+  .result-sub { text-align: center; color: var(--muted); font-size: 12.5px; letter-spacing: .16em;
+    text-transform: uppercase; margin-top: 6px; margin-bottom: 18px; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 13px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row span:last-child { font-family: 'Consolas', 'Courier New', monospace; }
+  .code-chip {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 50px;
+    background: var(--accent-dim); color: var(--accent); font-size: 16px; letter-spacing: .22em;
+    font-family: 'Consolas', 'Courier New', monospace; font-weight: 700; cursor: pointer;
+  }
+  .lb-row { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 26px; color: var(--muted); font-family: 'Consolas', 'Courier New', monospace; }
+  .lb-time { margin-left: auto; font-family: 'Consolas', 'Courier New', monospace; font-weight: 600; }
+  .lb-row.me .lb-time { color: var(--accent); }
+  .empty-note { font-size: 13px; color: var(--muted); text-align: center; padding: 10px 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 11px 18px; border-radius: 50px; font-size: 13px; z-index: 600;
+    opacity: 0; pointer-events: none; transition: all .25s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+
+  /* ── MOBILE — §9 ── */
+  @media (max-width: 520px) {
+    body { padding: 12px 10px 28px; }
+    .logo { margin: 22px 0 18px; }
+    .logo h1 { font-size: 22px; letter-spacing: .12em; }
+    .logo p { font-size: 13px; margin-top: 8px; }
+    .howto-box { padding: 15px 16px; }
+    .howto-box p { font-size: 12.5px; }
+    .card { padding: 14px; }
+    .theme-toggle { font-size: 12px; padding: 5px 12px; top: 12px; right: 12px; }
+  }
+  @media (max-width: 380px) {
+    .logo h1 { font-size: 19px; letter-spacing: .08em; }
+    .howto-box { padding: 14px; }
+    .theme-toggle { padding: 5px 10px; gap: 5px; }
+    .chip { width: 50px; height: 50px; }
+    .action-row .btn { font-size: 12px; padding: 11px 4px; }
+    .ref-name { width: 68px; flex: 0 0 68px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div id="app">
+
+  <!-- ══ MENU ══ -->
+  <div class="screen active" id="screen-menu">
+    <!-- §3 logo block: inline-SVG chip icon, h1, subtitle -->
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="8" height="8" rx="1.5"/><path d="M10 8V4.5M14 8V4.5M10 19.5V16M14 19.5V16M8 10H4.5M8 14H4.5M19.5 10H16M19.5 14H16"/></svg></span>
+      <h1>CIRCUIT <span>CASCADE</span></h1>
+      <p>Wire the chips so every bulb burns red</p>
+    </div>
+
+    <!-- §3 How-to-Play: always visible. The chip truth-table and the per-mode
+         notes live in the "Full rules" sheet, not here. -->
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>Power runs left to right. <strong>Red</strong> is a live signal, <strong>yellow</strong> is dead, and grey means an empty slot is blocking the wire.</p>
+      <p>Tap a chip in the tray, then tap a slot to drop it in. Each chip rewrites the two lines passing through it, and the wires recolour as you go.</p>
+      <p>Fill every slot and get <strong>red into both inputs of every bulb</strong>. Light them all and the clock stops.</p>
+      <button class="btn secondary full-rules" id="btn-help-menu">Full rules &amp; chip table →</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Setup</div>
+      <div class="setting-group">
+        <div class="setting-label">Difficulty</div>
+        <div class="pill-group" id="diff-group">
+          <div class="pill selected" data-val="easy">Easy<small>4 lanes · 5 chips</small></div>
+          <div class="pill" data-val="medium">Medium<small>6 lanes · 10 chips</small></div>
+          <div class="pill" data-val="hard">Hard<small>6 lanes · 13 chips</small></div>
+          <div class="pill" data-val="expert">Expert<small>8 lanes · 21 chips</small></div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-label">Mode</div>
+        <div class="pill-group" id="mode-group">
+          <div class="pill selected" data-val="practice">Practice<small>Lift &amp; swap freely</small></div>
+          <div class="pill" data-val="timeattack">Time Attack<small>Chips lock on place</small></div>
+          <div class="pill" data-val="versus">Pass &amp; Play<small>2 players · 3 rounds</small></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-block" id="btn-play">Start Puzzle</button>
+    <div style="height:10px"></div>
+    <div class="btn-row">
+      <button class="btn secondary" id="btn-code">Enter code</button>
+      <button class="btn secondary" id="btn-lb">Best times</button>
+    </div>
+  </div>
+
+  <!-- ══ PLAY ══ -->
+  <div class="screen" id="screen-play">
+    <div class="play-bar">
+      <span class="tag" id="play-tag">EASY</span>
+      <span class="tag" id="play-mode-tag">PRACTICE</span>
+      <span class="timer mono" id="timer">00:00.0</span>
+    </div>
+    <div class="turn-banner" id="turn-banner" style="display:none"></div>
+    <div class="board-wrap" id="board-wrap"></div>
+    <div class="scroll-hint" id="scroll-hint" hidden>Swipe the board sideways to see every column</div>
+    <div class="tray" id="tray"></div>
+    <div class="action-row">
+      <button class="btn ghost" id="btn-help-play">Rules</button>
+      <button class="btn ghost" id="btn-reset">Reset</button>
+      <button class="btn ghost" id="btn-hint">Hint (3)</button>
+      <button class="btn ghost" id="btn-exit">Exit</button>
+    </div>
+  </div>
+
+  <!-- ══ RESULT ══ -->
+  <div class="screen" id="screen-result">
+    <div class="logo" style="margin:22px 0 14px"><h1 style="font-size:22px" id="result-title">CIRCUIT LIVE</h1></div>
+    <div class="big-time mono" id="result-time">00:00.0</div>
+    <div class="result-sub" id="result-sub">All bulbs powered</div>
+    <div class="card" id="result-stats"></div>
+    <div class="card" id="result-extra" style="display:none"></div>
+    <div class="btn-row" id="result-buttons"></div>
+  </div>
+
+  <!-- ══ PASS DEVICE ══ -->
+  <div class="screen" id="screen-pass">
+    <div class="logo" style="margin:60px 0 18px">
+      <h1 style="font-size:22px" id="pass-title">PLAYER 2</h1>
+      <p id="pass-sub">Round 1 of 3</p>
+    </div>
+    <div class="card"><p style="font-size:13.5px;color:var(--muted);line-height:1.7;text-align:center" id="pass-note">
+      Hand the device over. The board is identical for both players.</p></div>
+    <button class="btn btn-block" id="btn-pass-ready">I'm ready</button>
+  </div>
+</div>
+
+<!-- ══ OVERLAYS ══ -->
+<div class="overlay" id="countdown-overlay">
+  <div class="cd-num mono" id="cd-num">3</div>
+  <div class="cd-label" id="cd-label">Powering up</div>
+</div>
+
+<div class="overlay" id="exit-overlay">
+  <div class="modal">
+    <h3>Leave this puzzle?</h3>
+    <p>Your placed chips and current time will be discarded.</p>
+    <div class="btn-row">
+      <button class="btn secondary" id="btn-exit-cancel">Keep solving</button>
+      <button class="btn danger" id="btn-exit-confirm">Leave</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="code-overlay">
+  <div class="modal">
+    <h3>Enter a challenge code</h3>
+    <p>Codes are 6 characters. The same code always builds the same board.</p>
+    <input id="code-input" maxlength="6" placeholder="E7KQ2M" autocomplete="off" spellcheck="false">
+    <div class="btn-row">
+      <button class="btn secondary" id="btn-code-cancel">Cancel</button>
+      <button class="btn" id="btn-code-go">Build board</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FULL RULES — §3's deeper reference view. The menu keeps its own
+     always-visible How-to-Play card; this sheet is the manual, and the chip
+     truth-table genuinely belongs here rather than on the card. ══ -->
+<div class="sheet" id="help-sheet">
+  <div class="sheet-inner">
+    <div class="sheet-head">
+      <h2>Full rules</h2>
+      <button class="btn secondary" id="btn-help-close">Close</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Signals</div>
+      <span class="sig-key"><i style="background:var(--sig-on)"></i> Red — live signal</span>
+      <span class="sig-key"><i style="background:var(--sig-off)"></i> Yellow — dead signal</span>
+      <span class="sig-key"><i style="background:var(--sig-none)"></i> Grey — no signal yet</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Chip reference</div>
+      <div id="ref-table"></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6">
+        Each chip reads two inputs on the left and drives two outputs on the right.
+        The four cells show every input combination. Note the family of three flippers:
+        Top flips only the upper line, Base only the lower, Flip does both.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Rules</div>
+      <ol class="steps">
+        <li>Power sources sit on the left edge. Each one pushes a fixed red or yellow signal into its lane.</li>
+        <li>Wires run left to right through empty chip slots. A slot with no chip blocks the signal — the wire stays grey.</li>
+        <li>Tap a chip in the tray to pick it up, then tap a slot to drop it in. Wires recolour instantly so you can trace the result. Tap a placed chip to lift it out again, or drop a different chip on it to swap.</li>
+        <li>Every lane ends at a bulb, and a bulb needs red on <em>both</em> of its inputs. So the goal is simply: drive every output red.</li>
+        <li>The tray holds exactly the chips one solution needs, sometimes plus a spare. Every slot must end up filled, so a chip spent in the wrong place is a chip missing somewhere else.</li>
+        <li>In Time Attack a placed chip is locked; use Reset to recycle the whole board.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Modes</div>
+      <ol class="steps">
+        <li><b>Practice</b> — lift and swap any chip at any time. The clock runs but nothing is at stake.</li>
+        <li><b>Time Attack</b> — chips lock on placement, hints add 10 seconds, and your finish time goes to the leaderboard.</li>
+        <li><b>Pass &amp; Play</b> — two players alternate on three identical boards. Lowest combined time wins; tied players share a rank.</li>
+        <li><b>Expert</b> — eight lanes, six columns, twenty-one chips. Every board is checked to make sure it cannot be solved by working left to right one slot at a time; you have to plan backwards from the outputs.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/*CORE_START*/
+/* ══════════════ PURE LOGIC (no DOM) ══════════════ */
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+const TYPES = ['D', 'A', 'O', 'N', 'T', 'B'];
+const TYPE_INFO = {
+  D: { name: 'Pass', cn: 'Both lines through',   color: '#22c55e', dark: '#14532d' },
+  A: { name: 'And',  cn: 'Red only if both red', color: '#22d3ee', dark: '#0e4b57' },
+  O: { name: 'Or',   cn: 'Red if either is red', color: '#3b82f6', dark: '#1e3a8a' },
+  N: { name: 'Flip', cn: 'Flips both lines',     color: '#a855f7', dark: '#4c1d95' },
+  T: { name: 'Top',  cn: 'Flips the top line',   color: '#ec4899', dark: '#831843' },
+  B: { name: 'Base', cn: 'Flips the lower line', color: '#f97316', dark: '#7c2d12' }
+};
+
+/* value: 1 = live (red), 0 = dead (yellow), null = no signal */
+function applyChip(type, a, b) {
+  if (type == null || a == null || b == null) return [null, null];
+  switch (type) {
+    case 'D': return [a, b];
+    case 'A': { const x = (a && b) ? 1 : 0; return [x, x]; }
+    case 'O': { const x = (a || b) ? 1 : 0; return [x, x]; }
+    case 'N': return [a ? 0 : 1, b ? 0 : 1];
+    case 'T': return [a ? 0 : 1, b];
+    case 'B': return [a, b ? 0 : 1];
+  }
+  return [null, null];
+}
+
+/* Every lane ends at a bulb, so the goal is simply: drive every output red.
+   maxOr caps how many Or chips a solution may use — Or floods red and makes
+   boards guessable, so higher tiers ration it. */
+const DIFF = {
+  easy:   { lanes: 4, stages: 3, decoys: 0, maxOr: 9, exact: true,  label: 'Easy' },
+  medium: { lanes: 6, stages: 4, decoys: 1, maxOr: 2, exact: false, label: 'Medium' },
+  hard:   { lanes: 6, stages: 5, decoys: 1, maxOr: 1, exact: false, label: 'Hard' },
+  expert: { lanes: 8, stages: 6, decoys: 1, maxOr: 1, exact: false, label: 'Expert' }
+};
+
+/* Brick lattice: stage s pairs adjacent lanes starting at (s % 2). */
+function buildSlots(lanes, stages) {
+  const slots = [];
+  for (let s = 0; s < stages; s++) {
+    const start = s % 2 === 0 ? 0 : 1;
+    for (let l = start; l + 1 < lanes; l += 2) slots.push({ s: s, a: l, b: l + 1, i: slots.length });
+  }
+  return slots;
+}
+
+/* states[s] = lane values entering stage s; states[stages] = final lane values */
+function evaluateStages(lanes, stages, slots, placement, sources) {
+  const states = [sources.slice()];
+  for (let s = 0; s < stages; s++) {
+    const cur = states[s];
+    const next = cur.slice();
+    for (const slot of slots) {
+      if (slot.s !== s) continue;
+      const out = applyChip(placement[slot.i], cur[slot.a], cur[slot.b]);
+      next[slot.a] = out[0];
+      next[slot.b] = out[1];
+    }
+    states.push(next);
+  }
+  return states;
+}
+
+function bulbsLit(finalVals, bulbs) {
+  return bulbs.every(function (bl) { return finalVals[bl.a] === 1 && finalVals[bl.b] === 1; });
+}
+
+function shuffleInPlace(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+/* ── Board quality gates ─────────────────────────────────────────────
+   Three independent checks, because each catches a different kind of
+   too-easy board:
+     blindWins  — how often a random dump of the tray happens to win
+     greedyBeats — whether a left-to-right no-backtracking player wins
+     countSolutions — exact number of winning arrangements (small boards)
+   ------------------------------------------------------------------ */
+
+function blindWins(puzzle, rng, samples) {
+  const pool = puzzle.tray.slice();
+  let wins = 0;
+  for (let n = 0; n < samples; n++) {
+    const bag = shuffleInPlace(pool.slice(), rng).slice(0, puzzle.slots.length);
+    const st = evaluateStages(puzzle.lanes, puzzle.stages, puzzle.slots, bag, puzzle.sources);
+    if (bulbsLit(st[puzzle.stages], puzzle.bulbs)) wins++;
+  }
+  return wins;
+}
+
+/* Models a player working left to right with live wire feedback, picking at
+   each slot whichever remaining chip drives the most outputs red, never
+   revisiting a decision. If this wins, the board rewards poking, not thinking. */
+const GREEDY_ORDERS = [
+  ['D', 'A', 'O', 'N', 'T', 'B'],
+  ['O', 'D', 'A', 'T', 'B', 'N'],
+  ['D', 'O', 'T', 'B', 'A', 'N']
+];
+function greedyBeats(puzzle) {
+  for (const order of GREEDY_ORDERS) {
+    const counts = {};
+    puzzle.tray.forEach(function (t) { counts[t] = (counts[t] || 0) + 1; });
+    let vals = puzzle.sources.slice();
+    let stuck = false;
+    for (let s = 0; s < puzzle.stages && !stuck; s++) {
+      const next = vals.slice();
+      for (const sl of puzzle.slots) {
+        if (sl.s !== s) continue;
+        let pick = null, best = -1;
+        for (const t of order) {
+          if (!counts[t]) continue;
+          const o = applyChip(t, vals[sl.a], vals[sl.b]);
+          const score = (o[0] === 1 ? 1 : 0) + (o[1] === 1 ? 1 : 0);
+          if (score > best) { best = score; pick = t; }
+        }
+        if (!pick) { stuck = true; break; }
+        counts[pick]--;
+        const o = applyChip(pick, vals[sl.a], vals[sl.b]);
+        next[sl.a] = o[0]; next[sl.b] = o[1];
+      }
+      vals = next;
+    }
+    if (!stuck && bulbsLit(vals, puzzle.bulbs)) return true;
+  }
+  return false;
+}
+
+/* Exact number of winning arrangements, clamped at cap. Memoised on
+   (stage, lane values, remaining chip counts) so small boards are instant. */
+function countSolutions(puzzle, cap) {
+  cap = cap || 8;
+  const byStage = [];
+  for (let s = 0; s < puzzle.stages; s++) byStage.push(puzzle.slots.filter(function (x) { return x.s === s; }));
+  const counts = {};
+  TYPES.forEach(function (t) { counts[t] = 0; });
+  puzzle.tray.forEach(function (t) { counts[t]++; });
+  const memo = new Map();
+
+  function rec(stage, vals) {
+    if (stage === puzzle.stages) return bulbsLit(vals, puzzle.bulbs) ? 1 : 0;
+    const key = stage + '|' + vals.join('') + '|' + TYPES.map(function (t) { return counts[t]; }).join('');
+    const hit = memo.get(key);
+    if (hit !== undefined) return hit;
+    const slots = byStage[stage];
+    const next = vals.slice();
+    let total = 0;
+    (function assign(idx) {
+      if (total >= cap) return;
+      if (idx === slots.length) { total = Math.min(cap, total + rec(stage + 1, next)); return; }
+      const sl = slots[idx];
+      for (const t of TYPES) {
+        if (!counts[t]) continue;
+        const o = applyChip(t, vals[sl.a], vals[sl.b]);
+        const pa = next[sl.a], pb = next[sl.b];
+        next[sl.a] = o[0]; next[sl.b] = o[1];
+        counts[t]--;
+        assign(idx + 1);
+        counts[t]++;
+        next[sl.a] = pa; next[sl.b] = pb;
+        if (total >= cap) return;
+      }
+    })(0);
+    const res = Math.min(total, cap);
+    memo.set(key, res);
+    return res;
+  }
+  return rec(0, puzzle.sources.slice());
+}
+
+function generatePuzzle(diffKey, seedStr) {
+  const cfg = DIFF[diffKey];
+  const rng = mulberry32(hashString(seedStr));
+  const lanes = cfg.lanes, stages = cfg.stages;
+  const slots = buildSlots(lanes, stages);
+  /* every lane terminates at a bulb: the goal is "drive every output red" */
+  const bulbs = [];
+  for (let l = 0; l + 1 < lanes; l += 2) bulbs.push({ a: l, b: l + 1 });
+  let relaxed = null, scored = 0;
+
+  for (let attempt = 0; attempt < 4000; attempt++) {
+    const sources = [];
+    for (let i = 0; i < lanes; i++) sources.push(rng() < 0.5 ? 1 : 0);
+    /* at least one dead source, or the board starts solved */
+    if (sources.indexOf(0) === -1) continue;
+
+    const solution = slots.map(function () { return TYPES[Math.floor(rng() * TYPES.length)]; });
+    /* variety keeps the tray from collapsing to a couple of interchangeable chips */
+    if (new Set(solution).size < Math.min(4, slots.length)) continue;
+    let ors = 0;
+    solution.forEach(function (t) { if (t === 'O') ors++; });
+    if (ors > cfg.maxOr) continue;
+
+    const states = evaluateStages(lanes, stages, slots, solution, sources);
+    if (!states[stages].every(function (v) { return v === 1; })) continue;
+
+    const tray = solution.slice();
+    for (let d = 0; d < cfg.decoys; d++) tray.push(TYPES[Math.floor(rng() * TYPES.length)]);
+    shuffleInPlace(tray, rng);
+
+    const puzzle = {
+      diff: diffKey, lanes: lanes, stages: stages, slots: slots,
+      sources: sources, bulbs: bulbs, solution: solution, tray: tray
+    };
+
+    if (greedyBeats(puzzle)) continue;
+
+    if (cfg.exact) {
+      /* Small boards are few enough to count exactly. A single solution is not
+         always reachable at this size, so prefer one and fall back to the
+         least guessable board found. */
+      const count = countSolutions(puzzle, 4);
+      const rate = blindWins(puzzle, rng, 400) / 400;
+      puzzle._score = count * 100 + rate;
+      if (count === 1 && rate <= 0.08) return puzzle;
+      if (!relaxed || puzzle._score < relaxed._score) relaxed = puzzle;
+      continue;
+    }
+    /* Perfectly unguessable boards do not exist at this size, so score each
+       survivor and keep the least guessable of a decent sample. */
+    const samples = 600;
+    puzzle._wins = blindWins(puzzle, rng, samples);
+    scored++;
+    if (puzzle._wins <= samples * 0.003) return puzzle;
+    if (!relaxed || puzzle._wins < relaxed._wins) relaxed = puzzle;
+    if (scored >= 60) break;
+  }
+  return relaxed || generatePuzzle(diffKey, seedStr + '~');
+}
+
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const DIFF_LETTER = { easy: 'E', medium: 'M', hard: 'H', expert: 'X' };
+const LETTER_DIFF = { E: 'easy', M: 'medium', H: 'hard', X: 'expert' };
+
+function makeCode(diffKey, rnd) {
+  let s = DIFF_LETTER[diffKey];
+  for (let i = 0; i < 5; i++) s += CODE_ALPHABET[Math.floor((rnd ? rnd() : Math.random()) * CODE_ALPHABET.length)];
+  return s;
+}
+function parseCode(raw) {
+  const code = String(raw || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (code.length !== 6) return null;
+  const diff = LETTER_DIFF[code[0]];
+  if (!diff) return null;
+  for (let i = 1; i < 6; i++) if (CODE_ALPHABET.indexOf(code[i]) === -1) return null;
+  return { code: code, diff: diff };
+}
+/*CORE_END*/
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12 (timed variant)
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   Portable: copy verbatim into another timed game, change HUB_ID only.
+   Lives outside CORE_START/CORE_END on purpose — that region is pure
+   logic with no DOM, storage or network.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'circuit-cascade';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ══════════════ APP ══════════════ */
+const SVGNS = 'http://www.w3.org/2000/svg';
+/* Geometry is derived per board: Expert is twice the size of Easy and the
+   fixed layout that suited a 4x3 lattice cannot hold an 8x6 one. */
+let G = null;
+function computeGeom(p) {
+  const laneH = p.lanes <= 4 ? 92 : p.lanes <= 6 ? 80 : 70;
+  const dx = p.stages <= 3 ? 155 : p.stages <= 4 ? 148 : p.stages <= 5 ? 138 : 126;
+  const hexR = Math.min(42, laneH * 0.46, dx * 0.30);
+  const srcR = Math.min(34, laneH * 0.36);
+  const bulbR = Math.min(38, laneH * 0.42);
+  const outer = dx * 0.49;
+  const srcX = srcR + 22;
+  const g = {
+    laneH: laneH, dx: dx, hexR: hexR, srcR: srcR, bulbR: bulbR,
+    outer: outer, mid: hexR * 0.85, near: hexR * 0.62,
+    portDy: laneH * 0.23, srcX: srcX,
+    x0: srcX + srcR + Math.max(56, outer + 14),
+    top: Math.max(48, bulbR + 14)
+  };
+  return g;
+}
+
+const store = {
+  get: function (k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+};
+
+const S = {
+  diff: 'easy', mode: 'practice',
+  puzzle: null, code: '', placement: [], trayItems: [], selected: null,
+  hintsLeft: 3, hintPenalty: 0, startedAt: 0, elapsed: 0, ticking: false,
+  match: null, els: {}
+};
+
+const $ = function (id) { return document.getElementById(id); };
+function svgEl(tag, attrs) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+function hexPoints(cx, cy, r) {
+  const h = r * 0.866;
+  return [[cx - r, cy], [cx - r / 2, cy - h], [cx + r / 2, cy - h],
+  [cx + r, cy], [cx + r / 2, cy + h], [cx - r / 2, cy + h]]
+    .map(function (p) { return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+}
+function fmtTime(ms) {
+  const t = Math.max(0, ms);
+  const m = Math.floor(t / 60000);
+  const s = Math.floor((t % 60000) / 1000);
+  const d = Math.floor((t % 1000) / 100);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0') + '.' + d;
+}
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { t.classList.remove('show'); }, 1900);
+}
+function showScreen(id) {
+  ['screen-menu', 'screen-play', 'screen-result', 'screen-pass'].forEach(function (s) {
+    $(s).classList.toggle('active', s === id);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ── theme — STYLE_GUIDE.md §2 ──
+   Icons swap via CSS on [data-theme]; JS only sets the attribute and the
+   label. Persisted under the game's existing key, cc_theme. */
+let isDark = true;
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  $('theme-label').textContent = isDark ? 'Light' : 'Dark';
+  store.set('cc_theme', isDark ? 'dark' : 'light');
+}
+
+/* ── geometry helpers ── */
+function laneY(i) { return G.top + i * G.laneH; }
+function stageX(s) { return G.x0 + s * G.dx; }
+function bulbX(p) { return stageX(p.stages - 1) + G.dx - 5; }
+function boardW(p) { return bulbX(p) + G.bulbR + 30; }
+function boardH(p) { return G.top * 2 + (p.lanes - 1) * G.laneH; }
+
+/* ══ BOARD RENDER ══ */
+let wireRegistry = [];   /* { el, stateIdx, lane } */
+let slotGroups = [];     /* { g, slot } */
+let bulbEls = [];        /* { poly, glow, bulb } */
+
+function renderBoard() {
+  const p = S.puzzle;
+  G = computeGeom(p);
+  const wrap = $('board-wrap');
+  wrap.innerHTML = '';
+  wireRegistry = []; slotGroups = []; bulbEls = [];
+
+  const W = boardW(p), H = boardH(p);
+  const svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'xMidYMid meet' });
+  svg.style.minWidth = Math.round(Math.min(W, 22 * W / G.hexR)) + 'px';
+
+  const gWires = svgEl('g', {}), gNodes = svgEl('g', {});
+  svg.appendChild(gWires); svg.appendChild(gNodes);
+
+  function addWire(points, stateIdx, lane) {
+    const el = svgEl('polyline', {
+      class: 'wire',
+      points: points.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ')
+    });
+    gWires.appendChild(el);
+    wireRegistry.push({ el: el, stateIdx: stateIdx, lane: lane });
+  }
+
+  const slotAt = {};
+  p.slots.forEach(function (sl) { slotAt[sl.s + ':' + sl.a] = sl; slotAt[sl.s + ':' + sl.b] = sl; });
+  const bulbFor = {};
+  p.bulbs.forEach(function (bl) { bulbFor[bl.a] = bl; bulbFor[bl.b] = bl; });
+
+  /* wires stage by stage */
+  for (let s = 0; s < p.stages; s++) {
+    const cx = stageX(s);
+    const prevX = s === 0 ? G.srcX + G.srcR + 8 : stageX(s - 1) + G.outer;
+    for (let lane = 0; lane < p.lanes; lane++) {
+      const y = laneY(lane);
+      addWire([[prevX, y], [cx - G.outer, y]], s, lane);
+      const sl = slotAt[s + ':' + lane];
+      if (sl) {
+        const cy = (laneY(sl.a) + laneY(sl.b)) / 2;
+        const py = cy + (sl.a === lane ? -G.portDy : G.portDy);
+        addWire([[cx - G.outer, y], [cx - G.mid, py], [cx - G.near, py]], s, lane);
+        addWire([[cx + G.near, py], [cx + G.mid, py], [cx + G.outer, y]], s + 1, lane);
+      } else {
+        addWire([[cx - G.outer, y], [cx + G.outer, y]], s, lane);
+      }
+    }
+  }
+  /* tail wires */
+  const bx = bulbX(p), tailStart = stageX(p.stages - 1) + G.outer;
+  for (let lane = 0; lane < p.lanes; lane++) {
+    const y = laneY(lane);
+    const bl = bulbFor[lane];
+    if (bl) {
+      const cy = (laneY(bl.a) + laneY(bl.b)) / 2;
+      const py = cy + (bl.a === lane ? -G.portDy : G.portDy);
+      addWire([[tailStart, y], [bx - G.outer, y], [bx - G.mid, py], [bx - G.near, py]], p.stages, lane);
+    } else {
+      addWire([[tailStart, y], [bx - 6, y]], p.stages, lane);
+      gNodes.appendChild(svgEl('circle', { cx: bx - 4, cy: y, r: 8, fill: 'var(--sig-none)' }));
+    }
+  }
+
+  /* sources */
+  for (let lane = 0; lane < p.lanes; lane++) {
+    const y = laneY(lane), on = p.sources[lane] === 1;
+    const col = on ? 'var(--sig-on)' : 'var(--sig-off)';
+    const k = G.srcR / 34;
+    gNodes.appendChild(svgEl('polygon', {
+      points: hexPoints(G.srcX, y, G.srcR), fill: 'var(--board)', stroke: col, 'stroke-width': 5
+    }));
+    gNodes.appendChild(svgEl('polygon', {
+      points: [[3, -16], [-9, 2], [-1, 2], [-3, 16], [9, -2], [1, -2]]
+        .map(function (q) { return (G.srcX + q[0] * k) + ',' + (y + q[1] * k); }).join(' '),
+      fill: col
+    }));
+  }
+
+  /* slots */
+  p.slots.forEach(function (sl) {
+    const cy = (laneY(sl.a) + laneY(sl.b)) / 2;
+    const g = svgEl('g', { class: 'slot-hit', tabindex: '0', role: 'button' });
+    g.setAttribute('aria-label', 'Chip slot ' + (sl.i + 1));
+    g.addEventListener('click', function () { onSlotTap(sl.i); });
+    g.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSlotTap(sl.i); } });
+    gNodes.appendChild(g);
+    slotGroups.push({ g: g, slot: sl, cx: stageX(sl.s), cy: cy });
+  });
+
+  /* bulbs */
+  p.bulbs.forEach(function (bl) {
+    const cy = (laneY(bl.a) + laneY(bl.b)) / 2;
+    const j = G.bulbR / 38;
+    const glow = svgEl('circle', { cx: bx, cy: cy, r: G.bulbR * 1.16, fill: 'var(--sig-on)', opacity: 0.28, class: 'bulb-glow' });
+    gNodes.appendChild(glow);
+    const poly = svgEl('polygon', { points: hexPoints(bx, cy, G.bulbR), fill: 'var(--board)', stroke: 'var(--sig-none)', 'stroke-width': 5 });
+    gNodes.appendChild(poly);
+    const icon = svgEl('g', {});
+    icon.appendChild(svgEl('circle', { cx: bx, cy: cy - 4 * j, r: 11 * j, fill: 'none', stroke: 'var(--sig-none)', 'stroke-width': 4 }));
+    icon.appendChild(svgEl('line', { x1: bx - 6 * j, y1: cy + 10 * j, x2: bx + 6 * j, y2: cy + 10 * j, stroke: 'var(--sig-none)', 'stroke-width': 4, 'stroke-linecap': 'round' }));
+    icon.appendChild(svgEl('line', { x1: bx - 4 * j, y1: cy + 16 * j, x2: bx + 4 * j, y2: cy + 16 * j, stroke: 'var(--sig-none)', 'stroke-width': 4, 'stroke-linecap': 'round' }));
+    gNodes.appendChild(icon);
+    bulbEls.push({ poly: poly, glow: glow, icon: icon, bulb: bl });
+  });
+
+  wrap.appendChild(svg);
+  const hint = $('scroll-hint');
+  hint.hidden = !(p.stages >= 5);
+  updateSignals(true);
+}
+
+function wireColor(v) {
+  return v === 1 ? 'var(--sig-on)' : v === 0 ? 'var(--sig-off)' : 'var(--sig-none)';
+}
+
+function updateSignals(skipWin) {
+  const p = S.puzzle;
+  const states = evaluateStages(p.lanes, p.stages, p.slots, S.placement, p.sources);
+
+  wireRegistry.forEach(function (w) {
+    w.el.setAttribute('stroke', wireColor(states[w.stateIdx][w.lane]));
+  });
+
+  slotGroups.forEach(function (sg) {
+    const type = S.placement[sg.slot.i];
+    sg.g.innerHTML = '';
+    if (type) {
+      const info = TYPE_INFO[type];
+      const poly = svgEl('polygon', {
+        points: hexPoints(sg.cx, sg.cy, G.hexR), fill: info.color, stroke: info.dark, 'stroke-width': 5, class: 'slot-hex'
+      });
+      sg.g.appendChild(poly);
+      const t = svgEl('text', { x: sg.cx, y: sg.cy + 1, class: 'hexlabel', 'font-size': Math.round(G.hexR * 0.78), fill: '#0b0a1f' });
+      t.textContent = type;
+      sg.g.appendChild(t);
+      if (sg.justPlaced) { sg.g.classList.add('chip-drop'); sg.justPlaced = false; setTimeout(function () { sg.g.classList.remove('chip-drop'); }, 260); }
+    } else {
+      const poly = svgEl('polygon', {
+        points: hexPoints(sg.cx, sg.cy, G.hexR),
+        class: 'slot-empty slot-hex' + (S.selected != null ? ' armed' : '')
+      });
+      sg.g.appendChild(poly);
+    }
+  });
+
+  const finalVals = states[p.stages];
+  bulbEls.forEach(function (b) {
+    const lit = finalVals[b.bulb.a] === 1 && finalVals[b.bulb.b] === 1;
+    const col = lit ? 'var(--sig-on)' : 'var(--sig-none)';
+    b.poly.setAttribute('stroke', col);
+    Array.prototype.forEach.call(b.icon.childNodes, function (n) { n.setAttribute('stroke', col); });
+    b.glow.classList.toggle('on', lit);
+  });
+
+  renderTray();
+  if (!skipWin) checkWin(finalVals);
+}
+
+/* ══ TRAY ══ */
+function renderTray() {
+  const tray = $('tray');
+  tray.innerHTML = '';
+  tray.classList.toggle('dense', S.trayItems.length > 12);
+  const avail = S.trayItems.filter(function (it) { return !it.used; });
+  if (!avail.length) {
+    const d = document.createElement('div');
+    d.className = 'tray-hint';
+    d.textContent = 'Tray empty — every chip is on the board.';
+    tray.appendChild(d);
+    return;
+  }
+  avail.forEach(function (it) {
+    const info = TYPE_INFO[it.type];
+    const b = document.createElement('button');
+    b.className = 'chip' + (S.selected === it.id ? ' selected' : '');
+    b.setAttribute('aria-label', info.name + ' chip — ' + info.cn);
+    b.innerHTML = '<svg viewBox="0 0 100 100">' +
+      '<polygon points="' + hexPoints(50, 50, 46) + '" fill="' + info.color + '" stroke="' + info.dark + '" stroke-width="6"/>' +
+      '<text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-size="40" font-weight="800" fill="#0b0a1f" font-family="Consolas, Courier New, monospace">' + it.type + '</text></svg>';
+    b.addEventListener('click', function () {
+      if (!S.ticking) return;
+      S.selected = (S.selected === it.id) ? null : it.id;
+      updateSignals(true);
+    });
+    tray.appendChild(b);
+  });
+}
+
+/* ══ PLACEMENT ══ */
+function onSlotTap(slotIdx) {
+  if (!S.ticking) return;
+  const occupied = S.placement[slotIdx];
+
+  if (occupied) {
+    if (S.mode === 'timeattack' || S.lockedSlots[slotIdx]) {
+      toast(S.mode === 'timeattack' ? 'Chips lock in Time Attack — use Reset.' : 'Hint chips stay put.');
+      return;
+    }
+    const sitting = S.trayItems.find(function (it) { return it.slot === slotIdx; });
+    if (sitting) { sitting.used = false; sitting.slot = null; }
+    S.placement[slotIdx] = null;
+    /* holding a chip? swap it straight in */
+    if (S.selected != null && S.selected !== (sitting && sitting.id)) {
+      const incoming = S.trayItems.find(function (it) { return it.id === S.selected; });
+      if (incoming && !incoming.used) {
+        incoming.used = true; incoming.slot = slotIdx;
+        S.placement[slotIdx] = incoming.type;
+        const g = slotGroups.find(function (x) { return x.slot.i === slotIdx; });
+        if (g) g.justPlaced = true;
+      }
+    }
+    S.selected = null;
+    updateSignals();
+    return;
+  }
+
+  if (S.selected == null) { toast('Pick a chip from the tray first.'); return; }
+  const item = S.trayItems.find(function (it) { return it.id === S.selected; });
+  if (!item || item.used) { S.selected = null; return; }
+  item.used = true; item.slot = slotIdx;
+  S.placement[slotIdx] = item.type;
+  S.selected = null;
+  const sg = slotGroups.find(function (x) { return x.slot.i === slotIdx; });
+  if (sg) sg.justPlaced = true;
+  updateSignals();
+}
+
+function resetBoard(silent) {
+  S.trayItems.forEach(function (it) { it.used = false; it.slot = null; });
+  S.placement = S.puzzle.slots.map(function () { return null; });
+  S.lockedSlots = {};
+  S.selected = null;
+  updateSignals(true);
+  if (!silent) toast('Board cleared — all chips back in the tray.');
+}
+
+function useHint() {
+  if (!S.ticking) return;
+  if (S.hintsLeft <= 0) { toast('No hints left on this board.'); return; }
+  const p = S.puzzle;
+  const empties = [];
+  for (let i = 0; i < p.slots.length; i++) if (!S.placement[i]) empties.push(i);
+  if (!empties.length) { toast('Every slot is already filled.'); return; }
+
+  const target = empties[Math.floor(Math.random() * empties.length)];
+  const need = p.solution[target];
+
+  let item = S.trayItems.find(function (it) { return !it.used && it.type === need; });
+  if (!item) {
+    const donor = S.trayItems.find(function (it) { return it.used && it.type === need && !S.lockedSlots[it.slot]; });
+    if (donor) { S.placement[donor.slot] = null; donor.used = false; donor.slot = null; item = donor; }
+  }
+  if (!item) { toast('Slot ' + (target + 1) + ' needs a ' + TYPE_INFO[need].name + ' chip.'); return; }
+
+  item.used = true; item.slot = target;
+  S.placement[target] = need;
+  S.lockedSlots[target] = true;
+  S.hintsLeft--;
+  if (S.mode !== 'practice') S.hintPenalty += 10000;
+  $('btn-hint').textContent = 'Hint (' + S.hintsLeft + ')';
+  const sg = slotGroups.find(function (x) { return x.slot.i === target; });
+  if (sg) sg.justPlaced = true;
+  toast(S.mode === 'practice' ? 'Hint placed.' : 'Hint placed — 10s added.');
+  updateSignals();
+}
+
+/* ══ TIMER ══ */
+let rafId = null;
+function tick() {
+  if (!S.ticking) return;
+  S.elapsed = Date.now() - S.startedAt + S.hintPenalty;
+  $('timer').textContent = fmtTime(S.elapsed);
+  rafId = requestAnimationFrame(tick);
+}
+function startTimer() {
+  S.startedAt = Date.now(); S.hintPenalty = 0; S.ticking = true;
+  cancelAnimationFrame(rafId); tick();
+}
+function stopTimer() { S.ticking = false; cancelAnimationFrame(rafId); }
+
+/* ══ FLOW ══ */
+function startPuzzle(opts) {
+  hubReportPlay();
+  const diff = opts.diff || S.diff;
+  const code = opts.code || makeCode(diff);
+  S.diff = diff;
+  S.code = code;
+  S.puzzle = generatePuzzle(diff, code);
+  S.placement = S.puzzle.slots.map(function () { return null; });
+  S.lockedSlots = {};
+  S.trayItems = S.puzzle.tray.map(function (t, i) { return { id: i, type: t, used: false, slot: null }; });
+  S.selected = null;
+  S.hintsLeft = 3; S.hintPenalty = 0; S.elapsed = 0;
+  S.ticking = false;
+
+  $('play-tag').textContent = DIFF[diff].label.toUpperCase();
+  $('play-mode-tag').textContent = S.mode === 'versus' ? 'PASS & PLAY' : S.mode === 'timeattack' ? 'TIME ATTACK' : 'PRACTICE';
+  $('btn-hint').textContent = 'Hint (3)';
+  $('timer').textContent = '00:00.0';
+
+  const banner = $('turn-banner');
+  if (S.mode === 'versus' && S.match) {
+    banner.style.display = '';
+    banner.textContent = S.match.names[S.match.turn] + ' — round ' + (S.match.round + 1) + ' of ' + S.match.rounds;
+  } else banner.style.display = 'none';
+
+  renderBoard();
+  showScreen('screen-play');
+  countdown(startTimer);
+}
+
+function countdown(done) {
+  const ov = $('countdown-overlay'), num = $('cd-num'), lbl = $('cd-label');
+  let n = 3;
+  ov.classList.add('active');
+  num.textContent = '3'; lbl.textContent = 'Powering up';
+  const step = function () {
+    n--;
+    if (n > 0) {
+      num.textContent = String(n);
+      num.style.animation = 'none'; void num.offsetWidth; num.style.animation = '';
+      setTimeout(step, 700);
+    } else if (n === 0) {
+      num.textContent = 'GO'; lbl.textContent = 'Trace the signal';
+      num.style.animation = 'none'; void num.offsetWidth; num.style.animation = '';
+      setTimeout(step, 620);
+    } else {
+      ov.classList.remove('active');
+      done();
+    }
+  };
+  setTimeout(step, 700);
+}
+
+function checkWin(finalVals) {
+  const p = S.puzzle;
+  const allFilled = S.placement.every(function (x) { return !!x; });
+  if (!allFilled) return;
+  if (!bulbsLit(finalVals, p.bulbs)) return;
+  stopTimer();
+  setTimeout(finishPuzzle, 420);
+}
+
+function finishPuzzle() {
+  const time = S.elapsed;
+  if (S.mode === 'versus' && S.match) return recordVersus(time);
+
+  let best = null, isBest = false;
+  if (S.mode === 'timeattack') {
+    const key = 'cc_scores_' + S.diff;
+    const list = store.get(key, []);
+    list.push({ t: time, at: Date.now() });
+    list.sort(function (a, b) { return a.t - b.t; });
+    const trimmed = list.slice(0, 8);
+    store.set(key, trimmed);
+    best = trimmed[0];
+    isBest = trimmed[0] && trimmed[0].t === time;
+  }
+
+  $('result-title').textContent = 'CIRCUIT LIVE';
+  $('result-time').textContent = fmtTime(time);
+  $('result-sub').textContent = isBest ? 'New best time' : 'All bulbs powered';
+
+  $('result-stats').innerHTML =
+    row('Difficulty', DIFF[S.diff].label) +
+    row('Mode', S.mode === 'timeattack' ? 'Time Attack' : 'Practice') +
+    row('Chips placed', String(S.puzzle.slots.length)) +
+    row('Hints used', String(3 - S.hintsLeft) + (S.hintPenalty ? ' (+' + (S.hintPenalty / 1000) + 's)' : '')) +
+    (best ? row('Your best', fmtTime(best.t)) : '');
+
+  const extra = $('result-extra');
+  extra.style.display = '';
+  extra.innerHTML = '<div class="card-title">Share this board</div>' +
+    '<div style="text-align:center"><span class="code-chip" id="code-copy">' + S.code + ' ⧉</span></div>' +
+    '<p style="font-size:12px;color:var(--muted);text-align:center;margin-top:10px">Anyone entering this code gets the identical board.</p>';
+
+  $('result-buttons').innerHTML =
+    '<button class="btn" data-act="next">New board</button>' +
+    '<button class="btn secondary" data-act="retry">Retry this one</button>' +
+    '<button class="btn secondary" data-act="menu">Menu</button>';
+
+  showScreen('screen-result');
+  const cc = $('code-copy');
+  if (cc) cc.addEventListener('click', function () {
+    try {
+      navigator.clipboard.writeText(S.code);
+      toast('Code copied.');
+    } catch (e) { toast('Code: ' + S.code); }
+  });
+}
+
+function row(k, v) { return '<div class="stat-row"><span>' + k + '</span><span>' + v + '</span></div>'; }
+
+/* ══ VERSUS ══ */
+function startMatch() {
+  const rounds = 3;
+  const base = makeCode(S.diff).slice(1);
+  S.match = {
+    rounds: rounds, round: 0, turn: 0,
+    names: ['Player 1', 'Player 2'],
+    times: [[], []],
+    codes: []
+  };
+  for (let r = 0; r < rounds; r++) S.match.codes.push(DIFF_LETTER[S.diff] + base.slice(0, 4) + CODE_ALPHABET[r]);
+  showPass();
+}
+function showPass() {
+  const m = S.match;
+  $('pass-title').textContent = m.names[m.turn].toUpperCase();
+  $('pass-sub').textContent = 'Round ' + (m.round + 1) + ' of ' + m.rounds;
+  const other = m.times[1 - m.turn][m.round];
+  $('pass-note').textContent = other != null
+    ? 'Same board as ' + m.names[1 - m.turn] + ', who finished in ' + fmtTime(other) + '. Hand the device over.'
+    : 'Hand the device over. Both players solve identical boards.';
+  showScreen('screen-pass');
+}
+function recordVersus(time) {
+  const m = S.match;
+  m.times[m.turn][m.round] = time;
+  if (m.turn === 0) { m.turn = 1; return showPass(); }
+  m.turn = 0; m.round++;
+  if (m.round < m.rounds) return showPass();
+  showMatchResult();
+}
+function showMatchResult() {
+  const m = S.match;
+  const totals = [0, 1].map(function (i) {
+    return m.times[i].reduce(function (a, b) { return a + b; }, 0);
+  });
+  const ranked = [0, 1].slice().sort(function (a, b) { return totals[a] - totals[b]; });
+  const tie = totals[0] === totals[1];
+
+  $('result-title').textContent = tie ? 'DEAD HEAT' : m.names[ranked[0]].toUpperCase() + ' WINS';
+  $('result-time').textContent = fmtTime(Math.min(totals[0], totals[1]));
+  $('result-sub').textContent = tie ? 'Identical totals' : 'Winning total';
+
+  let html = '<div class="card-title">Round times</div>';
+  for (let r = 0; r < m.rounds; r++) {
+    const t0 = m.times[0][r], t1 = m.times[1][r];
+    const faster = t0 === t1 ? -1 : (t0 < t1 ? 0 : 1);
+    html += '<div class="stat-row"><span>Round ' + (r + 1) + '</span><span>' +
+      (faster === 0 ? '<b style="color:var(--accent)">' : '') + fmtTime(t0) + (faster === 0 ? '</b>' : '') +
+      '  ·  ' + (faster === 1 ? '<b style="color:var(--accent)">' : '') + fmtTime(t1) + (faster === 1 ? '</b>' : '') +
+      '</span></div>';
+  }
+  $('result-stats').innerHTML = html;
+
+  const extra = $('result-extra');
+  extra.style.display = '';
+  let lb = '<div class="card-title">Final standings</div>';
+  const rank = [0, 0];
+  rank[ranked[0]] = 1;
+  rank[ranked[1]] = tie ? 1 : 2;
+  [0, 1].forEach(function (i) {
+    lb += '<div class="lb-row"><span class="lb-rank">' + rank[i] + '</span><span>' + m.names[i] +
+      '</span><span class="lb-time">' + fmtTime(totals[i]) + '</span></div>';
+  });
+  extra.innerHTML = lb;
+
+  $('result-buttons').innerHTML =
+    '<button class="btn" data-act="rematch">Rematch</button>' +
+    '<button class="btn secondary" data-act="menu">Menu</button>';
+  showScreen('screen-result');
+}
+
+/* ══ LEADERBOARD ══ */
+function showLeaderboard() {
+  $('result-title').textContent = 'BEST TIMES';
+  $('result-time').textContent = '';
+  $('result-sub').textContent = 'Time Attack, this device';
+  let html = '';
+  ['easy', 'medium', 'hard'].forEach(function (d) {
+    const list = store.get('cc_scores_' + d, []);
+    html += '<div class="card-title" style="margin-top:6px">' + DIFF[d].label + '</div>';
+    if (!list.length) html += '<div class="empty-note">No runs yet.</div>';
+    else list.slice(0, 5).forEach(function (r, i) {
+      html += '<div class="lb-row"><span class="lb-rank">' + (i + 1) +
+        '</span><span>' + new Date(r.at).toLocaleDateString() + '</span><span class="lb-time">' + fmtTime(r.t) + '</span></div>';
+    });
+  });
+  $('result-stats').innerHTML = html;
+  $('result-extra').style.display = 'none';
+  $('result-buttons').innerHTML = '<button class="btn secondary" data-act="menu">Menu</button>';
+  showScreen('screen-result');
+}
+
+/* ══ HELP REFERENCE TABLE ══ */
+function buildRefTable() {
+  const combos = [[0, 0], [0, 1], [1, 0], [1, 1]];
+  const host = $('ref-table');
+  host.innerHTML = '';
+  TYPES.forEach(function (type) {
+    const info = TYPE_INFO[type];
+    const row = document.createElement('div');
+    row.className = 'ref-row';
+    row.innerHTML = '<div class="ref-name"><b>' + info.name + '</b>' + info.cn + '</div>';
+    const cells = document.createElement('div');
+    cells.className = 'ref-cells';
+    combos.forEach(function (c) {
+      const out = applyChip(type, c[0], c[1]);
+      const col = function (v) { return v === 1 ? 'var(--sig-on)' : 'var(--sig-off)'; };
+      cells.innerHTML += '<svg viewBox="0 0 120 76" aria-hidden="true">' +
+        '<line x1="2" y1="24" x2="42" y2="24" stroke="' + col(c[0]) + '" stroke-width="7" stroke-linecap="round"/>' +
+        '<line x1="2" y1="52" x2="42" y2="52" stroke="' + col(c[1]) + '" stroke-width="7" stroke-linecap="round"/>' +
+        '<line x1="78" y1="24" x2="118" y2="24" stroke="' + col(out[0]) + '" stroke-width="7" stroke-linecap="round"/>' +
+        '<line x1="78" y1="52" x2="118" y2="52" stroke="' + col(out[1]) + '" stroke-width="7" stroke-linecap="round"/>' +
+        '<polygon points="' + hexPoints(60, 38, 28) + '" fill="' + info.color + '" stroke="' + info.dark + '" stroke-width="4"/>' +
+        '<text x="60" y="40" text-anchor="middle" dominant-baseline="central" font-size="26" font-weight="800" fill="#0b0a1f" font-family="Consolas, Courier New, monospace">' + type + '</text>' +
+        '</svg>';
+    });
+    row.appendChild(cells);
+    host.appendChild(row);
+  });
+}
+
+/* ══ EVENTS ══ */
+function bindPills(groupId, onPick) {
+  const g = $(groupId);
+  g.addEventListener('click', function (e) {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    Array.prototype.forEach.call(g.children, function (c) { c.classList.remove('selected'); });
+    pill.classList.add('selected');
+    onPick(pill.dataset.val);
+  });
+}
+
+function init() {
+  const savedTheme = store.get('cc_theme', 'dark');
+  isDark = savedTheme !== 'light';
+  applyTheme();
+  $('theme-btn').addEventListener('click', function () { isDark = !isDark; applyTheme(); });
+
+  bindPills('diff-group', function (v) { S.diff = v; });
+  bindPills('mode-group', function (v) { S.mode = v; });
+
+  $('btn-play').addEventListener('click', function () {
+    if (S.mode === 'versus') { startMatch(); }
+    else startPuzzle({ diff: S.diff });
+  });
+
+  $('btn-help-menu').addEventListener('click', function () { $('help-sheet').classList.add('active'); });
+  $('btn-help-play').addEventListener('click', function () { $('help-sheet').classList.add('active'); });
+  $('btn-help-close').addEventListener('click', function () { $('help-sheet').classList.remove('active'); });
+  $('btn-lb').addEventListener('click', showLeaderboard);
+
+  $('btn-code').addEventListener('click', function () {
+    $('code-input').value = '';
+    $('code-overlay').classList.add('active');
+    setTimeout(function () { $('code-input').focus(); }, 60);
+  });
+  $('btn-code-cancel').addEventListener('click', function () { $('code-overlay').classList.remove('active'); });
+  $('btn-code-go').addEventListener('click', function () {
+    const parsed = parseCode($('code-input').value);
+    if (!parsed) { toast('That code is not valid. Six characters, starting with E, M or H.'); return; }
+    $('code-overlay').classList.remove('active');
+    if (S.mode === 'versus') S.mode = 'practice';
+    S.diff = parsed.diff;
+    startPuzzle({ diff: parsed.diff, code: parsed.code });
+  });
+  $('code-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('btn-code-go').click(); });
+
+  $('btn-reset').addEventListener('click', function () { if (S.ticking) resetBoard(); });
+  $('btn-hint').addEventListener('click', useHint);
+  $('btn-exit').addEventListener('click', function () { $('exit-overlay').classList.add('active'); });
+  $('btn-exit-cancel').addEventListener('click', function () { $('exit-overlay').classList.remove('active'); });
+  $('btn-exit-confirm').addEventListener('click', function () {
+    $('exit-overlay').classList.remove('active');
+    stopTimer(); S.match = null; showScreen('screen-menu');
+  });
+
+  $('btn-pass-ready').addEventListener('click', function () {
+    const m = S.match;
+    startPuzzle({ diff: S.diff, code: m.codes[m.round] });
+  });
+
+  $('result-buttons').addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    const act = b.dataset.act;
+    if (act === 'menu') { S.match = null; showScreen('screen-menu'); }
+    else if (act === 'next') startPuzzle({ diff: S.diff });
+    else if (act === 'retry') startPuzzle({ diff: S.diff, code: S.code });
+    else if (act === 'rematch') startMatch();
+  });
+
+  buildRefTable();
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+}
+</script>
+</body>
+</html>

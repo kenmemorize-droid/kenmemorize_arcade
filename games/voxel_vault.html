@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voxel Vault</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+  /* ══ THEME TOKENS — STYLE_GUIDE.md §1 ══
+     Dark is the default (<html data-theme="dark">). Cyan is Voxel Vault's own
+     accent; light mode uses a darker, more saturated variant so it still carries
+     on white. --on-accent is the ink that sits on an accent fill — dark on the
+     pale cyan, white on the deep cyan; §6's literal "white text" would be
+     illegible on #4fc3e8. --accent-dim is the accent-tinted surface (§6 pills). */
+  :root[data-theme="dark"]{
+    --bg:#080d14; --grid:rgba(90,180,220,.055);
+    --surface:#0f1823; --card:#141f2c; --card2:#1a2836;
+    --border:#223447; --border-hi:#2f4a63;
+    --accent:#4fc3e8; --accent-dim:#0e3247; --on-accent:#031420;
+    --amber:#f5a524; --green:#35d39a; --red:#f4695f;
+    --text:#e3edf6; --muted:#7c92a8; --faint:#4a5f75;
+    --cube-top:#d5edfa; --cube-left:#79b6d6; --cube-right:#41809f; --cube-line:#071018;
+    --floor:#0c1721; --floor-line:#2c4459;
+    --shadow:rgba(0,0,0,.45);
+  }
+  :root[data-theme="light"]{
+    --bg:#eaf0f6; --grid:rgba(40,90,130,.07);
+    --surface:#ffffff; --card:#ffffff; --card2:#f2f7fb;
+    --border:#cbdae8; --border-hi:#9fbdd6;
+    --accent:#0e79a8; --accent-dim:#d8eef8; --on-accent:#ffffff;
+    --amber:#b56b06; --green:#0e8f66; --red:#c94236;
+    --text:#12212e; --muted:#5c7288; --faint:#8ba1b5;
+    --cube-top:#eef8fd; --cube-left:#98c8e2; --cube-right:#5d95b8; --cube-line:#17303f;
+    --floor:#e3edf5; --floor-line:#a9c3d6;
+    --shadow:rgba(20,50,80,.12);
+  }
+
+  body{
+    background:var(--bg);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:26px 26px;
+    color:var(--text);
+    font-family:'Segoe UI',Arial,sans-serif;
+    min-height:100vh;display:flex;justify-content:center;align-items:flex-start;
+    padding:20px 14px 48px;transition:background-color .25s,color .25s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mono{font-family:'Consolas','Courier New',monospace}
+
+  .wrap{width:100%;max-width:740px}
+  .screen{display:none}
+  .screen.active{display:block;animation:fade .28s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* §5 — the menu/settings screen reads at the shared 720px width; the play
+     screens keep the slightly wider shell their option grids were laid out for. */
+  #s-menu{max-width:720px;margin:0 auto}
+
+  /* ══ THEME TOGGLE — §2 (shared convention across all games) ══ */
+  .theme-toggle{position:fixed;top:16px;right:16px;z-index:300;background:var(--card);
+    border:1px solid var(--border);border-radius:40px;padding:6px 13px;cursor:pointer;
+    display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);
+    font-family:'Consolas','Courier New',monospace;letter-spacing:.04em;transition:.15s;user-select:none}
+  .theme-toggle:hover{border-color:var(--accent);color:var(--accent)}
+  .theme-toggle .toggle-icon{display:inline-flex}
+  .theme-toggle .icon-moon{display:none}
+  :root[data-theme="light"] .theme-toggle .icon-sun{display:none}
+  :root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex}
+
+  /* ══ TYPE ══ */
+  .eyebrow{font-family:'Consolas','Courier New',monospace;font-size:10.5px;
+    letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+  /* ── Logo block — §3 (icon, h1, subtitle) ── */
+  .logo{text-align:center;margin-bottom:20px}
+  .logo-icon{display:flex;justify-content:center;align-items:center;margin:0 auto 8px;
+    width:32px;height:32px;color:var(--accent)}
+  h1.title{font-size:28px;font-weight:800;letter-spacing:.5px;line-height:1.15;margin:2px 0 8px}
+  h1.title span{color:var(--accent)}
+  .tagline{color:var(--muted);font-size:14px;line-height:1.5;max-width:46ch}
+  .logo .tagline{margin:0 auto}
+  .head{margin-bottom:22px}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;
+    box-shadow:0 6px 20px var(--shadow)}
+  .card-h{font-family:'Consolas','Courier New',monospace;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .card-h::after{content:"";flex:1;height:1px;background:var(--border)}
+
+  /* ── How to play — §3. Always visible on the menu, never collapsed. The
+     per-mode detail lives behind "Full rules" so the card stays short. ── */
+  .howto-box p{font-size:13px;line-height:1.6;color:var(--muted);margin-bottom:9px}
+  .howto-box p:last-of-type{margin-bottom:0}
+  .howto-box b{color:var(--text);font-weight:600}
+  .howto-box .full-rules{margin-top:14px;width:100%}
+
+  ol.howto{list-style:none;counter-reset:s}
+  ol.howto li{counter-increment:s;position:relative;padding-left:30px;margin-bottom:9px;
+    font-size:13px;line-height:1.6;color:var(--muted)}
+  ol.howto li::before{content:counter(s);position:absolute;left:0;top:1px;width:20px;height:20px;
+    border:1px solid var(--border-hi);border-radius:5px;display:flex;align-items:center;justify-content:center;
+    font-family:'Consolas','Courier New',monospace;font-size:10.5px;color:var(--accent)}
+  ol.howto li b{color:var(--text);font-weight:600}
+
+  /* Full-rules sheet: reference detail only — the menu card is the summary. */
+  .rules-list{display:flex;flex-direction:column;gap:12px;text-align:left;margin-bottom:16px}
+  .rules-mode{border:1px solid var(--border);border-radius:10px;padding:12px 13px;background:var(--card2)}
+  .rules-mode h4{font-family:'Consolas','Courier New',monospace;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+  .rules-mode p{font-size:12.5px;line-height:1.6;color:var(--muted)}
+  .rules-foot{font-size:12.5px;line-height:1.6;color:var(--muted);text-align:left;margin-bottom:18px}
+  .rules-foot b{color:var(--text)}
+
+  /* ══ SETTINGS ══ */
+  .set{margin-bottom:16px}
+  .set:last-child{margin-bottom:0}
+  .set-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;
+    font-family:'Consolas','Courier New',monospace}
+  .pills{display:flex;gap:7px;flex-wrap:wrap}
+  .pill{padding:9px 14px;border:1px solid var(--border);background:var(--card2);border-radius:9px;
+    cursor:pointer;font-size:13px;color:var(--muted);transition:.14s;user-select:none;flex:1;text-align:center;min-width:64px}
+  .pill:hover{border-color:var(--border-hi);color:var(--text)}
+  .pill.on{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);font-weight:600}
+  .pills.modes .pill{flex:1 1 46%;text-align:left;padding:11px 13px}
+  .pill .pm{display:block;font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;
+    font-family:'Consolas','Courier New',monospace;margin-bottom:3px}
+  .pill.on .pm{color:var(--accent)}
+  .mode-note{margin-top:10px;font-size:12.5px;color:var(--muted);line-height:1.5;
+    border-left:2px solid var(--accent);padding-left:11px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:520px){.row2{grid-template-columns:1fr}}
+  input.code{width:100%;padding:10px 12px;background:var(--card2);border:1px solid var(--border);
+    border-radius:9px;color:var(--text);font-size:13px;font-family:'Consolas','Courier New',monospace;letter-spacing:.1em}
+  input.code:focus{outline:none;border-color:var(--accent)}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:6px;line-height:1.45}
+  .check{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:12.5px;color:var(--muted);user-select:none}
+  .check input{accent-color:var(--accent);width:15px;height:15px}
+
+  /* ══ BUTTONS ══ */
+  .btn{padding:11px 20px;border:1px solid var(--border-hi);background:var(--card2);color:var(--text);
+    border-radius:10px;font-size:14px;cursor:pointer;transition:.15s;font-weight:500}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+  .btn.primary:hover{filter:brightness(1.12);color:var(--on-accent)}
+  .btn.ghost{background:transparent;border-color:var(--border)}
+  .btn.danger{border-color:var(--red);color:var(--red);background:transparent}
+  .btn.danger:hover{background:var(--red);color:#fff}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-play{width:100%;padding:16px;font-size:16px;font-weight:800;letter-spacing:.1em;
+    background:var(--accent);color:var(--on-accent);border:none;border-radius:12px;cursor:pointer;
+    box-shadow:0 6px 22px -8px var(--accent);transition:.16s}
+  .btn-play:hover{transform:translateY(-1px);filter:brightness(1.08)}
+  .btn-row{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:14px}
+  .linkish{background:none;border:none;color:var(--faint);font-size:12px;cursor:pointer;
+    text-decoration:underline;text-underline-offset:3px;padding:6px}
+  .linkish:hover{color:var(--red)}
+
+  /* ══ PHASE HEADER / HUD ══ */
+  .hud{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  .hud-l{display:flex;flex-direction:column;gap:3px}
+  .phase{font-size:17px;font-weight:700}
+  .scorebar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--border);
+    background:var(--card);border-radius:30px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--text);font-family:'Consolas','Courier New',monospace}
+  .chip.now{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+  .chip.now b{color:var(--accent)}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.7}
+
+  .tbar-wrap{height:6px;background:var(--card2);border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:10px}
+  .tbar{height:100%;background:var(--accent);width:100%;transition:width 1s linear}
+  .tnum{font-family:'Consolas','Courier New',monospace;font-size:26px;font-weight:700;color:var(--accent);
+    text-align:center;margin-bottom:10px;letter-spacing:.04em}
+  .tnum.warn{color:var(--amber)}
+  .tnum.crit{color:var(--red)}
+
+  /* ══ STAGE ══ */
+  .stage{background:var(--surface);border:1px solid var(--border);border-radius:14px;
+    padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:12px;min-height:230px;
+    justify-content:center}
+  .stage-label{font-family:'Consolas','Courier New',monospace;font-size:10.5px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--faint)}
+  svg.iso{max-width:100%;height:auto;display:block;margin:0 auto}
+  .face{stroke:var(--cube-line);stroke-width:1.4;stroke-linejoin:round}
+  .face.top{fill:var(--cube-top)}
+  .face.left{fill:var(--cube-left)}
+  .face.right{fill:var(--cube-right)}
+  .face.floor{fill:var(--floor);stroke:var(--floor-line);stroke-width:1;stroke-dasharray:3 3}
+  .face.hit{cursor:pointer}
+  .face.top.hit:hover{fill:var(--accent)}
+  .face.floor.hit:hover{fill:var(--accent-dim);stroke:var(--accent);stroke-dasharray:none}
+  .erase .face.top.hit:hover{fill:var(--red)}
+
+  .seq-dots{display:flex;gap:8px;justify-content:center}
+  .seq-dots i{width:26px;height:4px;border-radius:3px;background:var(--border);transition:.2s}
+  .seq-dots i.on{background:var(--accent)}
+  .seq-dots i.done{background:var(--border-hi)}
+  .big-letter{font-family:'Consolas','Courier New',monospace;font-size:34px;font-weight:700;color:var(--accent);line-height:1}
+
+  /* ══ RECALL INPUTS ══ */
+  .prompt{text-align:center;font-size:14.5px;color:var(--muted);margin:14px 0 12px;line-height:1.5}
+  .prompt b{color:var(--text)}
+  .readout{font-family:'Consolas','Courier New',monospace;font-size:44px;font-weight:700;text-align:center;
+    color:var(--accent);letter-spacing:.06em;min-height:52px;margin-bottom:12px}
+  .readout.empty{color:var(--faint)}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px;margin:0 auto}
+  .key{padding:15px 0;border:1px solid var(--border);background:var(--card);border-radius:10px;
+    font-family:'Consolas','Courier New',monospace;font-size:19px;color:var(--text);cursor:pointer;transition:.12s}
+  .key:hover{border-color:var(--accent);color:var(--accent)}
+  .abcd{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;max-width:360px;margin:0 auto}
+  .abcd .key{font-size:24px;font-weight:700;padding:20px 0}
+  .abcd .key.sel{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:560px){.opts{grid-template-columns:1fr}}
+  .opt{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:12px 8px;
+    cursor:pointer;transition:.15s;text-align:center}
+  .opt:hover{border-color:var(--border-hi)}
+  .opt.sel{border-color:var(--accent);background:var(--accent-dim)}
+  .opt-tag{font-family:'Consolas','Courier New',monospace;font-size:12px;color:var(--muted);letter-spacing:.16em;margin-bottom:9px}
+  .opt.sel .opt-tag{color:var(--accent)}
+  .pieces{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:nowrap}
+  .plus{color:var(--faint);font-size:17px;font-family:'Consolas','Courier New',monospace}
+  svg.iso-sm{height:74px;width:auto;max-width:46%}
+  svg.iso-xs{height:56px;width:auto}
+
+  .buildbar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
+  .tool{padding:8px 13px;border:1px solid var(--border);background:var(--card);border-radius:8px;
+    font-size:12.5px;color:var(--muted);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:6px}
+  .tool:hover{border-color:var(--border-hi);color:var(--text)}
+  .tool.on{border-color:var(--accent);background:var(--accent-dim);color:var(--accent);font-weight:600}
+  .tool.on.era{border-color:var(--red);background:transparent;color:var(--red)}
+  .counter{font-family:'Consolas','Courier New',monospace;font-size:12.5px;color:var(--muted);text-align:center;margin-top:8px}
+  .counter b{color:var(--accent)}
+
+  .devbox{border:1px dashed var(--amber);color:var(--amber);border-radius:9px;padding:8px 12px;
+    font-family:'Consolas','Courier New',monospace;font-size:12px;text-align:center;margin-bottom:12px}
+
+  /* ══ REVEAL ══ */
+  .verdict{text-align:center;margin-bottom:14px}
+  .verdict .vt{font-size:22px;font-weight:800;letter-spacing:-.01em}
+  .verdict .vs{font-size:13px;color:var(--muted);margin-top:4px}
+  .ok{color:var(--green)} .no{color:var(--red)}
+  .quad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  @media(max-width:560px){.quad{grid-template-columns:repeat(2,1fr)}}
+  .quad .qc{border:1px solid var(--border);border-radius:10px;padding:10px 4px;text-align:center;background:var(--card)}
+  .quad .qc.bad{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 12%,transparent)}
+  .qc .ql{font-family:'Consolas','Courier New',monospace;font-size:12px;color:var(--muted);letter-spacing:.14em}
+  .qc.bad .ql{color:var(--amber);font-weight:700}
+  .plist{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+  .prow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;
+    border:1px solid var(--border);border-radius:9px;background:var(--card);font-size:13px}
+  .prow .pn{display:flex;align-items:center;gap:8px}
+  .prow .pa{font-family:'Consolas','Courier New',monospace;color:var(--muted)}
+  .prow .pp{font-family:'Consolas','Courier New',monospace;font-weight:700}
+  .side{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:flex-end}
+  .side>div{text-align:center}
+
+  /* ══ FINAL ══ */
+  .podium{display:flex;flex-direction:column;gap:9px;margin-bottom:6px}
+  .prow.win{border-color:var(--amber);background:color-mix(in srgb,var(--amber) 10%,transparent)}
+  .rank{font-family:'Consolas','Courier New',monospace;color:var(--faint);width:22px}
+  .bigscore{font-family:'Consolas','Courier New',monospace;font-size:52px;font-weight:800;color:var(--accent);
+    text-align:center;line-height:1}
+  .bigsub{text-align:center;color:var(--muted);font-size:13px;margin-top:2px;margin-bottom:16px}
+  .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px}
+  .rcell{border:1px solid var(--border);border-radius:8px;padding:7px 2px;text-align:center;
+    font-family:'Consolas','Courier New',monospace;font-size:12px;background:var(--card)}
+  .rcell .rn{color:var(--faint);font-size:9.5px;display:block;margin-bottom:2px}
+  .rcell.good{border-color:var(--green);color:var(--green)}
+  .rcell.part{border-color:var(--amber);color:var(--amber)}
+  .rcell.miss{border-color:var(--border);color:var(--faint)}
+
+  /* ══ OVERLAYS ══ */
+  .ovl{position:fixed;inset:0;background:rgba(4,9,14,.88);display:none;align-items:center;
+    justify-content:center;z-index:400;padding:20px}
+  .ovl.on{display:flex}
+  .modal{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:26px;
+    max-width:340px;width:100%;text-align:center;box-shadow:0 20px 50px -12px var(--shadow)}
+  .modal h3{font-size:17px;margin-bottom:8px}
+  .modal p{font-size:13px;color:var(--muted);line-height:1.55;margin-bottom:20px}
+  .modal .btn-row{margin-top:0}
+  .cdn{font-family:'Consolas','Courier New',monospace;font-size:88px;font-weight:800;color:var(--accent);line-height:1}
+  .cdl{font-family:'Consolas','Courier New',monospace;letter-spacing:.3em;font-size:11px;color:var(--muted);
+    text-transform:uppercase;margin-top:10px}
+  @keyframes pop{0%{transform:scale(.5);opacity:0}45%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+
+  .turnbanner{text-align:center;font-size:14px;margin-bottom:12px;color:var(--muted)}
+  .turnbanner b{color:var(--accent)}
+  .ttimer{font-family:'Consolas','Courier New',monospace;color:var(--amber);font-size:12.5px}
+
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" id="themeBtn" onclick="toggleTheme()"><span id="thIcon">◐</span><span id="thTxt">LIGHT</span></button>
+
+<div class="wrap">
+
+<!-- ═══════════ MENU ═══════════ -->
+<div class="screen active" id="s-menu">
+  <div class="head">
+    <div class="eyebrow">Isometric recall · solo &amp; head-to-head</div>
+    <!-- §3 — inline SVG icon above the title (isometric cube, hinting the core mechanic) -->
+    <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5 21 7v10l-9 4.5L3 17V7z"/><path d="M3 7l9 4.5L21 7"/><path d="M12 11.5v10"/></svg></span>
+    <h1 class="title">VOXEL <span>VAULT</span></h1>
+    <p class="tagline">Four spatial puzzles, each with the answer taken away before you get to answer it</p>
+  </div>
+
+  <div class="card">
+    <div class="card-h">How to play</div>
+    <ol class="howto">
+      <li>Pick a <b>mode</b>, a difficulty and how long you get to study.</li>
+      <li>A structure appears. Look at it hard — the timer is the whole point.</li>
+      <li>The structure <b>disappears</b>. There is no going back to it.</li>
+      <li>Answer from memory. With 2–4 players everyone studies together, then answers in private turns.</li>
+      <li>10 points a round. Highest total after the last round takes it.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Mode</div>
+    <div class="pills modes" id="g-mode">
+      <div class="pill on" data-v="count"><span class="pm">01 · Count</span>Hidden boxes</div>
+      <div class="pill" data-v="rebuild"><span class="pm">02 · Rebuild</span>Stack it back</div>
+      <div class="pill" data-v="odd"><span class="pm">03 · Odd one out</span>Spot the impostor</div>
+      <div class="pill" data-v="assemble"><span class="pm">04 · Assemble</span>Which pieces fit</div>
+    </div>
+    <div class="mode-note" id="modeNote"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">Setup</div>
+    <div class="row2">
+      <div class="set">
+        <div class="set-label">Difficulty</div>
+        <div class="pills" id="g-diff">
+          <div class="pill" data-v="easy">Easy</div>
+          <div class="pill on" data-v="med">Medium</div>
+          <div class="pill" data-v="hard">Hard</div>
+        </div>
+      </div>
+      <div class="set">
+        <div class="set-label">Study time</div>
+        <div class="pills" id="g-study">
+          <div class="pill" data-v="6">6s</div>
+          <div class="pill on" data-v="10">10s</div>
+          <div class="pill" data-v="16">16s</div>
+          <div class="pill" data-v="25">25s</div>
+        </div>
+      </div>
+    </div>
+    <div class="hint" style="margin-top:-6px;margin-bottom:14px">In Odd one out the four shapes appear one after another and share this total.</div>
+    <div class="row2">
+      <div class="set">
+        <div class="set-label">Rounds</div>
+        <div class="pills" id="g-rounds">
+          <div class="pill on" data-v="5">5</div>
+          <div class="pill" data-v="8">8</div>
+          <div class="pill" data-v="12">12</div>
+        </div>
+      </div>
+      <div class="set">
+        <div class="set-label">Players</div>
+        <div class="pills" id="g-players">
+          <div class="pill on" data-v="1">1</div>
+          <div class="pill" data-v="2">2</div>
+          <div class="pill" data-v="3">3</div>
+          <div class="pill" data-v="4">4</div>
+        </div>
+      </div>
+    </div>
+    <div class="set">
+      <div class="set-label">Challenge code <span style="text-transform:none;letter-spacing:0">(optional)</span></div>
+      <input class="code" id="codeIn" maxlength="16" placeholder="leave blank for random" autocomplete="off">
+      <div class="hint">Same code + same setup = the exact same puzzles. Share it to play the identical set on another device.</div>
+    </div>
+    <label class="check" style="margin-top:14px"><input type="checkbox" id="devIn"> Show the answer during recall (testing)</label>
+  </div>
+
+  <button class="btn-play" onclick="startGame()">START</button>
+</div>
+
+<!-- ═══════════ STUDY ═══════════ -->
+<div class="screen" id="s-study">
+  <div class="hud">
+    <div class="hud-l">
+      <div class="eyebrow" id="stEyebrow">Round 1 of 5 · Study</div>
+      <div class="phase" id="stPhase">Memorise the stack</div>
+    </div>
+  </div>
+  <div class="tbar-wrap"><div class="tbar" id="stBar"></div></div>
+  <div class="tnum mono" id="stNum">10</div>
+  <div class="stage" id="stStage"></div>
+  <div class="btn-row">
+    <button class="btn ghost" onclick="skipStudy()">Skip study →</button>
+    <button class="btn danger" onclick="askExit()">Exit game</button>
+  </div>
+</div>
+
+<!-- ═══════════ RECALL ═══════════ -->
+<div class="screen" id="s-recall">
+  <div class="hud">
+    <div class="hud-l">
+      <div class="eyebrow" id="rcEyebrow">Round 1 of 5 · Recall</div>
+      <div class="phase" id="rcPhase">It's hidden now</div>
+    </div>
+  </div>
+  <div class="scorebar" id="rcScores"></div>
+  <div class="turnbanner" id="rcTurn"></div>
+  <div id="rcDev"></div>
+  <div id="rcBody"></div>
+  <div class="btn-row">
+    <button class="btn primary" id="rcSubmit" onclick="submitAnswer()">Lock in answer</button>
+  </div>
+  <div style="text-align:center"><button class="linkish" onclick="askEnd()">End game early</button></div>
+</div>
+
+<!-- ═══════════ REVEAL ═══════════ -->
+<div class="screen" id="s-reveal">
+  <div class="hud">
+    <div class="hud-l">
+      <div class="eyebrow" id="rvEyebrow">Round 1 of 5 · Answer</div>
+      <div class="phase" id="rvPhase">Here's what it was</div>
+    </div>
+  </div>
+  <div id="rvBody"></div>
+  <div class="btn-row"><button class="btn primary" id="rvNext" onclick="nextRound()">Next round →</button></div>
+</div>
+
+<!-- ═══════════ FINAL ═══════════ -->
+<div class="screen" id="s-final">
+  <div class="head">
+    <div class="eyebrow" id="fnEyebrow">Final</div>
+    <h1 class="title" style="font-size:clamp(24px,6vw,34px)">Vault <span>closed</span></h1>
+  </div>
+  <div id="fnBody"></div>
+  <div class="btn-row">
+    <button class="btn" onclick="toMenu()">← Menu</button>
+    <button class="btn primary" onclick="replay()">Play again</button>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- countdown -->
+<div class="ovl" id="cdOvl">
+  <div style="text-align:center">
+    <div class="cdn mono" id="cdNum">3</div>
+    <div class="cdl" id="cdLabel">Get ready</div>
+  </div>
+</div>
+
+<!-- exit modal -->
+<div class="ovl" id="exitOvl">
+  <div class="modal">
+    <h3 id="exTitle">Exit game?</h3>
+    <p id="exBody">Progress in this game is lost and you go back to the menu.</p>
+    <div class="btn-row">
+      <button class="btn ghost" onclick="closeOvl('exitOvl')">Keep playing</button>
+      <button class="btn danger" id="exGo">Exit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'voxel-vault';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ══════════════════════════════════════════════════
+   1. RNG
+   ══════════════════════════════════════════════════ */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hashStr(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function mkRng(seed){const r=mulberry32(seed);r.i=n=>Math.floor(r()*n);r.pick=a=>a[Math.floor(r()*a.length)];
+  r.shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};return r}
+
+/* ══════════════════════════════════════════════════
+   2. VOXEL GEOMETRY
+   ══════════════════════════════════════════════════ */
+const DIRS6=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+const ROTS=(function(){
+  const mul=(a,b)=>a.map(r=>[0,1,2].map(j=>r[0]*b[0][j]+r[1]*b[1][j]+r[2]*b[2][j]));
+  const I=[[1,0,0],[0,1,0],[0,0,1]], RX=[[1,0,0],[0,0,-1],[0,1,0]], RZ=[[0,-1,0],[1,0,0],[0,0,1]];
+  const out=[I],seen=new Set([JSON.stringify(I)]);let fr=[I];
+  while(fr.length){const nx=[];for(const m of fr)for(const r of [RX,RZ]){const m2=mul(r,m),k=JSON.stringify(m2);
+    if(!seen.has(k)){seen.add(k);out.push(m2);nx.push(m2)}}fr=nx}
+  return out;
+})();
+function applyRot(m,c){return c.map(p=>[
+  m[0][0]*p[0]+m[0][1]*p[1]+m[0][2]*p[2],
+  m[1][0]*p[0]+m[1][1]*p[1]+m[1][2]*p[2],
+  m[2][0]*p[0]+m[2][1]*p[1]+m[2][2]*p[2]])}
+function norm(c){let a=1e9,b=1e9,d=1e9;for(const p of c){a=Math.min(a,p[0]);b=Math.min(b,p[1]);d=Math.min(d,p[2])}
+  return c.map(p=>[p[0]-a,p[1]-b,p[2]-d])}
+function skey(c){return norm(c).map(p=>p.join(',')).sort().join('|')}
+function canon(c){let best=null;for(const m of ROTS){const k=skey(applyRot(m,c));if(best===null||k<best)best=k}return best}
+function mirrorX(c){return c.map(p=>[-p[0],p[1],p[2]])}
+function connected(c){
+  if(!c.length)return false;
+  const s=new Set(c.map(p=>p.join(',')));const st=[c[0].join(',')];const seen=new Set(st);
+  while(st.length){const[x,y,z]=st.pop().split(',').map(Number);
+    for(const d of DIRS6){const k=(x+d[0])+','+(y+d[1])+','+(z+d[2]);
+      if(s.has(k)&&!seen.has(k)){seen.add(k);st.push(k)}}}
+  return seen.size===s.size;
+}
+function eqCell(a,b){return a[0]===b[0]&&a[1]===b[1]&&a[2]===b[2]}
+
+/* ══════════════════════════════════════════════════
+   3. ISOMETRIC RENDERER
+   ══════════════════════════════════════════════════ */
+function isoSVG(cells,opt){
+  opt=opt||{};
+  const W=opt.W||26,H=W/2,V=W,PAD=7;
+  const occ=new Set(cells.map(c=>c[0]+','+c[1]+','+c[2]));
+  let mnX=1e9,mxX=-1e9,mnY=1e9,mxY=-1e9;const out=[];
+  function poly(cls,pts,attr){
+    for(const p of pts){if(p[0]<mnX)mnX=p[0];if(p[0]>mxX)mxX=p[0];if(p[1]<mnY)mnY=p[1];if(p[1]>mxY)mxY=p[1]}
+    out.push('<polygon class="'+cls+'" points="'+pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+'"'+(attr||'')+'/>');
+  }
+  if(opt.floorCells){
+    const fl=opt.floorCells.slice().sort((a,b)=>(a[0]+a[1])-(b[0]+b[1]));
+    for(const[x,y]of fl){
+      const cx=(x-y)*W,cy=(x+y+1)*H+V;
+      const tag=opt.colTag?opt.colTag.get(x+','+y):null;
+      const live=tag&&!occ.has(x+','+y+',0');
+      poly('face floor'+(live?' hit':''),[[cx,cy-H],[cx+W,cy],[cx,cy+H],[cx-W,cy]],live?' data-col="'+tag+'"':'');
+    }
+  }
+  const srt=cells.slice().sort((a,b)=>(a[0]+a[1]+a[2])-(b[0]+b[1]+b[2])||a[2]-b[2]);
+  for(const[x,y,z]of srt){
+    const cx=(x-y)*W,cy=(x+y+1)*H-z*V;
+    if(!occ.has(x+','+(y+1)+','+z)) poly('face left',[[cx-W,cy],[cx,cy+H],[cx,cy+H+V],[cx-W,cy+V]]);
+    if(!occ.has((x+1)+','+y+','+z)) poly('face right',[[cx+W,cy],[cx,cy+H],[cx,cy+H+V],[cx+W,cy+V]]);
+    if(!occ.has(x+','+y+','+(z+1))){
+      const tag=opt.colTag?opt.colTag.get(x+','+y):null;
+      poly('face top'+(tag?' hit':''),[[cx,cy-H],[cx+W,cy],[cx,cy+H],[cx-W,cy]],tag?' data-col="'+tag+'"':'');
+    }
+  }
+  if(mnX>mxX){mnX=0;mxX=1;mnY=0;mxY=1}
+  const w=(mxX-mnX)+PAD*2,h=(mxY-mnY)+PAD*2;
+  return '<svg class="iso '+(opt.cls||'')+'" width="'+w.toFixed(0)+'" height="'+h.toFixed(0)+
+    '" viewBox="'+(mnX-PAD).toFixed(1)+' '+(mnY-PAD).toFixed(1)+' '+w.toFixed(1)+' '+h.toFixed(1)+
+    '" xmlns="http://www.w3.org/2000/svg">'+out.join('')+'</svg>';
+}
+/* height map -> cells, with optional view rotation */
+function w2v(x,y,r,N){return r===0?[x,y]:r===1?[y,N-1-x]:r===2?[N-1-x,N-1-y]:[N-1-y,x]}
+function hmRender(hm,N,opt){
+  opt=opt||{};const rot=opt.rot||0;
+  const cells=[],floor=[],tag=new Map();
+  for(let x=0;x<N;x++)for(let y=0;y<N;y++){
+    const[vx,vy]=w2v(x,y,rot,N);
+    floor.push([vx,vy]);
+    if(opt.tagged)tag.set(vx+','+vy,x+','+y);
+    for(let z=0;z<hm[x*N+y];z++)cells.push([vx,vy,z]);
+  }
+  return isoSVG(cells,{W:opt.W||28,floorCells:opt.noFloor?null:floor,colTag:opt.tagged?tag:null,cls:opt.cls});
+}
+
+/* ══════════════════════════════════════════════════
+   4. TEMPLATES
+   ══════════════════════════════════════════════════ */
+const HM_TPL=[
+  {n:'Plaza', m:[1,1,1,1,0,1,1,1,1]},
+  {n:'Cross', m:[0,1,0,1,1,1,0,1,0]},
+  {n:'Ell',   m:[1,0,0,1,0,0,1,1,1]},
+  {n:'Steps', m:[1,1,1,1,1,0,1,0,0]},
+  {n:'Zed',   m:[1,1,0,0,1,0,0,1,1]},
+  {n:'Slab',  m:[1,1,1,1,1,1,1,1,1]},
+  {n:'Tee',   m:[1,1,1,0,1,0,0,1,0]},
+  {n:'Wing',  m:[1,1,0,1,1,1,0,1,1]}
+];
+const POLY_TPL=[
+  {n:'Chair',  c:[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,1,1],[1,1,1]]},
+  {n:'Zig',    c:[[0,0,0],[1,0,0],[1,1,0],[2,1,0],[2,1,1]]},
+  {n:'Tripod', c:[[0,0,0],[1,0,0],[2,0,0],[0,1,0],[0,0,1]]},
+  {n:'Hook',   c:[[0,0,0],[0,1,0],[0,2,0],[1,2,0],[1,2,1]]},
+  {n:'Bench',  c:[[0,0,0],[1,0,0],[2,0,0],[0,0,1],[2,0,1],[1,1,0]]},
+  {n:'Clamp',  c:[[0,0,0],[0,1,0],[0,2,0],[1,0,0],[1,2,0],[0,0,1],[0,2,1]]},
+  {n:'Spiral', c:[[0,0,0],[1,0,0],[1,1,0],[1,1,1],[0,1,1]]},
+  {n:'Tower',  c:[[0,0,0],[1,0,0],[0,1,0],[0,0,1],[0,0,2],[1,0,1]]},
+  {n:'Wedge',  c:[[0,0,0],[1,0,0],[2,0,0],[1,1,0],[1,0,1],[2,1,0]]}
+];
+function growPoly(rng,cells,target){
+  cells=cells.map(p=>p.slice());
+  let guard=0;
+  while(cells.length<target&&guard++<200){
+    const s=new Set(cells.map(p=>p.join(',')));const cand=[];
+    for(const c of cells)for(const d of DIRS6){const nb=[c[0]+d[0],c[1]+d[1],c[2]+d[2]];
+      if(nb[2]<0)continue;if(!s.has(nb.join(',')))cand.push(nb)}
+    if(!cand.length)break;
+    cells.push(rng.pick(cand));
+  }
+  return norm(cells);
+}
+function pickPoly(rng,size){
+  const pool=POLY_TPL.filter(t=>t.c.length<=size);
+  const t=rng.pick(pool.length?pool:POLY_TPL);
+  return growPoly(rng,t.c,size);
+}
+
+/* ══════════════════════════════════════════════════
+   5. PUZZLE GENERATORS
+   ══════════════════════════════════════════════════ */
+const DIFF={
+  easy:{N:3,maxH:2,cols:5,poly:5,zOnly:true},
+  med: {N:3,maxH:3,cols:6,poly:6,zOnly:false},
+  hard:{N:4,maxH:3,cols:8,poly:7,zOnly:false}
+};
+function genHeightMap(rng,cfg,capCols){
+  const N=cfg.N,mask=new Array(N*N).fill(0);
+  const tpl=rng.pick(HM_TPL);
+  const ox=N>3?rng.i(N-2):0, oy=N>3?rng.i(N-2):0;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++)if(tpl.m[i*3+j])mask[(i+ox)*N+(j+oy)]=1;
+  if(N>3){
+    const extra=1+rng.i(4);
+    for(let e=0;e<extra;e++){
+      const idxs=[];
+      for(let x=0;x<N;x++)for(let y=0;y<N;y++){
+        if(mask[x*N+y])continue;
+        if((x>0&&mask[(x-1)*N+y])||(x<N-1&&mask[(x+1)*N+y])||(y>0&&mask[x*N+y-1])||(y<N-1&&mask[x*N+y+1]))idxs.push(x*N+y);
+      }
+      if(!idxs.length)break;
+      mask[rng.pick(idxs)]=1;
+    }
+  }
+  if(capCols){ // trim for rebuild mode
+    let on=[];for(let i=0;i<N*N;i++)if(mask[i])on.push(i);
+    on=rng.shuf(on);
+    while(on.length>capCols)mask[on.pop()]=0;
+  }
+  const rule=rng.pick(['rand','pyramid','flat','wave']);
+  const flatH=1+rng.i(cfg.maxH), c=(N-1)/2, hm=new Array(N*N).fill(0);
+  for(let x=0;x<N;x++)for(let y=0;y<N;y++){
+    if(!mask[x*N+y])continue;
+    let h;
+    if(rule==='flat')h=flatH;
+    else if(rule==='rand')h=1+rng.i(cfg.maxH);
+    else if(rule==='pyramid')h=Math.max(1,cfg.maxH-Math.round(Math.max(Math.abs(x-c),Math.abs(y-c))));
+    else h=1+((x+y)%cfg.maxH);
+    hm[x*N+y]=Math.min(cfg.maxH,h);
+  }
+  const filled=hm.filter(v=>v>0);
+  if(cfg.maxH>1&&filled.every(v=>v===filled[0])){ // avoid flat-and-obvious
+    const on=[];for(let i=0;i<N*N;i++)if(hm[i])on.push(i);
+    if(on.length){const i=rng.pick(on);hm[i]=hm[i]<cfg.maxH?hm[i]+1:hm[i]-1||1}
+  }
+  return hm;
+}
+function splitPoly(rng,cells){
+  const n=cells.length;
+  for(let t=0;t<400;t++){
+    const k=Math.max(2,Math.floor(n/2)+(rng()<.5?0:1));
+    if(n-k<2)continue;
+    const set=new Set(cells.map(p=>p.join(',')));
+    const chosen=[rng.pick(cells)];const cs=new Set([chosen[0].join(',')]);
+    while(chosen.length<k){
+      const cand=[];
+      for(const c of chosen)for(const d of DIRS6){const nb=[c[0]+d[0],c[1]+d[1],c[2]+d[2]];
+        const key=nb.join(',');if(set.has(key)&&!cs.has(key))cand.push(nb)}
+      if(!cand.length)break;
+      const p=rng.pick(cand);cs.add(p.join(','));chosen.push(p);
+    }
+    if(chosen.length!==k)continue;
+    const rest=cells.filter(p=>!cs.has(p.join(',')));
+    if(rest.length<2||!connected(rest)||!connected(chosen))continue;
+    return [chosen,rest];
+  }
+  return null;
+}
+function canAssemble(A,B,target){
+  const T=new Set(target.map(p=>p.join(',')));
+  const canB=canon(B);const seen=new Set();
+  for(const m of ROTS){
+    const ra=norm(applyRot(m,A));const rk=skey(ra);
+    if(seen.has(rk))continue;seen.add(rk);
+    for(const t of target){
+      const off=[t[0]-ra[0][0],t[1]-ra[0][1],t[2]-ra[0][2]];
+      const placed=ra.map(p=>[p[0]+off[0],p[1]+off[1],p[2]+off[2]]);
+      if(!placed.every(p=>T.has(p.join(','))))continue;
+      const rem=target.filter(c=>!placed.some(p=>eqCell(p,c)));
+      if(rem.length===B.length&&connected(rem)&&canon(rem)===canB)return true;
+    }
+  }
+  return false;
+}
+function mutatePiece(rng,piece){
+  for(let t=0;t<160;t++){
+    const idx=rng.i(piece.length);
+    const rest=piece.filter((_,i)=>i!==idx);
+    if(rest.length<2||!connected(rest))continue;
+    const rs=new Set(rest.map(p=>p.join(',')));const cand=[];
+    for(const c of rest)for(const d of DIRS6){const nb=[c[0]+d[0],c[1]+d[1],c[2]+d[2]];
+      if(!rs.has(nb.join(',')))cand.push(nb)}
+    if(!cand.length)continue;
+    const np=norm(rest.concat([rng.pick(cand)]));
+    if(canon(np)===canon(piece))continue;
+    return np;
+  }
+  return null;
+}
+/* a piece one cube larger can never complete the target — a guaranteed-safe distractor */
+function growOne(rng,piece){
+  const s=new Set(piece.map(p=>p.join(',')));const cand=[];
+  for(const c of piece)for(const d of DIRS6){const nb=[c[0]+d[0],c[1]+d[1],c[2]+d[2]];
+    if(!s.has(nb.join(',')))cand.push(nb)}
+  return norm(piece.concat([rng.pick(cand)]));
+}
+function makeImpostor(rng,base){
+  const m=norm(mirrorX(base));
+  if(canon(m)!==canon(base))return m;
+  const alt=mutatePiece(rng,base);
+  if(alt&&canon(alt)!==canon(base))return alt;
+  return norm(base.concat([[base[0][0],base[0][1],base[0][2]+1]]).filter((p,i,a)=>
+    a.findIndex(q=>eqCell(q,p))===i));
+}
+
+function makePuzzle(mode,rng,cfg){
+  if(mode==='count'){
+    const hm=genHeightMap(rng,cfg,null);
+    return {type:'count',N:cfg.N,hm:hm,answer:hm.reduce((a,b)=>a+b,0)};
+  }
+  if(mode==='rebuild'){
+    const hm=genHeightMap(rng,cfg,cfg.cols);
+    return {type:'rebuild',N:cfg.N,maxH:cfg.maxH,hm:hm,answer:hm.reduce((a,b)=>a+b,0)};
+  }
+  if(mode==='odd'){
+    const base=pickPoly(rng,cfg.poly);
+    const imp=makeImpostor(rng,base);
+    const pool=cfg.zOnly?ROTS.filter(m=>m[2][2]===1):ROTS;
+    const seen=new Set();const same=[];
+    for(const m of rng.shuf(pool)){const v=norm(applyRot(m,base));const k=skey(v);
+      if(seen.has(k))continue;seen.add(k);same.push(v);if(same.length===3)break}
+    if(same.length<3) // symmetric shape: widen to every rotation rather than repeat an orientation
+      for(const m of rng.shuf(ROTS)){const v=norm(applyRot(m,base));const k=skey(v);
+        if(seen.has(k))continue;seen.add(k);same.push(v);if(same.length===3)break}
+    while(same.length<3)same.push(norm(base));
+    const impR=norm(applyRot(rng.pick(pool),imp));
+    const idx=rng.i(4);const shapes=[];
+    let si=0;for(let i=0;i<4;i++)shapes.push(i===idx?impR:same[si++]);
+    return {type:'odd',shapes:shapes,answer:idx,base:base};
+  }
+  /* assemble */
+  let target,pair=null;
+  for(let t=0;t<40&&!pair;t++){target=pickPoly(rng,cfg.poly+1);pair=splitPoly(rng,target)}
+  if(!pair){target=norm(POLY_TPL[0].c);pair=splitPoly(rng,target)||[target.slice(0,3),target.slice(3)]}
+  const [A,B]=pair;
+  const opts=[[norm(A),norm(B)]];
+  let guard=0;
+  while(opts.length<3&&guard++<300){
+    const flip=rng()<.5;
+    const src=flip?B:A, other=flip?A:B;
+    const mp=mutatePiece(rng,src);
+    if(!mp)continue;
+    if(canAssemble(mp,other,target))continue;
+    const cand=flip?[norm(other),norm(mp)]:[norm(mp),norm(other)];
+    const ck=skey(cand[0])+'#'+skey(cand[1]);
+    if(opts.some(o=>skey(o[0])+'#'+skey(o[1])===ck))continue;
+    opts.push(cand);
+  }
+  let g2=0;
+  while(opts.length<3&&g2++<200){ // never pad with the correct pair — that makes two right answers
+    const flip=rng()<.5;
+    const src=flip?B:A, other=flip?A:B;
+    const cand=flip?[norm(other),growOne(rng,src)]:[growOne(rng,src),norm(other)];
+    const ck=skey(cand[0])+'#'+skey(cand[1]);
+    if(opts.some(o=>skey(o[0])+'#'+skey(o[1])===ck))continue;
+    opts.push(cand);
+  }
+  const order=rng.shuf([0,1,2]);
+  const shuffled=order.map(i=>opts[i]);
+  return {type:'assemble',target:target,options:shuffled,answer:order.indexOf(0)};
+}
+
+/* ══════════════════════════════════════════════════
+   6. GAME STATE + SCREENS
+   ══════════════════════════════════════════════════ */
+const MODE_INFO={
+  count:{title:'Count the hidden boxes',note:'A stack of boxes appears. Count every one — including the boxes you cannot see behind and beneath the others. Then the stack vanishes and you type the number.',study:'Memorise the stack',ask:'How many boxes were in the stack?'},
+  rebuild:{title:'Rebuild the stack',note:'Memorise a stack of boxes, then rebuild it cube by cube on an empty plot. Tap a plot square or the top of a stack to add; switch to Remove to take one off.',study:'Memorise the stack',ask:'Rebuild what you saw.'},
+  odd:{title:'Spot the impostor',note:'Four solids appear one at a time. Three are the same shape rotated, one is not. You never see them side by side — name the odd one from memory.',study:'Watch all four',ask:'Which one was the odd shape out?'},
+  assemble:{title:'Which pieces fit',note:'Memorise a solid. It disappears, then three pairs of pieces appear. Only one pair fits together to make the solid you saw.',study:'Memorise the solid',ask:'Which pair builds the solid you saw?'}
+};
+const S={mode:'count',diff:'med',study:10,rounds:5,players:1,dev:false,code:'',seedBase:0,
+  round:0,turn:0,puzzle:null,cfg:null,N:3,maxH:3,
+  scores:[],answers:[],history:[],
+  input:null,buildHM:null,buildRot:0,buildMode:'add',
+  timer:null,turnTimer:null,seqTimer:null};
+
+function $(id){return document.getElementById(id)}
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active')}
+function openOvl(id){$(id).classList.add('on')}
+function closeOvl(id){$(id).classList.remove('on')}
+function toggleTheme(){
+  const d=document.documentElement.getAttribute('data-theme')==='dark';
+  document.documentElement.setAttribute('data-theme',d?'light':'dark');
+  $('thIcon').textContent=d?'◑':'◐';$('thTxt').textContent=d?'DARK':'LIGHT';
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function pname(i){return 'Player '+(i+1)}
+
+/* menu wiring */
+function wire(group,cb){
+  $(group).addEventListener('click',e=>{
+    const p=e.target.closest('.pill');if(!p)return;
+    $(group).querySelectorAll('.pill').forEach(x=>x.classList.remove('on'));
+    p.classList.add('on');cb(p.dataset.v);
+  });
+}
+wire('g-mode',v=>{S.mode=v;$('modeNote').textContent=MODE_INFO[v].note});
+wire('g-diff',v=>S.diff=v);
+wire('g-study',v=>S.study=+v);
+wire('g-rounds',v=>S.rounds=+v);
+wire('g-players',v=>S.players=+v);
+$('modeNote').textContent=MODE_INFO.count.note;
+
+/* ══════════════════════════════════════════════════
+   7. GAME FLOW
+   ══════════════════════════════════════════════════ */
+function startGame(){
+  hubReportPlay();          // §12 — count this play on the hub
+  S.code=$('codeIn').value.trim().toUpperCase();
+  S.dev=$('devIn').checked;
+  S.seedBase=S.code?hashStr(S.code+'|'+S.mode+'|'+S.diff):(Math.random()*4294967295)>>>0;
+  S.cfg=DIFF[S.diff];S.N=S.cfg.N;S.maxH=S.cfg.maxH;
+  S.round=0;S.scores=new Array(S.players).fill(0);S.history=[];
+  beginRound();
+}
+function beginRound(){
+  const rng=mkRng((S.seedBase+S.round*7919)>>>0);
+  S.puzzle=makePuzzle(S.mode,rng,S.cfg);
+  S.answers=new Array(S.players).fill(null);
+  S.turn=0;
+  countdown(S.round===0?'Get ready':'Round '+(S.round+1),()=>studyPhase());
+}
+function countdown(label,cb){
+  const o=$('cdOvl'),n=$('cdNum');$('cdLabel').textContent=label;
+  o.classList.add('on');let k=3;n.textContent=k;n.style.animation='pop .45s ease-out';
+  const iv=setInterval(()=>{
+    k--;
+    if(k<=0){clearInterval(iv);o.classList.remove('on');cb()}
+    else{n.textContent=k;n.style.animation='none';void n.offsetWidth;n.style.animation='pop .45s ease-out'}
+  },700);
+}
+
+/* ── STUDY ── */
+function studyPhase(){
+  const mi=MODE_INFO[S.mode];
+  $('stEyebrow').textContent='Round '+(S.round+1)+' of '+S.rounds+' · Study';
+  $('stPhase').textContent=mi.study;
+  show('s-study');
+  const per=Math.max(1,Math.round(S.study/4));
+  const total=S.mode==='odd'?per*4:S.study;
+  let left=total;
+  const bar=$('stBar'),num=$('stNum');
+  function paint(){
+    num.textContent=left;
+    num.className='tnum mono'+(left<=3?' crit':left<=Math.max(4,total*.35)?' warn':'');
+    bar.style.width=(100*left/total)+'%';
+  }
+  if(S.mode==='odd')renderOddSequence(per);
+  else $('stStage').innerHTML='<div class="stage-label">'+(S.mode==='assemble'?'The solid':'The stack')+'</div>'+
+    (S.mode==='assemble'?isoSVG(S.puzzle.target,{W:30}):hmRender(S.puzzle.hm,S.puzzle.N,{W:30}));
+  paint();
+  clearInterval(S.timer);
+  S.timer=setInterval(()=>{
+    left--;
+    if(left<=0){clearInterval(S.timer);paint();recallPhase()}else paint();
+  },1000);
+}
+function renderOddSequence(per){
+  let i=0;
+  function draw(){
+    const dots=[0,1,2,3].map(k=>'<i class="'+(k===i?'on':k<i?'done':'')+'"></i>').join('');
+    $('stStage').innerHTML='<div class="stage-label">Shape '+(i+1)+' of 4</div>'+
+      '<div class="big-letter">'+'ABCD'[i]+'</div>'+
+      isoSVG(S.puzzle.shapes[i],{W:30})+
+      '<div class="seq-dots">'+dots+'</div>';
+  }
+  draw();
+  clearInterval(S.seqTimer);
+  S.seqTimer=setInterval(()=>{i++;if(i>3){clearInterval(S.seqTimer);return}draw()},per*1000);
+}
+function skipStudy(){clearInterval(S.timer);clearInterval(S.seqTimer);recallPhase()}
+
+/* ── RECALL ── */
+function recallPhase(){
+  clearInterval(S.timer);clearInterval(S.seqTimer);
+  $('rcEyebrow').textContent='Round '+(S.round+1)+' of '+S.rounds+' · Recall';
+  $('rcPhase').textContent=MODE_INFO[S.mode].ask;
+  show('s-recall');
+  startTurn();
+}
+function startTurn(){
+  S.input=null;
+  renderScorebar();
+  $('rcDev').innerHTML=S.dev?'<div class="devbox">DEV · answer: '+devAnswer()+'</div>':'';
+  const multi=S.players>1;
+  $('rcTurn').innerHTML=multi
+    ? '<b>'+pname(S.turn)+'</b>, your turn — answers stay hidden until everyone has gone. <span class="ttimer" id="ttv"></span>'
+    : '';
+  buildRecallBody();
+  updateSubmit();
+  clearInterval(S.turnTimer);
+  if(multi){
+    let t=30;
+    const tick=()=>{$('ttv')&&($('ttv').textContent='· '+t+'s');if(t<=0){clearInterval(S.turnTimer);submitAnswer(true)}t--};
+    tick();S.turnTimer=setInterval(tick,1000);
+  }
+}
+function devAnswer(){
+  const p=S.puzzle;
+  if(p.type==='count')return p.answer+' boxes';
+  if(p.type==='rebuild')return 'heights ['+p.hm.join(' ')+']';
+  if(p.type==='odd')return 'shape '+'ABCD'[p.answer];
+  return 'option '+'ABC'[p.answer];
+}
+function renderScorebar(){
+  if(S.players<2){$('rcScores').innerHTML='';return}
+  $('rcScores').innerHTML=S.scores.map((s,i)=>
+    '<div class="chip'+(i===S.turn?' now':'')+'"><span class="dot"></span>'+pname(i)+' <b>'+s+'</b></div>').join('');
+}
+function buildRecallBody(){
+  const b=$('rcBody'),p=S.puzzle;
+  if(p.type==='count'){
+    b.innerHTML='<div class="prompt">Every box counts — including the ones hidden behind or under the others.</div>'+
+      '<div class="readout empty mono" id="ro">—</div>'+
+      '<div class="keypad">'+[1,2,3,4,5,6,7,8,9].map(d=>'<button class="key" data-k="'+d+'">'+d+'</button>').join('')+
+      '<button class="key" data-k="clr">C</button><button class="key" data-k="0">0</button><button class="key" data-k="del">⌫</button></div>';
+    b.querySelector('.keypad').addEventListener('click',e=>{
+      const k=e.target.closest('.key');if(!k)return;
+      const v=k.dataset.k;
+      let cur=S.input===null?'':String(S.input);
+      if(v==='clr')cur='';else if(v==='del')cur=cur.slice(0,-1);
+      else if(cur.length<3)cur+=v;
+      S.input=cur===''?null:parseInt(cur,10);
+      const ro=$('ro');ro.textContent=cur===''?'—':cur;ro.className='readout mono'+(cur===''?' empty':'');
+      updateSubmit();
+    });
+  }
+  else if(p.type==='odd'){
+    b.innerHTML='<div class="prompt">Three of them were the same shape, just turned. One was not.</div>'+
+      '<div class="abcd">'+['A','B','C','D'].map((l,i)=>'<button class="key" data-i="'+i+'">'+l+'</button>').join('')+'</div>';
+    b.querySelector('.abcd').addEventListener('click',e=>{
+      const k=e.target.closest('.key');if(!k)return;
+      S.input=+k.dataset.i;
+      b.querySelectorAll('.abcd .key').forEach((x,i)=>x.classList.toggle('sel',i===S.input));
+      updateSubmit();
+    });
+  }
+  else if(p.type==='assemble'){
+    b.innerHTML='<div class="prompt">Only one pair fits together into the solid you memorised. Pieces may need turning in your head.</div>'+
+      '<div class="opts">'+p.options.map((pair,i)=>
+        '<div class="opt" data-i="'+i+'"><div class="opt-tag">'+'ABC'[i]+'</div><div class="pieces">'+
+        isoSVG(pair[0],{W:15,cls:'iso-sm'})+'<span class="plus">+</span>'+isoSVG(pair[1],{W:15,cls:'iso-sm'})+
+        '</div></div>').join('')+'</div>';
+    b.querySelector('.opts').addEventListener('click',e=>{
+      const o=e.target.closest('.opt');if(!o)return;
+      S.input=+o.dataset.i;
+      b.querySelectorAll('.opt').forEach((x,i)=>x.classList.toggle('sel',i===S.input));
+      updateSubmit();
+    });
+  }
+  else{ /* rebuild */
+    S.buildHM=new Array(p.N*p.N).fill(0);S.buildRot=0;S.buildMode='add';
+    b.innerHTML='<div class="prompt">Tap a plot square to drop a box, or tap the top of a stack to add another.</div>'+
+      '<div class="buildbar">'+
+        '<button class="tool on" id="tAdd">＋ Add</button>'+
+        '<button class="tool era" id="tEra">− Remove</button>'+
+        '<button class="tool" id="tRot">↻ Turn view</button>'+
+        '<button class="tool" id="tClr">Clear</button>'+
+      '</div>'+
+      '<div class="stage" id="buildArea"></div>'+
+      '<div class="counter" id="bCount"></div>';
+    $('tAdd').onclick=()=>setBuildMode('add');
+    $('tEra').onclick=()=>setBuildMode('era');
+    $('tRot').onclick=()=>{S.buildRot=(S.buildRot+1)%4;drawBuild()};
+    $('tClr').onclick=()=>{S.buildHM.fill(0);drawBuild()};
+    $('buildArea').addEventListener('click',e=>{
+      const t=e.target.closest('[data-col]');if(!t)return;
+      const[x,y]=t.dataset.col.split(',').map(Number),i=x*p.N+y;
+      if(S.buildMode==='add'){if(S.buildHM[i]<p.maxH)S.buildHM[i]++}
+      else if(S.buildHM[i]>0)S.buildHM[i]--;
+      drawBuild();
+    });
+    drawBuild();
+  }
+}
+function setBuildMode(m){
+  S.buildMode=m;
+  $('tAdd').classList.toggle('on',m==='add');
+  $('tEra').classList.toggle('on',m==='era');
+  $('buildArea').classList.toggle('erase',m==='era');
+}
+function drawBuild(){
+  const p=S.puzzle;
+  $('buildArea').innerHTML='<div class="stage-label">Your plot'+(S.buildRot?' · turned '+(S.buildRot*90)+'°':'')+'</div>'+
+    hmRender(S.buildHM,p.N,{W:30,rot:S.buildRot,tagged:true});
+  $('buildArea').classList.toggle('erase',S.buildMode==='era');
+  const n=S.buildHM.reduce((a,b)=>a+b,0);
+  $('bCount').innerHTML='<b>'+n+'</b> box'+(n===1?'':'es')+' placed · max '+p.maxH+' high'+
+    (S.buildRot?'':'  ·  if a stack is hidden behind another, turn the view');
+  S.input=n>0?S.buildHM.slice():null;
+  updateSubmit();
+}
+function updateSubmit(){
+  const btn=$('rcSubmit');
+  btn.disabled=S.input===null;
+  btn.textContent=S.players>1?'Lock in '+pname(S.turn)+"'s answer":'Lock in answer';
+}
+function submitAnswer(auto){
+  if(!auto&&S.input===null)return;
+  clearInterval(S.turnTimer);
+  S.answers[S.turn]=S.input;
+  S.turn++;
+  if(S.turn<S.players){startTurn()}
+  else revealRound();
+}
+
+/* ── SCORING ── */
+function scoreOf(ans){
+  const p=S.puzzle;
+  if(ans===null||ans===undefined)return {pts:0,acc:0,ok:false};
+  if(p.type==='count')return {pts:ans===p.answer?10:0,ok:ans===p.answer};
+  if(p.type==='odd')return {pts:ans===p.answer?10:0,ok:ans===p.answer};
+  if(p.type==='assemble')return {pts:ans===p.answer?10:0,ok:ans===p.answer};
+  let m=0;for(let i=0;i<p.hm.length;i++)if(ans[i]===p.hm[i])m++;
+  const acc=m/p.hm.length,exact=m===p.hm.length;
+  return {pts:exact?10:Math.min(8,Math.round(acc*10)),ok:exact,acc:acc};
+}
+
+/* ── REVEAL ── */
+function revealRound(){
+  const p=S.puzzle;const res=S.answers.map(a=>scoreOf(a));
+  res.forEach((r,i)=>S.scores[i]+=r.pts);
+  S.history.push({res:res});
+  $('rvEyebrow').textContent='Round '+(S.round+1)+' of '+S.rounds+' · Answer';
+  let head='',body='';
+  if(p.type==='count'){
+    $('rvPhase').textContent='It was '+p.answer+' boxes';
+    head='<div class="stage">'+hmRender(p.hm,p.N,{W:28})+'</div>';
+  }
+  else if(p.type==='rebuild'){
+    $('rvPhase').textContent='The stack you were shown';
+    head='<div class="stage"><div class="side">'+
+      '<div><div class="stage-label" style="margin-bottom:6px">Target</div>'+hmRender(p.hm,p.N,{W:24})+'</div>'+
+      (S.players===1?'<div><div class="stage-label" style="margin-bottom:6px">Yours</div>'+hmRender(S.answers[0]||new Array(p.N*p.N).fill(0),p.N,{W:24})+'</div>':'')+
+      '</div></div>';
+  }
+  else if(p.type==='odd'){
+    $('rvPhase').textContent='Shape '+'ABCD'[p.answer]+' was the odd one';
+    head='<div class="quad">'+p.shapes.map((sh,i)=>
+      '<div class="qc'+(i===p.answer?' bad':'')+'"><div class="ql">'+'ABCD'[i]+(i===p.answer?' ✕':'')+'</div>'+
+      isoSVG(sh,{W:15,cls:'iso-xs'})+'</div>').join('')+'</div>';
+  }
+  else{
+    $('rvPhase').textContent='Pair '+'ABC'[p.answer]+' builds it';
+    head='<div class="stage"><div class="stage-label">The solid</div>'+isoSVG(p.target,{W:26})+
+      '<div class="stage-label" style="margin-top:6px">Built from</div><div class="pieces">'+
+      isoSVG(p.options[p.answer][0],{W:15,cls:'iso-sm'})+'<span class="plus">+</span>'+
+      isoSVG(p.options[p.answer][1],{W:15,cls:'iso-sm'})+'</div></div>';
+  }
+  body='<div class="plist">'+S.answers.map((a,i)=>{
+    const r=res[i];
+    return '<div class="prow"><div class="pn">'+(S.players>1?pname(i):'You')+
+      '<span class="pa">'+ansText(a)+'</span></div>'+
+      '<div class="pp '+(r.ok?'ok':r.pts>0?'':'no')+'">'+(r.ok?'✓ ':'')+'+'+r.pts+'</div></div>';
+  }).join('')+'</div>';
+  $('rvBody').innerHTML=head+body;
+  $('rvNext').textContent=(S.round+1>=S.rounds)?'See final scores →':'Next round →';
+  show('s-reveal');
+}
+function ansText(a){
+  const p=S.puzzle;
+  if(a===null||a===undefined)return '— no answer';
+  if(p.type==='count')return 'said '+a;
+  if(p.type==='odd')return 'said '+'ABCD'[a];
+  if(p.type==='assemble')return 'said '+'ABC'[a];
+  let m=0;for(let i=0;i<p.hm.length;i++)if(a[i]===p.hm[i])m++;
+  return m+'/'+p.hm.length+' columns right';
+}
+function nextRound(){
+  S.round++;
+  if(S.round>=S.rounds)finalScreen();
+  else beginRound();
+}
+
+/* ── FINAL ── */
+function finalScreen(){
+  const played=S.history.length;
+  $('fnEyebrow').textContent=MODE_INFO[S.mode].title+' · '+S.diff+' · '+played+' round'+(played===1?'':'s');
+  let html='';
+  if(S.players===1){
+    const max=played*10;
+    html+='<div class="bigscore mono">'+S.scores[0]+'</div><div class="bigsub">out of '+max+' points</div>';
+  }else{
+    const order=S.scores.map((s,i)=>({s:s,i:i})).sort((a,b)=>b.s-a.s);
+    html+='<div class="podium">'+order.map((o,k)=>
+      '<div class="prow'+(k===0&&o.s>0?' win':'')+'"><div class="pn"><span class="rank">'+(k+1)+'</span>'+
+      (k===0&&o.s>0?'🏆 ':'')+pname(o.i)+'</div><div class="pp">'+o.s+'</div></div>').join('')+'</div>';
+  }
+  html+='<div class="card"><div class="card-h">Round by round</div><div class="rgrid">'+
+    S.history.map((h,i)=>{
+      const best=Math.max.apply(null,h.res.map(r=>r.pts));
+      const cls=best===10?'good':best>0?'part':'miss';
+      return '<div class="rcell '+cls+'"><span class="rn">R'+(i+1)+'</span>'+best+'</div>';
+    }).join('')+'</div>'+
+    (S.code?'<div class="hint" style="margin-top:12px">Challenge code <b class="mono">'+esc(S.code)+'</b> — anyone using it with the same mode and difficulty gets these exact puzzles.</div>':'')+
+    '</div>';
+  $('fnBody').innerHTML=html;
+  show('s-final');
+}
+function replay(){startGame()}
+function toMenu(){
+  clearInterval(S.timer);clearInterval(S.turnTimer);clearInterval(S.seqTimer);
+  show('s-menu');
+}
+
+/* ── EXIT MODALS ── */
+function askExit(){
+  $('exTitle').textContent='Exit game?';
+  $('exBody').textContent='Progress in this game is lost and you go back to the menu.';
+  $('exGo').textContent='Exit';
+  $('exGo').onclick=()=>{closeOvl('exitOvl');toMenu()};
+  openOvl('exitOvl');
+}
+function askEnd(){
+  $('exTitle').textContent='End game early?';
+  $('exBody').textContent='This round is dropped and you jump straight to the final scores.';
+  $('exGo').textContent='End game';
+  $('exGo').onclick=()=>{closeOvl('exitOvl');clearInterval(S.turnTimer);finalScreen()};
+  openOvl('exitOvl');
+}
+</script>
+</body>
+</html>

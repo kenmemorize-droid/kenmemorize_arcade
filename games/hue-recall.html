@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hue Recall</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+     Dark is the default (<html data-theme="dark">). Hue Recall keeps its own
+     blue accent; light mode uses the darker, more saturated variant so it
+     still carries against white.
+     --on-accent is the ink that sits on an accent fill: white reaches only
+     ~2.8:1 on the bright dark-mode blue, so that theme uses near-black ink. */
+  :root[data-theme="dark"] {
+    --bg: #0b0f14;
+    --surface: #131820;
+    --card: #1a2130;
+    --border: #2a3648;
+    --accent: #4a9eff;
+    --accent-dim: #1e3d6e;
+    --on-accent: #08121f;
+    --green: #3ecf8e;
+    --red: #f56565;
+    --amber: #f6ad55;
+    --text: #e8edf5;
+    --muted: #6b7a8d;
+    --shadow: rgba(0,0,0,0.4);
+  }
+  :root[data-theme="light"] {
+    --bg: #f0f4f9;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --border: #d0dae8;
+    --accent: #1a6ed8;
+    --accent-dim: #ddeaff;
+    --on-accent: #ffffff;
+    --green: #1a9e6e;
+    --red: #d63c3c;
+    --amber: #c97d10;
+    --text: #1a2130;
+    --muted: #5c6b7e;
+    --shadow: rgba(0,0,0,0.08);
+  }
+  /* logo tile stays light in both themes — brand marks assume a light ground */
+  /* §4 — system monospace stack only, no external font ever */
+  :root { --tile: #FBFBF8; --mono: 'Consolas', 'Courier New', monospace; }
+
+  html, body { overscroll-behavior: none; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    min-height: 100vh;
+    display: flex; align-items: flex-start; justify-content: center;
+    /* headroom so the fixed §2 toggle never lands on a header or topbar */
+    padding: 58px 14px 40px;
+    transition: background .25s, color .25s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── THEME TOGGLE — §2 (shared convention across all games) ── */
+  .theme-toggle {
+    position: fixed; top: 16px; right: 16px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 50px;
+    padding: 6px 14px; cursor: pointer; display: flex; align-items: center; gap: 7px;
+    font-size: 13px; font-family: var(--mono); color: var(--muted);
+    transition: all .15s; z-index: 200; user-select: none;
+  }
+  .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
+  .theme-toggle .toggle-icon { display: inline-flex; }
+  .theme-toggle .icon-moon { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+  :root[data-theme="light"] .theme-toggle .icon-moon { display: inline-flex; }
+
+  /* ── SCREENS ── */
+  /* §5 — the menu reads at the shared 720px width; the play/reveal/results
+     screens keep the narrow 460px shell the tile and HSB sliders were laid
+     out for. */
+  .wrap { width: 100%; max-width: 720px; }
+  .screen { display: none; }
+  .screen.active { display: flex; flex-direction: column; align-items: stretch; gap: 18px; animation: fade .3s ease; }
+  #screen-setup { max-width: 720px; margin: 0 auto; }
+  #screen-play, #screen-reveal, #screen-results { max-width: 460px; margin: 0 auto; }
+  @keyframes fade { from { opacity: 0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+
+  /* ── LOGO BLOCK — §3: icon, h1, subtitle ── */
+  .logo-head { text-align: center; margin-top: 2px; }
+  .logo-head .logo-icon { display: flex; justify-content: center; margin: 0 auto 8px; color: var(--accent); width: 32px; height: 32px; }
+  .logo-head h1 { font-family: var(--mono); font-size: 28px; font-weight: 500; letter-spacing: .14em; color: var(--accent); text-transform: uppercase; }
+  .logo-head p { color: var(--muted); font-size: 14px; margin-top: 6px; letter-spacing: .03em; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; box-shadow: 0 2px 12px var(--shadow);
+  }
+  .card-title {
+    font-size: 10px; font-family: var(--mono); letter-spacing: .18em; color: var(--muted);
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+
+  /* ── PILLS ── */
+  .setting-group { margin-bottom: 18px; }
+  .setting-group:last-child { margin-bottom: 0; }
+  .setting-label { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 9px; }
+  .pill-group { display: flex; gap: 7px; flex-wrap: wrap; }
+  /* §6 — unselected: surface + border + muted. Selected: accent-tinted fill
+     with accent border and text. */
+  .pill {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; font-family: var(--mono); color: var(--muted);
+    cursor: pointer; transition: all .15s; user-select: none; flex: 1 1 auto; text-align: center;
+  }
+  .pill:hover { border-color: var(--accent); color: var(--text); }
+  .pill.selected { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+  input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 14px; font-family: var(--mono);
+  }
+  input[type=text]::placeholder { color: var(--muted); }
+  .name-row { display: flex; gap: 8px; }
+  .name-row input { flex: 1; min-width: 0; }
+
+  /* ── BUTTONS — §6 ──
+     Primary: solid accent fill, --on-accent ink, hover brightness + lift.
+     Secondary/ghost: surface background, bordered, muted text, hover → accent. */
+  .btn {
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 10px;
+    padding: 14px 28px; font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: filter .15s, transform .15s; letter-spacing: .02em; width: 100%;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .btn:hover { filter: brightness(1.13); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--accent); filter: none; }
+  .btn.danger { background: var(--red); color: #fff; }
+  .btn-row { display: flex; gap: 9px; }
+
+  /* ── HOW TO PLAY — §3 ──
+     Always visible on the menu, right after the logo block and before the
+     settings card. Three short lines covering the core loop; the full
+     reference list lives behind "Full rules" in a modal. */
+  .howto-box p {
+    font-size: 13px; line-height: 1.6; color: var(--muted); margin-bottom: 9px;
+  }
+  .howto-box p:last-of-type { margin-bottom: 0; }
+  .howto-box b { color: var(--text); font-weight: 600; }
+  .howto-box .full-rules { margin-top: 14px; font-size: 13px; padding: 10px 16px; }
+
+  ol.howto { list-style: none; counter-reset: h; text-align: left; }
+  ol.howto li {
+    counter-increment: h; position: relative; padding-left: 30px; margin-bottom: 11px;
+    font-size: 13px; line-height: 1.55; color: var(--muted);
+  }
+  ol.howto li:last-child { margin-bottom: 0; }
+  ol.howto li::before {
+    content: counter(h); position: absolute; left: 0; top: 0;
+    width: 20px; height: 20px; border-radius: 50%; background: var(--accent-dim);
+    color: var(--accent); font-family: var(--mono); font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  ol.howto b { color: var(--text); font-weight: 600; }
+
+  /* ── PLAY TOPBAR ── */
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .round-chip {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    background: var(--card); border: 1px solid var(--border); border-radius: 50px; padding: 6px 14px;
+  }
+  .round-chip b { color: var(--accent); }
+  .icon-btn {
+    background: var(--card); border: 1px solid var(--border); border-radius: 50px;
+    color: var(--muted); font-size: 12px; font-family: var(--mono);
+    padding: 6px 13px; cursor: pointer; transition: .15s;
+  }
+  .icon-btn:hover { border-color: var(--red); color: var(--red); }
+  .pvp-timer { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+
+  /* ── LOGO TILE ── */
+  .tile-wrap { display: flex; justify-content: center; }
+  .tile {
+    position: relative; width: 100%; max-width: 300px; aspect-ratio: 1/1;
+    background: var(--tile); border-radius: 22px; padding: 11%;
+    box-shadow: 0 4px 18px var(--shadow); overflow: hidden;
+  }
+  .tile svg { width: 100%; height: 100%; display: block; }
+  .tile .half { position: absolute; inset: 11%; }
+  .tile .half.left  { clip-path: inset(0 50% 0 0); }
+  .tile .half.right { clip-path: inset(0 0 0 50%); }
+  .tile .divider { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(0,0,0,.12); }
+  .tile .tag {
+    position: absolute; top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+    color: #6b7280; background: rgba(255,255,255,.82); border-radius: 20px; padding: 3px 9px;
+  }
+  .tile .tag.l { left: 8px; } .tile .tag.r { right: 8px; }
+  .tile .tag.locked { color: #16a34a; }
+  .brand-caption { text-align: center; font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+
+  /* ── PICKER ── */
+  .picker { display: flex; gap: 12px; align-items: stretch; }
+  .sliders { display: flex; gap: 9px; }
+  .vslider {
+    position: relative; width: 30px; border-radius: 15px; border: 1px solid var(--border);
+    height: 210px; cursor: pointer; touch-action: none; overflow: hidden; flex-shrink: 0;
+  }
+  .vslider .fillbg { position: absolute; inset: 0; border-radius: 14px; }
+  .vslider .knob {
+    position: absolute; left: 50%; width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; border: 2px solid rgba(0,0,0,.25); box-shadow: 0 1px 5px rgba(0,0,0,.4);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .vslider .cap {
+    position: absolute; bottom: -1px; left: 0; right: 0; text-align: center;
+    font-family: var(--mono); font-size: 9px; color: var(--muted);
+  }
+  .slider-labels { display: flex; gap: 9px; }
+  .slider-labels span { width: 30px; text-align: center; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+  .preview {
+    flex: 1; min-width: 0; border-radius: 16px; border: 1px solid var(--border);
+    display: flex; flex-direction: column; justify-content: space-between; padding: 14px;
+    transition: background .08s linear;
+  }
+  .readout { font-family: var(--mono); font-size: 13px; letter-spacing: .08em; font-weight: 600; }
+  .readout small { display: block; font-size: 9.5px; letter-spacing: .16em; opacity: .7; font-weight: 400; margin-bottom: 3px; }
+  .confirm-btn {
+    align-self: flex-end; width: 54px; height: 54px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,.92); color: #14181f; font-size: 24px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 10px rgba(0,0,0,.28);
+    transition: transform .12s;
+  }
+  .confirm-btn:active { transform: scale(.93); }
+  .confirm-btn:disabled { opacity: .35; cursor: default; }
+
+  /* ── PVP ── */
+  .pvp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pvp-col { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 10px; }
+  .pvp-col.locked { opacity: .55; }
+  .pvp-name { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; text-align: center;
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pvp-col .picker { gap: 8px; }
+  .pvp-col .sliders { gap: 6px; }
+  .pvp-col .vslider { width: 22px; height: 170px; border-radius: 11px; }
+  .pvp-col .vslider .knob { width: 17px; height: 17px; }
+  .pvp-col .preview { padding: 7px; border-radius: 12px; min-width: 52px; }
+  .pvp-col .readout { font-size: 9.5px; letter-spacing: 0; line-height: 1.4; word-spacing: 999px; }
+  .pvp-col .readout small { font-size: 8px; letter-spacing: .08em; word-spacing: normal; margin-bottom: 2px; }
+  .pvp-col .confirm-btn { width: 34px; height: 34px; font-size: 15px; margin-top: 6px; }
+
+  /* ── REVEAL ── */
+  .score-big { font-family: var(--mono); font-size: 54px; font-weight: 600; line-height: 1; text-align: center; }
+  .score-flavor { text-align: center; font-size: 13.5px; color: var(--muted); margin-top: 7px; }
+  .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cmp-item { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+  .cmp-swatch { height: 54px; }
+  .cmp-meta { padding: 8px 10px; background: var(--surface); }
+  .cmp-meta .lbl { font-size: 9.5px; font-family: var(--mono); letter-spacing: .14em; color: var(--muted); text-transform: uppercase; }
+  .cmp-meta .val { font-family: var(--mono); font-size: 12px; margin-top: 3px; }
+  .mini-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mini-tile { background: var(--tile); border-radius: 14px; padding: 12px; aspect-ratio: 1/1; }
+  .mini-tile svg { width: 100%; height: 100%; }
+  .mini-cap { text-align: center; font-family: var(--mono); font-size: 9.5px; color: var(--muted);
+              letter-spacing: .12em; text-transform: uppercase; margin-top: 6px; }
+
+  .vs-row { display: flex; justify-content: space-between; gap: 10px; }
+  .vs-side { flex: 1; text-align: center; background: var(--surface); border: 1px solid var(--border);
+             border-radius: 12px; padding: 10px; }
+  .vs-side.win { border-color: var(--green); }
+  .vs-side .n { font-family: var(--mono); font-size: 11px; color: var(--muted);
+                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vs-side .s { font-family: var(--mono); font-size: 26px; font-weight: 600; margin-top: 3px; }
+
+  /* ── RESULTS ── */
+  .stat-row { display: flex; gap: 10px; }
+  .stat { flex: 1; text-align: center; background: var(--surface); border: 1px solid var(--border);
+          border-radius: 12px; padding: 12px 6px; }
+  .stat .k { font-family: var(--mono); font-size: 9.5px; letter-spacing: .13em; color: var(--muted); text-transform: uppercase; }
+  .stat .v { font-family: var(--mono); font-size: 22px; font-weight: 600; margin-top: 4px; }
+  table.rounds { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.rounds td { padding: 8px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.rounds tr:last-child td { border-bottom: none; }
+  table.rounds .sw { width: 20px; height: 20px; border-radius: 5px; display: inline-block; vertical-align: middle;
+                     border: 1px solid var(--border); }
+  table.rounds .name { color: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  table.rounds .sc { text-align: right; font-family: var(--mono); font-weight: 600; }
+  .code-box { display: flex; gap: 8px; align-items: center; }
+  .code-box .code { flex: 1; font-family: var(--mono); font-size: 14px; letter-spacing: .14em;
+                    background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+                    padding: 10px 12px; text-align: center; color: var(--accent); }
+
+  /* ── COUNTDOWN ── */
+  .countdown-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.86); z-index: 500;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  }
+  .countdown-num { font-family: var(--mono); font-size: 92px; font-weight: 600; color: #fff; }
+  .countdown-label { color: #9aa4b2; font-size: 12px; letter-spacing: .18em; font-family: var(--mono); }
+
+  /* ── MODAL — §6: theme-independent dark scrim, centred card ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.82); z-index: 600;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+               padding: 26px 22px; max-width: 340px; text-align: center;
+               box-shadow: 0 18px 44px rgba(0,0,0,.5); width: 100%; }
+  /* "Full rules" variant — §3's manual to the menu card's summary */
+  .modal-box.rules { max-width: 460px; text-align: left; max-height: 82vh; overflow-y: auto; }
+  .modal-box.rules .modal-title { text-align: center; }
+  .modal-icon { font-size: 32px; margin-bottom: 10px; }
+  .modal-title { font-family: var(--mono); font-size: 14.5px; margin-bottom: 8px; letter-spacing: .05em; }
+  .modal-body { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+  .modal-btns { display: flex; gap: 9px; }
+  .modal-btns .btn { padding: 11px 16px; font-size: 13px; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 18px; border-radius: 50px; font-size: 12.5px; font-family: var(--mono);
+    z-index: 700; opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── MOBILE — §9 ── */
+  @media (max-width: 520px) {
+    body { padding: 54px 12px 34px; }
+    .logo-head h1 { font-size: 22px; }
+    .logo-head p { font-size: 13px; }
+    .howto-box p { font-size: 12.5px; }
+    ol.howto li { font-size: 12.5px; }
+    .card { padding: 18px 16px; }
+    .theme-toggle { font-size: 12px; padding: 5px 11px; }
+    .modal-box { padding: 22px 18px; }
+  }
+  @media (max-width: 380px) {
+    .logo-head h1 { font-size: 19px; letter-spacing: .1em; }
+    .theme-toggle { padding: 5px 9px; gap: 5px; }
+    .card { padding: 16px 14px; }
+    .pill { padding: 8px 10px; font-size: 12.5px; }
+    .vslider { width: 26px; height: 190px; }
+    .pvp-col .vslider { width: 19px; height: 150px; }
+    .score-big { font-size: 46px; }
+    .stat .v { font-size: 19px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Theme toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="wrap">
+
+<!-- ══════════ SETUP ══════════ -->
+<!-- §3 order: logo block → How to Play → settings → primary CTA -->
+<div class="screen active" id="screen-setup">
+  <div class="logo-head">
+    <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2a8.8 8.8 0 100 17.6 2.1 2.1 0 001.6-3.5 2.1 2.1 0 011.6-3.5h1.9A3.7 3.7 0 0021 10.1c0-3.8-4-6.9-9-6.9z"/><path stroke-width="2.6" d="M7.4 11.4h.01M10.7 7.7h.01M15.3 8.6h.01"/></svg></span>
+    <h1>Hue Recall</h1>
+    <p>Rebuild the missing brand colour from memory</p>
+    <p id="poolLine" style="margin-top:2px"></p>
+  </div>
+
+  <div class="card howto-box">
+    <div class="card-title">How to play</div>
+    <p>A brand logo appears with <b>one colour greyed out</b>. Drag the <b>H</b>, <b>S</b> and <b>B</b> sliders to mix the shade you remember — the logo repaints as you drag.</p>
+    <p>Tap the tick to lock it in. The real brand colour is revealed and you score <b>0–10</b> on how close you got.</p>
+    <p><b>Solo</b> plays a set number of logos, <b>Endless</b> runs until you miss, <b>Practice</b> is unscored, and <b>Pass &amp; Play</b> splits the tile between two players.</p>
+    <button class="btn secondary full-rules" onclick="openRules()">Full rules &amp; scoring →</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Setup</div>
+
+    <div class="setting-group">
+      <div class="setting-label">Mode</div>
+      <div class="pill-group" id="pills-mode">
+        <div class="pill selected" data-v="solo">Solo</div>
+        <div class="pill" data-v="endless">Endless</div>
+        <div class="pill" data-v="practice">Practice</div>
+        <div class="pill" data-v="pvp">Pass &amp; Play</div>
+      </div>
+    </div>
+
+    <div class="setting-group" id="grp-rounds">
+      <div class="setting-label">Rounds</div>
+      <div class="pill-group" id="pills-rounds">
+        <div class="pill" data-v="3">3</div>
+        <div class="pill selected" data-v="5">5</div>
+        <div class="pill" data-v="10">10</div>
+      </div>
+    </div>
+
+    <div class="setting-group" id="grp-threshold" style="display:none">
+      <div class="setting-label">Survive above</div>
+      <div class="pill-group" id="pills-threshold">
+        <div class="pill" data-v="6.5">6.5 · Lenient</div>
+        <div class="pill selected" data-v="7.5">7.5 · Normal</div>
+        <div class="pill" data-v="8.5">8.5 · Strict</div>
+      </div>
+    </div>
+
+    <div class="setting-group" id="grp-timer" style="display:none">
+      <div class="setting-label">Round timer</div>
+      <div class="pill-group" id="pills-timer">
+        <div class="pill" data-v="0">Off</div>
+        <div class="pill" data-v="15">15s</div>
+        <div class="pill selected" data-v="30">30s</div>
+      </div>
+    </div>
+
+    <div class="setting-group" id="grp-names" style="display:none">
+      <div class="setting-label">Players</div>
+      <div class="name-row">
+        <input type="text" id="p1name" placeholder="Player 1" maxlength="12">
+        <input type="text" id="p2name" placeholder="Player 2" maxlength="12">
+      </div>
+    </div>
+
+    <div class="setting-group" id="grp-code">
+      <div class="setting-label">Challenge code <span style="opacity:.6">(optional)</span></div>
+      <input type="text" id="seedInput" placeholder="Leave blank for random" maxlength="12">
+    </div>
+  </div>
+
+  <button class="btn" onclick="startGame()">Start</button>
+
+  <div style="text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.08em" id="bestLine"></div>
+</div>
+
+<!-- ══════════ PLAY ══════════ -->
+<div class="screen" id="screen-play">
+  <div class="topbar">
+    <div class="round-chip" id="roundChip"><b>1</b>/5</div>
+    <div class="pvp-timer" id="playTimer"></div>
+    <button class="icon-btn" onclick="askExit()">Exit</button>
+  </div>
+
+  <div class="tile-wrap">
+    <div class="tile" id="tile"></div>
+  </div>
+  <div class="brand-caption" id="brandCaption"></div>
+
+  <div id="soloPicker"></div>
+  <div class="pvp-grid" id="pvpPickers" style="display:none"></div>
+</div>
+
+<!-- ══════════ REVEAL ══════════ -->
+<div class="screen" id="screen-reveal">
+  <div class="topbar">
+    <div class="round-chip" id="revealChip"></div>
+    <button class="icon-btn" onclick="askExit()">Exit</button>
+  </div>
+
+  <div class="mini-tiles">
+    <div>
+      <div class="mini-tile" id="miniGuess"></div>
+      <div class="mini-cap" id="miniGuessCap">Your mix</div>
+    </div>
+    <div>
+      <div class="mini-tile" id="miniTrue"></div>
+      <div class="mini-cap">Original</div>
+    </div>
+  </div>
+
+  <div class="card" id="revealScoreCard">
+    <div class="score-big" id="scoreBig">0.00</div>
+    <div class="score-flavor" id="scoreFlavor"></div>
+  </div>
+
+  <div class="vs-row" id="revealVs" style="display:none"></div>
+
+  <div class="cmp" id="revealCmp"></div>
+
+  <button class="btn" id="nextBtn" onclick="nextRound()">Next</button>
+</div>
+
+<!-- ══════════ RESULTS ══════════ -->
+<div class="screen" id="screen-results">
+  <div class="logo-head"><h1 id="resTitle">RESULTS</h1><p id="resSub"></p></div>
+
+  <div class="stat-row" id="resStats"></div>
+
+  <div class="card">
+    <div class="card-title">Round by round</div>
+    <table class="rounds"><tbody id="resTable"></tbody></table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Challenge code</div>
+    <div class="code-box">
+      <div class="code" id="resCode">—</div>
+      <button class="btn secondary" style="width:auto;padding:10px 16px" onclick="copyCode()">Copy</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5">
+      Anyone entering this code gets the identical logo sequence.
+    </div>
+  </div>
+
+  <button class="btn secondary" onclick="rematch()">Rematch — same logos</button>
+  <div class="btn-row">
+    <button class="btn secondary" onclick="showScreen('screen-setup')">Settings</button>
+    <button class="btn" onclick="newSet()">New set</button>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<!-- overlays -->
+<div class="countdown-overlay" id="countdown" style="display:none">
+  <div class="countdown-num" id="countdownNum">3</div>
+  <div class="countdown-label">GET READY</div>
+</div>
+
+<!-- Full rules — §3: the menu card is the summary, this is the manual -->
+<div class="modal-overlay" id="rulesModal" style="display:none">
+  <div class="modal-box rules">
+    <div class="modal-title">Full rules</div>
+    <ol class="howto">
+      <li>A brand logo appears with <b>one colour greyed out</b>. On a single-colour mark that's the whole logo; on a multi-colour one the rest stays true, so only the missing part is yours to recall.</li>
+      <li>Drag the <b>H</b>, <b>S</b> and <b>B</b> sliders to mix the colour you remember. The logo repaints live as you drag.</li>
+      <li>Tap <b>✓</b> to lock your answer. The true brand colour is revealed.</li>
+      <li>You're scored <b>0–10</b> on how close you got, measured in CIE Lab so it matches how the eye sees difference.</li>
+      <li><b>Endless</b> runs until a round drops below your threshold. <b>Practice</b> is untimed with no score.</li>
+      <li><b>Pass &amp; Play</b> puts both players on one screen — the tile splits so each side shows that player's mix.</li>
+      <li>Which colour gets asked is <b>randomised</b> — Pepsi might want the red one round and the blue the next.</li>
+      <li>Share the <b>challenge code</b> to give someone the exact same logo set.</li>
+    </ol>
+    <div class="modal-btns" style="margin-top:20px">
+      <button class="btn secondary" onclick="closeRules()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exitModal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title">Quit this run?</div>
+    <div class="modal-body">Your progress in this run will be lost.</div>
+    <div class="modal-btns">
+      <button class="btn secondary" onclick="closeExit()">Keep playing</button>
+      <button class="btn danger" onclick="doExit()">Quit</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   HUE RECALL — single-file, zero-dependency
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   Portable: copy verbatim into another game and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'hue-recall';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ── LOGO POOL ── */
+// LOGO POOL v2 — icon-only marks, viewBox 0 0 100 100
+// {C0..Cn} = askable brand colours · {B} = tile background · {U} = unique id suffix
+const LOGOS = [
+{ id:"mcdonalds", name:"McDonald's", colors:[{"name":"golden","hex":"#FFC72C"}], svg:
+  `<path d="M15 89 V46 C15 11 50 11 50 54 C50 11 85 11 85 46 V89" fill="none" stroke="{C0}" stroke-width="15"/>` },
+
+{ id:"twitch", name:"Twitch", colors:[{"name":"purple","hex":"#9146FF"}], svg:
+  `<path fill-rule="evenodd" fill="{C0}" d="M8.95 0 L2.08 17.16 V87.3 H26.1 V100 H39.9 L53.6 87.3 H74.2 L100 59.8 V0 Z
+     M20.6 8.5 H89.7 V56.4 L76 69.1 H51.9 L38.2 81.8 V69.1 H20.6 Z
+     M65.7 21.1 H76 V46.5 H65.7 Z M38.2 21.1 H48.5 V46.5 H38.2 Z"/>` },
+
+{ id:"spotify", name:"Spotify", colors:[{"name":"green","hex":"#1DB954"}], svg:
+  `<circle cx="50" cy="50" r="49" fill="{C0}"/>
+   <path d="M24 38 C43 31, 64 33, 80 43" fill="none" stroke="{B}" stroke-width="10" stroke-linecap="round"/>
+   <path d="M29 55 C45 49, 62 51, 74 59" fill="none" stroke="{B}" stroke-width="8.5" stroke-linecap="round"/>
+   <path d="M34 70 C46 66, 59 67, 68 73" fill="none" stroke="{B}" stroke-width="6.5" stroke-linecap="round"/>` },
+
+{ id:"youtube", name:"YouTube", colors:[{"name":"red","hex":"#FF0000"}], svg:
+  `<rect x="3" y="19" width="94" height="62" rx="19" fill="{C0}"/>
+   <path d="M41 35 L69 50 L41 65 Z" fill="{B}"/>` },
+
+{ id:"netflix", name:"Netflix", colors:[{"name":"red","hex":"#E50914"}], svg:
+  `<path fill="{C0}" d="M24 6 H43 L76 94 H57 Z M24 6 H41 V94 H24 Z M59 6 H76 V94 H59 Z"/>` },
+
+{ id:"target", name:"Target", colors:[{"name":"red","hex":"#CC0000"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <circle cx="50" cy="50" r="33" fill="{B}"/>
+   <circle cx="50" cy="50" r="18" fill="{C0}"/>` },
+
+{ id:"whatsapp", name:"WhatsApp", colors:[{"name":"green","hex":"#25D366"}], svg:
+  `<g transform="scale(4.1667)">
+     <path fill="{C0}" d="M20.52 3.449C12.831-3.984.106 1.407.101 11.893c0 2.096.549 4.14 1.595 5.945L0 24l6.335-1.652c7.905 4.27 17.661-1.4 17.665-10.449 0-3.176-1.24-6.165-3.495-8.411z"/>
+     <path fill="{B}" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+   </g>` },
+
+{ id:"snapchat", name:"Snapchat", colors:[{"name":"yellow","hex":"#FFFC00"}], svg:
+  `<path fill="{C0}" d="M50 7 C35 7 26 19 26 33 c0 5 1 10 1 13 -3 3-8 3-11 2 -3-1-6 1-5 4 1 4 6 7 11 8 -3 8-11 14-19 15 -3 1-4 4-2 6 3 4 10 6 16 7 1 4 3 6 6 6 4 0 8-1 12 1 5 2 8 6 15 6 s10-4 15-6 c4-2 8-1 12-1 3 0 5-2 6-6 6-1 13-3 16-7 2-2 1-5-2-6 -8-1-16-7-19-15 5-1 10-4 11-8 1-3-2-5-5-4 -3 1-8 1-11-2 0-3 1-8 1-13 0-14-9-26-24-26 Z"/>` },
+
+{ id:"reddit", name:"Reddit", colors:[{"name":"orange-red","hex":"#FF4500"}], svg:
+  `<circle cx="50" cy="60" r="35" fill="{C0}"/>
+   <circle cx="14" cy="50" r="13" fill="{C0}"/><circle cx="86" cy="50" r="13" fill="{C0}"/>
+   <path d="M50 26 L66 16" fill="none" stroke="{C0}" stroke-width="5" stroke-linecap="round"/>
+   <circle cx="70" cy="13" r="9" fill="{C0}"/>
+   <ellipse cx="36" cy="56" rx="7" ry="8" fill="{B}"/><ellipse cx="64" cy="56" rx="7" ry="8" fill="{B}"/>
+   <path d="M34 74 C41 82, 59 82, 66 74" fill="none" stroke="{B}" stroke-width="5.5" stroke-linecap="round"/>` },
+
+{ id:"pinterest", name:"Pinterest", colors:[{"name":"red","hex":"#E60023"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <path fill="{B}" d="M53 18 C36 18 26 29 26 42 c0 6 3 12 8 14 1 1 2 0 2-1 l1-4 c0-1 0-2-1-3 -2-2-3-5-3-9 0-10 8-18 20-18 11 0 17 6 17 15 0 11-5 20-12 20 -4 0-7-3-6-8 1-5 3-11 3-15 0-3-2-6-6-6 -5 0-9 5-9 12 0 4 1 7 1 7 l-6 24 c-1 6-1 13 0 18 0 1 1 1 2 0 1-1 5-6 7-12 l3-11 c1 3 5 6 10 6 13 0 22-12 22-27 0-12-10-22-26-22 Z"/>` },
+
+{ id:"linkedin", name:"LinkedIn", colors:[{"name":"blue","hex":"#0A66C2"}], svg:
+  `<rect x="2" y="2" width="96" height="96" rx="20" fill="{C0}"/>
+   <circle cx="26" cy="31" r="8" fill="{B}"/><rect x="19" y="43" width="14" height="38" fill="{B}"/>
+   <path fill="{B}" d="M42 43 h13 v6 c3-5 8-7 14-7 12 0 19 7 19 20 v19 H74 V64 c0-6-3-9-8-9 -5 0-9 3-9 10 v16 H42 Z"/>` },
+
+{ id:"facebook", name:"Facebook", colors:[{"name":"blue","hex":"#1877F2"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <path fill="{B}" d="M57 97 V60 h12 l2-14 H57 v-9 c0-4 1-7 7-7 h7 V17 c-1 0-6-1-11-1 -11 0-18 7-18 19 v11 H30 v14 h12 v37 Z"/>` },
+
+{ id:"amazon", name:"Amazon", colors:[{"name":"orange","hex":"#FF9900"}], svg:
+  `<path d="M10 60 C30 76, 58 82, 80 70" fill="none" stroke="{C0}" stroke-width="9" stroke-linecap="round"/>
+   <path fill="{C0}" d="M83 55 c7 1 11 5 10 12 -1 6-5 11-10 14 -2 1-3 0-2-2 2-4 4-9 3-12 -1-3-5-4-9-4 -2 0-2-2 0-3 3-3 6-5 8-5 Z"/>` },
+
+{ id:"airbnb", name:"Airbnb", colors:[{"name":"coral","hex":"#FF5A5F"}], svg:
+  `<path fill-rule="evenodd" fill="{C0}" d="M50 3 c-6 0-11 4-14 11 -2 5-5 11-8 18 -6 13-11 24-14 32 -3 8-4 13-4 17 0 9 6 16 15 16 9 0 17-5 25-14 8 9 16 14 25 14 9 0 15-7 15-16 0-4-1-9-4-17 -3-8-8-19-14-32 -3-7-6-13-8-18 -3-7-8-11-14-11 Z
+     M50 15 c2 0 4 2 6 7 2 5 5 11 8 18 6 13 10 23 13 30 2 6 3 10 3 12 0 4-2 7-6 7 -5 0-11-4-18-13 8-11 12-19 12-26 0-10-8-17-18-17 -10 0-18 7-18 17 0 7 4 15 12 26 -7 9-13 13-18 13 -4 0-6-3-6-7 0-2 1-6 3-12 3-7 7-17 13-30 3-7 6-13 8-18 2-5 4-7 6-7 Z
+     M50 43 c4 0 6 3 6 6 0 4-2 9-6 16 -4-7-6-12-6-16 0-3 2-6 6-6 Z"/>` },
+
+{ id:"dropbox", name:"Dropbox", colors:[{"name":"blue","hex":"#0061FF"}], svg:
+  `<path fill="{C0}" d="M25 8 L0 24 L25 40 L50 24 Z M75 8 L100 24 L75 40 L50 24 Z M25 72 L0 56 L25 40 L50 56 Z M75 72 L100 56 L75 40 L50 56 Z M50 61 L25 77 L50 93 L75 77 Z"/>` },
+
+{ id:"android", name:"Android", colors:[{"name":"green","hex":"#3DDC84"}], svg:
+  `<path fill="{C0}" d="M22 46 a28 28 0 0 1 56 0 Z"/>
+   <path d="M31 20 L37 31 M69 20 L63 31" fill="none" stroke="{C0}" stroke-width="4" stroke-linecap="round"/>
+   <circle cx="38" cy="33" r="4" fill="{B}"/><circle cx="62" cy="33" r="4" fill="{B}"/>
+   <rect x="22" y="52" width="56" height="30" rx="7" fill="{C0}"/>
+   <rect x="5" y="50" width="12" height="30" rx="6" fill="{C0}"/>
+   <rect x="83" y="50" width="12" height="30" rx="6" fill="{C0}"/>` },
+
+{ id:"instagram", name:"Instagram", colors:[{"name":"pink","hex":"#E4405F"}], svg:
+  `<rect x="9" y="9" width="82" height="82" rx="24" fill="none" stroke="{C0}" stroke-width="9"/>
+   <circle cx="50" cy="50" r="20" fill="none" stroke="{C0}" stroke-width="9"/>
+   <circle cx="73" cy="27" r="6" fill="{C0}"/>` },
+
+{ id:"telegram", name:"Telegram", colors:[{"name":"blue","hex":"#26A5E4"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <path fill="{B}" d="M20 50 L80 25 L70 78 L52 63 L42 72 L42 57 Z"/>
+   <path fill="{C0}" opacity="0.18" d="M42 57 L70 32 L52 63 Z"/>` },
+
+{ id:"discord", name:"Discord", colors:[{"name":"blurple","hex":"#5865F2"}], svg:
+  `<path fill="{C0}" d="M78 25 c-6-3-13-5-20-6 -1 2-2 4-3 5 -7-1-13-1-20 0 -1-1-2-3-3-5 -7 1-14 3-20 6 -12 18-15 35-13 52 8 6 15 9 23 11 2-2 4-5 5-8 -3-1-6-3-8-4 1-1 1-1 2-2 15 7 32 7 47 0 1 1 1 1 2 2 -3 1-5 3-8 4 2 3 3 6 5 8 8-2 15-5 23-11 3-19-2-36-12-52 Z"/>
+   <ellipse cx="36" cy="53" rx="6" ry="7" fill="{B}"/><ellipse cx="64" cy="53" rx="6" ry="7" fill="{B}"/>` },
+
+{ id:"starbucks", name:"Starbucks", colors:[{"name":"green","hex":"#00704A"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <circle cx="50" cy="50" r="42.5" fill="none" stroke="{B}" stroke-width="3"/>
+   <path fill="{B}" d="M50 15 L52.94 22.95 L61.41 23.29 L54.76 28.55 L57.05 36.71 L50 32 L42.95 36.71 L45.24 28.55 L38.59 23.29 L47.06 22.95 Z"/>
+   <path fill="{B}" d="M50 32 c-8 0-15 7-15 15 0 5 2 9 6 12 -8 3-14 9-17 17 -1 2 1 4 3 3 4-2 8-4 12-5 -3 5-8 9-14 11 -2 1-2 4 1 4 12 0 22-5 24-11 2 6 12 11 24 11 3 0 3-3 1-4 -6-2-11-6-14-11 4 1 8 3 12 5 2 1 4-1 3-3 -3-8-9-14-17-17 4-3 6-7 6-12 0-8-7-15-15-15 Z"/>
+   <ellipse cx="50" cy="45" rx="8.5" ry="9.5" fill="{C0}"/>
+   <circle cx="50" cy="44.4" r="4.4" fill="{B}"/>
+   <path fill="{C0}" d="M43 60 c4 2 10 2 14 0 -2 4-5 6-7 6 -2 0-5-2-7-6 Z"/>` },
+
+{ id:"pepsi", name:"Pepsi", colors:[{"name":"blue","hex":"#004B93"},{"name":"red","hex":"#EE1C25"}], svg:
+  `<clipPath id="pep{U}"><circle cx="50" cy="50" r="48"/></clipPath>
+   <g clip-path="url(#pep{U})">
+     <rect x="0" y="0" width="100" height="100" fill="{C1}"/>
+     <path d="M-6 44 C24 62 70 32 106 50 L106 106 L-6 106 Z" fill="{C0}"/>
+     <path d="M-6 44 C24 62 70 32 106 50" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+   </g>` },
+
+{ id:"dominos", name:"Domino's Pizza", colors:[{"name":"red","hex":"#E31837"},{"name":"blue","hex":"#006491"}], svg:
+  `<g transform="rotate(-18 50 50)">
+     <path fill="{C0}" d="M50 28 H22 a6 6 0 0 0 -6 6 v32 a6 6 0 0 0 6 6 h28 Z"/>
+     <path fill="{C1}" d="M50 28 h28 a6 6 0 0 1 6 6 v32 a6 6 0 0 1 -6 6 H50 Z"/>
+     <circle cx="35" cy="50" r="5.5" fill="#FFFFFF"/>
+     <circle cx="65" cy="40" r="5.5" fill="#FFFFFF"/>
+     <circle cx="65" cy="60" r="5.5" fill="#FFFFFF"/>
+   </g>` },
+
+{ id:"bmw", name:"BMW", colors:[{"name":"blue","hex":"#0066B1"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="#111111"/>
+   <circle cx="50" cy="50" r="36" fill="#FFFFFF"/>
+   <path fill="{C0}" d="M50 50 L50 14 A36 36 0 0 1 86 50 Z"/>
+   <path fill="{C0}" d="M50 50 L50 86 A36 36 0 0 1 14 50 Z"/>
+   <circle cx="50" cy="50" r="36" fill="none" stroke="#111111" stroke-width="2"/>` },
+
+{ id:"shell", name:"Shell", colors:[{"name":"yellow","hex":"#FBCE07"},{"name":"red","hex":"#DD1D21"}], svg:
+  `<path fill="{C1}" d="M50 6 C42 6 35 11 33 18 C22 21 14 32 12 46 C10 58 12 70 16 78 Q24 90 32 78 Q41 90 50 78 Q59 90 68 78 Q76 90 84 78 C88 70 90 58 88 46 C86 32 78 21 67 18 C65 11 58 6 50 6 Z"/>
+   <g transform="translate(7,7.5) scale(0.86)">
+     <path fill="{C0}" d="M50 6 C42 6 35 11 33 18 C22 21 14 32 12 46 C10 58 12 70 16 78 Q24 90 32 78 Q41 90 50 78 Q59 90 68 78 Q76 90 84 78 C88 70 90 58 88 46 C86 32 78 21 67 18 C65 11 58 6 50 6 Z"/>
+   </g>
+   <g fill="none" stroke="{C1}" stroke-width="2.8" stroke-linecap="round">
+     <path d="M50 24 V72"/><path d="M39 26 L32 70"/><path d="M61 26 L68 70"/>
+     <path d="M29 33 L23 64"/><path d="M71 33 L77 64"/>
+   </g>` },
+
+{ id:"mastercard", name:"Mastercard", colors:[{"name":"red","hex":"#EB001B"},{"name":"amber","hex":"#F79E1B"}], svg:
+  `<clipPath id="mc{U}"><circle cx="36" cy="50" r="28"/></clipPath>
+   <circle cx="36" cy="50" r="28" fill="{C0}"/>
+   <circle cx="64" cy="50" r="28" fill="{C1}"/>
+   <circle cx="64" cy="50" r="28" fill="#FF5F00" clip-path="url(#mc{U})"/>` },
+
+{ id:"carrefour", name:"Carrefour", colors:[{"name":"blue","hex":"#004E9F"},{"name":"red","hex":"#E30613"}], svg:
+  `<path fill="{C0}" d="M4 50 L44 6 L44 27 L30 50 L44 73 L44 94 Z"/>
+   <path fill="{C1}" d="M96 50 L56 6 L56 27 L70 50 L56 73 L56 94 Z"/>` },
+
+{ id:"hsbc", name:"HSBC", colors:[{"name":"red","hex":"#DB0011"}], svg:
+  `<rect x="8" y="22" width="84" height="56" fill="#FFFFFF"/>
+   <path fill="{C0}" d="M8 22 H92 L50 50 Z"/>
+   <path fill="{C0}" d="M8 78 H92 L50 50 Z"/>` },
+
+{ id:"ikea", name:"IKEA", colors:[{"name":"yellow","hex":"#FFDA1A"},{"name":"blue","hex":"#0058A3"}], svg:
+  `<rect x="3" y="19" width="94" height="62" rx="4" fill="{C1}"/>
+   <ellipse cx="50" cy="50" rx="43" ry="25" fill="{C0}"/>
+   <g fill="{C1}">
+     <rect x="17" y="40" width="6.5" height="21"/>
+     <rect x="30" y="40" width="6.5" height="21"/>
+     <path d="M36.5 50.5 L44 40 L51 40 L43.5 50.5 L51.2 61 L44 61 Z"/>
+     <rect x="55" y="40" width="6.5" height="21"/>
+     <rect x="55" y="40" width="13" height="5"/>
+     <rect x="55" y="48" width="11" height="4.6"/>
+     <rect x="55" y="56" width="13" height="5"/>
+     <path d="M71 61 L76.6 40 L81.4 40 L87 61 L81 61 L80.1 57 L77.6 57 L76.8 61 Z"/>
+   </g>` },
+
+{ id:"google", name:"Google", colors:[{"name":"blue","hex":"#4285F4"},{"name":"red","hex":"#EA4335"},{"name":"yellow","hex":"#FBBC05"},{"name":"green","hex":"#34A853"}], svg:
+  `<path fill="{C1}" d="M18.05 16.91 A46 46 0 0 1 89.84 27 L74.25 36 A28 28 0 0 0 30.55 29.86 Z"/>
+   <path fill="{C0}" d="M89.84 27 A46 46 0 0 1 93.23 65.73 L76.31 59.58 A28 28 0 0 0 74.25 36 Z"/>
+   <path fill="{C3}" d="M93.23 65.73 A46 46 0 0 1 21.68 86.25 L32.76 72.06 A28 28 0 0 0 76.31 59.58 Z"/>
+   <path fill="{C2}" d="M21.68 86.25 A46 46 0 0 1 18.05 16.91 L30.55 29.86 A28 28 0 0 0 32.76 72.06 Z"/>
+   <rect x="48" y="41" width="44" height="18" fill="{C0}"/>
+   <rect x="48" y="41" width="8" height="18" fill="{C0}"/>` },
+
+{ id:"googleplay", name:"Google Play", colors:[{"name":"green","hex":"#00D26A"},{"name":"blue","hex":"#00A0FF"},{"name":"red","hex":"#FF3A44"},{"name":"yellow","hex":"#FFCE00"}], svg:
+  `<path fill="{C0}" d="M16 8 L16 50 L52 50 Z"/>
+   <path fill="{C1}" d="M16 92 L16 50 L52 50 Z"/>
+   <path fill="{C2}" d="M16 8 L52 50 L88 50 Z"/>
+   <path fill="{C3}" d="M16 92 L52 50 L88 50 Z"/>` },
+
+{ id:"microsoft", name:"Microsoft", colors:[{"name":"red","hex":"#F25022"},{"name":"green","hex":"#7FBA00"},{"name":"blue","hex":"#00A4EF"},{"name":"yellow","hex":"#FFB900"}], svg:
+  `<rect x="8" y="8" width="38" height="38" fill="{C0}"/>
+   <rect x="54" y="8" width="38" height="38" fill="{C1}"/>
+   <rect x="8" y="54" width="38" height="38" fill="{C2}"/>
+   <rect x="54" y="54" width="38" height="38" fill="{C3}"/>` },
+
+{ id:"slack", name:"Slack", colors:[{"name":"blue","hex":"#36C5F0"},{"name":"green","hex":"#2EB67D"},{"name":"yellow","hex":"#ECB22E"},{"name":"red","hex":"#E01E5A"}], svg:
+  `<rect x="36" y="4"  width="14" height="60" rx="7" fill="{C0}"/>
+   <rect x="36" y="36" width="60" height="14" rx="7" fill="{C1}"/>
+   <rect x="50" y="36" width="14" height="60" rx="7" fill="{C2}"/>
+   <rect x="4"  y="50" width="60" height="14" rx="7" fill="{C3}"/>
+   <rect x="36" y="36" width="14" height="14" fill="{C0}"/>
+   <rect x="50" y="36" width="14" height="14" fill="{C1}"/>
+   <rect x="50" y="50" width="14" height="14" fill="{C2}"/>
+   <rect x="36" y="50" width="14" height="14" fill="{C3}"/>` },
+
+{ id:"chrome", name:"Chrome", colors:[{"name":"red","hex":"#EA4335"},{"name":"green","hex":"#34A853"},{"name":"yellow","hex":"#FBBC05"},{"name":"blue","hex":"#4285F4"}], svg:
+  `<path fill="{C0}" d="M50 50 L4.89 33.58 A48 48 0 0 1 91.57 26 Z"/>
+   <path fill="{C1}" d="M50 50 L91.57 26 A48 48 0 0 1 50 98 Z"/>
+   <path fill="{C2}" d="M50 50 L50 98 A48 48 0 0 1 4.89 33.58 Z"/>
+   <circle cx="50" cy="50" r="23" fill="#FFFFFF"/>
+   <circle cx="50" cy="50" r="18" fill="{C3}"/>` },
+
+{ id:"olympics", name:"Olympic Rings", colors:[{"name":"blue","hex":"#0081C8"},{"name":"yellow","hex":"#FCB131"},{"name":"green","hex":"#00A651"},{"name":"red","hex":"#EE334E"}], svg:
+  `<g fill="none" stroke-width="4">
+     <circle cx="22" cy="40" r="14" stroke="{C0}"/>
+     <circle cx="50" cy="40" r="14" stroke="#111111"/>
+     <circle cx="78" cy="40" r="14" stroke="{C3}"/>
+     <circle cx="36" cy="56" r="14" stroke="{C1}"/>
+     <circle cx="64" cy="56" r="14" stroke="{C2}"/>
+   </g>` },
+
+{ id:"flickr", name:"Flickr", colors:[{"name":"pink","hex":"#FF0084"},{"name":"blue","hex":"#0063DC"}], svg:
+  `<circle cx="27" cy="50" r="23" fill="{C1}"/><circle cx="73" cy="50" r="23" fill="{C0}"/>` },
+
+{ id:"paypal", name:"PayPal", colors:[{"name":"navy","hex":"#003087"},{"name":"sky","hex":"#009CDE"}], svg:
+  `<path fill="{C0}" transform="translate(-6,-5)" d="M28 22 h21 c13 0 22 8 22 20 0 13-11 22-25 22 h-9 l-3 18 h-14 Z"/>
+   <path fill="{C1}" transform="translate(9,7)" d="M28 22 h21 c13 0 22 8 22 20 0 13-11 22-25 22 h-9 l-3 18 h-14 Z"/>` },
+
+{ id:"tiktok", name:"TikTok", colors:[{"name":"cyan","hex":"#25F4EE"},{"name":"pink","hex":"#FE2C55"}], svg:
+  `<path fill="{C0}" transform="translate(-6,-4)" d="M60 10 h13 c1 9 7 15 16 16 v13 c-6 0-12-2-16-5 v22 c0 14-11 25-25 25 -14 0-25-11-25-25 0-13 11-24 25-24 2 0 3 0 5 1 v14 c-2-1-3-1-5-1 -6 0-11 5-11 11 0 6 5 11 11 11 6 0 12-5 12-13 Z"/>
+   <path fill="{C1}" transform="translate(6,4)"  d="M60 10 h13 c1 9 7 15 16 16 v13 c-6 0-12-2-16-5 v22 c0 14-11 25-25 25 -14 0-25-11-25-25 0-13 11-24 25-24 2 0 3 0 5 1 v14 c-2-1-3-1-5-1 -6 0-11 5-11 11 0 6 5 11 11 11 6 0 12-5 12-13 Z"/>
+   <path fill="#111111" d="M60 10 h13 c1 9 7 15 16 16 v13 c-6 0-12-2-16-5 v22 c0 14-11 25-25 25 -14 0-25-11-25-25 0-13 11-24 25-24 2 0 3 0 5 1 v14 c-2-1-3-1-5-1 -6 0-11 5-11 11 0 6 5 11 11 11 6 0 12-5 12-13 Z"/>` },
+
+{ id:"heineken", name:"Heineken", colors:[{"name":"green","hex":"#007A33"},{"name":"red","hex":"#E4002B"}], svg:
+  `<rect x="2" y="2" width="96" height="96" rx="22" fill="{C0}"/>
+   <path fill="#FFFFFF" d="M50 14 L58.82 37.86 L84.24 38.88 L64.27 54.64 L71.16 79.12 L50 65 L28.84 79.12 L35.73 54.64 L15.76 38.88 L41.18 37.86 Z"/>
+   <path fill="{C1}" d="M50 19 L57.64 39.48 L79.48 40.42 L62.36 54.02 L68.22 75.08 L50 63 L31.78 75.08 L37.64 54.02 L20.52 40.42 L42.36 39.48 Z"/>` },
+
+{ id:"rolex", name:"Rolex", colors:[{"name":"green","hex":"#006039"},{"name":"gold","hex":"#A37E2C"}], svg:
+  `<rect x="2" y="2" width="96" height="96" rx="18" fill="{C0}"/>
+   <g fill="{C1}">
+     <circle cx="22" cy="35" r="6.5"/><circle cx="35" cy="43" r="6.5"/><circle cx="50" cy="25" r="7"/>
+     <circle cx="65" cy="43" r="6.5"/><circle cx="78" cy="35" r="6.5"/>
+     <path d="M24 62 L22 35 L35 43 L50 25 L65 43 L78 35 L76 62 Z"/>
+     <rect x="20" y="62" width="60" height="11" rx="3"/>
+   </g>` },
+
+{ id:"duracell", name:"Duracell", colors:[{"name":"copper","hex":"#B76E28"}], svg:
+  `<rect x="26" y="12" width="48" height="80" rx="8" fill="#1A1A1A"/>
+   <rect x="41" y="4" width="18" height="12" rx="3" fill="{C0}"/>
+   <path fill="{C0}" d="M26 20 a8 8 0 0 1 8-8 h32 a8 8 0 0 1 8 8 v22 H26 Z"/>
+   <rect x="26" y="78" width="48" height="14" rx="0" fill="{C0}"/>
+   <path fill="{C0}" d="M26 86 h48 v-2 a8 8 0 0 1 -8 8 H34 a8 8 0 0 1 -8-8 Z"/>` },
+
+{ id:"kodak", name:"Kodak", colors:[{"name":"yellow","hex":"#FFB81C"},{"name":"red","hex":"#EE3124"}], svg:
+  `<rect x="2" y="2" width="96" height="96" rx="14" fill="{C0}"/>
+   <g fill="{C1}">
+     <rect x="24" y="24" width="13" height="52"/>
+     <path d="M37 50 L60 24 L78 24 L54 50 L78 76 L60 76 Z"/>
+   </g>` },
+
+{ id:"pizzahut", name:"Pizza Hut", colors:[{"name":"red","hex":"#EE3124"}], svg:
+  `<path fill="{C0}" d="M50 18 C71 18 88 35 92 58 C92.5 63 88 66 83 63 C72 57 61 55 50 55 C39 55 28 57 17 62 C12 65 7.5 63 8 58 C12 35 29 18 50 18 Z"/>` },
+
+{ id:"ubuntu", name:"Ubuntu", colors:[{"name":"orange","hex":"#E95420"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <g stroke="#FFFFFF" stroke-width="5.5" fill="none">
+     <circle cx="50" cy="50" r="24"/>
+     <path d="M50 50 L76 50"/><path d="M50 50 L37 27.5"/><path d="M50 50 L37 72.5"/>
+   </g>
+   <circle cx="76" cy="50" r="9.5" fill="#FFFFFF"/>
+   <circle cx="37" cy="27.5" r="9.5" fill="#FFFFFF"/>
+   <circle cx="37" cy="72.5" r="9.5" fill="#FFFFFF"/>` },
+
+{ id:"kakaotalk", name:"KakaoTalk", colors:[{"name":"yellow","hex":"#FEE500"},{"name":"brown","hex":"#3C1E1E"}], svg:
+  `<rect x="2" y="2" width="96" height="96" rx="24" fill="{C0}"/>
+   <path fill="{C1}" d="M50 22 C31 22 16 34 16 49 c0 9 6 17 15 22 l-4 14 c-1 2 1 3 2 2 l16-10 c2 0 3 1 5 1 19 0 34-12 34-27 0-15-15-27-34-27 Z"/>` },
+
+{ id:"volkswagen", name:"Volkswagen", colors:[{"name":"blue","hex":"#001E50"}], svg:
+  `<circle cx="50" cy="50" r="48" fill="{C0}"/>
+   <circle cx="50" cy="50" r="41" fill="#FFFFFF"/>
+   <circle cx="50" cy="50" r="37" fill="{C0}"/>
+   <g fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linejoin="round">
+     <path d="M31 28 L50 66 L69 28"/>
+     <path d="M20 46 L34 78 L50 52 L66 78 L80 46"/>
+   </g>` },
+
+{ id:"seveneleven", name:"7-Eleven", colors:[{"name":"green","hex":"#008061"},{"name":"red","hex":"#EE1C25"},{"name":"orange","hex":"#F58220"}], svg:
+  `<rect x="4" y="4" width="92" height="92" rx="12" fill="#FFFFFF"/>
+   <path fill="{C1}" d="M24 14 H80 V28 L54 90 H34 L60 30 H24 Z"/>
+   <rect x="22" y="46" width="56" height="14" fill="{C0}"/>
+   <rect x="22" y="63" width="56" height="8" fill="{C2}"/>` },
+
+{ id:"lego", name:"LEGO", colors:[{"name":"red","hex":"#E3000B"},{"name":"yellow","hex":"#FFCF00"}], svg:
+  `<rect x="4" y="4" width="92" height="92" rx="16" fill="{C0}"/>
+   <g fill="{C1}" fill-rule="evenodd">
+     <path d="M11 36 h8.5 v26 h9.5 v8 H11 Z"/>
+     <path d="M33 36 h18 v8 H41.5 v5 h8.5 v8 h-8.5 v5 h9.5 v8 H33 Z"/>
+     <path d="M72 36 H62 c-5 0-8.5 3.5-8.5 8.5 v17 c0 5 3.5 8.5 8.5 8.5 h10 V49.5 H62.5 v8 h2.5 v4.5 h-3 V44 h10 Z"/>
+     <path d="M83 36 h4 c4.5 0 7.5 3 7.5 7.5 v19 c0 4.5-3 7.5-7.5 7.5 h-4 c-4.5 0-7.5-3-7.5-7.5 v-19 C75.5 39 78.5 36 83 36 Z M82.5 45 h5 v16 h-5 Z"/>
+   </g>` }
+];
+
+/* ── SEEDED PRNG (mulberry32) ── */
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function codeToSeed(code) {
+  let h = 2166136261 >>> 0;
+  const s = String(code).toUpperCase();
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h >>> 0;
+}
+function makeCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 6; i++) s += A[Math.floor(Math.random() * A.length)];
+  return s;
+}
+
+/* ── COLOUR MATH ── */
+function hsb2rgb(h, s, b) {
+  h = ((h % 360) + 360) % 360; s /= 100; b /= 100;
+  const k = n => (n + h / 60) % 6;
+  const f = n => b * (1 - s * Math.max(0, Math.min(k(n), 4 - k(n), 1)));
+  return [Math.round(255 * f(5)), Math.round(255 * f(3)), Math.round(255 * f(1))];
+}
+function rgb2hsb(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60; if (h < 0) h += 360;
+  }
+  return [Math.round(h), Math.round(mx ? d / mx * 100 : 0), Math.round(mx * 100)];
+}
+function hex2rgb(hex) {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function rgb2hex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+function rgb2lab(r, g, b) {
+  const lin = v => { v /= 255; return v > 0.04045 ? Math.pow((v + 0.055) / 1.055, 2.4) : v / 12.92; };
+  r = lin(r); g = lin(g); b = lin(b);
+  let X = (r * 0.4124564 + g * 0.3575761 + b * 0.1804375) / 0.95047;
+  let Y = (r * 0.2126729 + g * 0.7151522 + b * 0.0721750);
+  let Z = (r * 0.0193339 + g * 0.1191920 + b * 0.9503041) / 1.08883;
+  const f = t => t > 0.008856451679 ? Math.cbrt(t) : (7.787037 * t + 16 / 116);
+  X = f(X); Y = f(Y); Z = f(Z);
+  return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
+}
+function deltaE(rgbA, rgbB) {
+  const a = rgb2lab(rgbA[0], rgbA[1], rgbA[2]), b = rgb2lab(rgbB[0], rgbB[1], rgbB[2]);
+  return Math.sqrt((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2);
+}
+/* Calibrated against reference play: dE 13.8 -> 9.27, dE 13.0 -> ~9.3 */
+const DMAX = 120, CURVE = 1.21;
+function scoreFromDeltaE(dE) {
+  const x = Math.min(1, dE / DMAX);
+  return Math.max(0, Math.min(10, 10 * (1 - Math.pow(x, CURVE))));
+}
+function scoreColors(guessRGB, trueRGB) { return scoreFromDeltaE(deltaE(guessRGB, trueRGB)); }
+
+function flavorFor(sc) {
+  if (sc >= 9.6) return 'Pixel perfect. Are you a designer?';
+  if (sc >= 9.0) return 'Outstanding — barely a shade off.';
+  if (sc >= 8.0) return 'Really close. Good eye.';
+  if (sc >= 6.5) return 'Right family, wrong shade.';
+  if (sc >= 4.5) return 'In the neighbourhood.';
+  if (sc >= 2.5) return 'Not quite. Have another look.';
+  return 'Ouch. Completely different colour.';
+}
+function scoreColor(sc) {
+  if (sc >= 8) return 'var(--green)';
+  if (sc >= 6) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+/* ── SVG RENDERING ── */
+const GREY = '#B9BEC6', TILE_BG = '#FBFBF8';
+let _uid = 0;
+/* Renders a logo with every colour true-to-brand EXCEPT the one being asked,
+   which is painted in `targetColor` (grey at round start, the player's mix once they drag). */
+function renderLogo(logo, targetIdx, targetColor) {
+  let out = logo.svg;
+  logo.colors.forEach((c, i) => {
+    out = out.split('{C' + i + '}').join(i === targetIdx ? targetColor : c.hex);
+  });
+  out = out.split('{B}').join(TILE_BG).split('{U}').join('u' + (++_uid));
+  return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' + out + '</svg>';
+}
+function shuffle(arr, rnd) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+/* A "round" is a (logo, colour-index) pair. A logo never repeats inside one pass
+   of the pool, and which of its colours gets asked is randomised. */
+function pickRounds(seed, n) {
+  const rnd = mulberry32(seed);
+  let pool = shuffle(LOGOS.slice(), rnd);
+  const out = [];
+  while (out.length < n) {
+    for (const l of pool) {
+      if (out.length >= n) break;
+      out.push({ logo: l, ci: Math.floor(rnd() * l.colors.length) });
+    }
+    if (out.length < n) pool = shuffle(pool, rnd);
+  }
+  return out;
+}
+function roundLabel(r) {
+  return r.logo.name + (r.logo.colors.length > 1 ? ' \u00b7 ' + r.logo.colors[r.ci].name : '');
+}
+function trueHex(r) { return r.logo.colors[r.ci].hex; }
+
+/* ═══════════ STATE ═══════════ */
+const S = {
+  mode: 'solo', rounds: 5, threshold: 7.5, timerSecs: 30,
+  seed: 0, code: '', queue: [], idx: 0,
+  history: [],           // [{logo, guess:[h,s,b], score}] or pvp {logo, g1,g2,s1,s2}
+  players: ['Player 1', 'Player 2'],
+  pickers: {}, locked: {}, tickHandle: null, timeLeft: 0,
+  endlessAlive: true
+};
+
+/* ── SETTINGS PILLS ── */
+function bindPills(id, cb) {
+  const el = document.getElementById(id);
+  el.addEventListener('click', e => {
+    const p = e.target.closest('.pill'); if (!p) return;
+    [...el.children].forEach(c => c.classList.remove('selected'));
+    p.classList.add('selected');
+    cb(p.dataset.v);
+  });
+}
+bindPills('pills-mode', v => { S.mode = v; document.getElementById('poolLine').textContent =
+  LOGOS.length + ' logos \u00b7 ' + LOGOS.reduce((a, l) => a + l.colors.length, 0) + ' colours to recall';
+syncSetupUI(); });
+bindPills('pills-rounds', v => S.rounds = +v);
+bindPills('pills-threshold', v => S.threshold = +v);
+bindPills('pills-timer', v => S.timerSecs = +v);
+
+function syncSetupUI() {
+  document.getElementById('grp-rounds').style.display    = (S.mode === 'solo' || S.mode === 'pvp') ? '' : 'none';
+  document.getElementById('grp-threshold').style.display = (S.mode === 'endless') ? '' : 'none';
+  document.getElementById('grp-timer').style.display     = (S.mode === 'pvp') ? '' : 'none';
+  document.getElementById('grp-names').style.display     = (S.mode === 'pvp') ? '' : 'none';
+  showBest();
+}
+
+/* ── STORAGE ── */
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem('hueRecall.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('hueRecall.' + k, JSON.stringify(v)); } catch (e) {} }
+};
+function showBest() {
+  const el = document.getElementById('bestLine');
+  if (S.mode === 'solo') {
+    const b = LS.get('best.solo', null);
+    el.textContent = b ? 'Best solo average · ' + b.toFixed(2) : 'No solo record yet';
+  } else if (S.mode === 'endless') {
+    const b = LS.get('best.endless', 0);
+    el.textContent = b ? 'Longest endless streak · ' + b : 'No endless record yet';
+  } else el.textContent = '';
+}
+
+/* ── SCREENS ── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+/* ── THEME — STYLE_GUIDE.md §2 ──
+   The sun/moon icons swap via CSS on [data-theme]; JS only sets the attribute
+   and the label. Persisted under this game's existing key, hueRecall.theme
+   (via the LS wrapper), and restored on load. */
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+}
+function toggleTheme() {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  applyTheme(next);
+  LS.set('theme', next);
+}
+(function initTheme() {
+  applyTheme(LS.get('theme', 'dark') === 'light' ? 'light' : 'dark');
+})();
+
+/* ── FULL RULES (§3 — the menu card is the summary, this is the manual) ── */
+function openRules()  { document.getElementById('rulesModal').style.display = 'flex'; }
+function closeRules() { document.getElementById('rulesModal').style.display = 'none'; }
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+/* ═══════════ PICKER COMPONENT ═══════════ */
+function createPicker(hostEl, opts) {
+  const P = { h: opts.h, s: opts.s, b: opts.b, locked: false, touched: false };
+  hostEl.innerHTML =
+    '<div class="picker">' +
+      '<div class="sliders">' +
+        '<div class="vslider" data-ch="h"><div class="fillbg"></div><div class="knob"></div></div>' +
+        '<div class="vslider" data-ch="s"><div class="fillbg"></div><div class="knob"></div></div>' +
+        '<div class="vslider" data-ch="b"><div class="fillbg"></div><div class="knob"></div></div>' +
+      '</div>' +
+      '<div class="preview">' +
+        '<div class="readout"><small>YOUR MIX</small><span class="ro"></span></div>' +
+        '<button class="confirm-btn">✓</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="slider-labels"><span>H</span><span>S</span><span>B</span></div>';
+
+  const sliders = hostEl.querySelectorAll('.vslider');
+  const preview = hostEl.querySelector('.preview');
+  const ro      = hostEl.querySelector('.ro');
+  const confirm = hostEl.querySelector('.confirm-btn');
+
+  const RANGE = { h: 360, s: 100, b: 100 };
+
+  function paint() {
+    const rgb = hsb2rgb(P.h, P.s, P.b);
+    const hex = rgb2hex(rgb[0], rgb[1], rgb[2]);
+    preview.style.background = hex;
+    const lum = (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+    preview.style.color = lum > 0.58 ? '#14181f' : '#ffffff';
+    ro.textContent = 'H' + Math.round(P.h) + ' S' + Math.round(P.s) + ' B' + Math.round(P.b);
+    confirm.style.color = lum > 0.58 ? '#14181f' : '#14181f';
+
+    const fullHue = rgb2hex(...hsb2rgb(P.h, 100, 100));
+    const satTop  = rgb2hex(...hsb2rgb(P.h, 100, P.b));
+    const satBot  = rgb2hex(...hsb2rgb(P.h, 0, P.b));
+    sliders.forEach(sl => {
+      const ch = sl.dataset.ch, bg = sl.querySelector('.fillbg'), knob = sl.querySelector('.knob');
+      if (ch === 'h') bg.style.background = 'linear-gradient(to top,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)';
+      if (ch === 's') bg.style.background = 'linear-gradient(to top,' + satBot + ',' + satTop + ')';
+      if (ch === 'b') bg.style.background = 'linear-gradient(to top,#000,' + rgb2hex(...hsb2rgb(P.h, P.s, 100)) + ')';
+      const frac = P[ch] / RANGE[ch];
+      knob.style.top = (100 - frac * 100) + '%';
+      knob.style.background = ch === 'h' ? fullHue : hex;
+    });
+    if (opts.onChange) opts.onChange(P);
+  }
+
+  sliders.forEach(sl => {
+    const ch = sl.dataset.ch;
+    let active = false;
+    function apply(clientY) {
+      const r = sl.getBoundingClientRect();
+      let frac = 1 - (clientY - r.top) / r.height;
+      frac = Math.max(0, Math.min(1, frac));
+      let v = frac * RANGE[ch];
+      P[ch] = ch === 'h' ? Math.round(v) % 360 : Math.round(v);
+      P.touched = true;
+      paint();
+    }
+    sl.addEventListener('pointerdown', e => {
+      if (P.locked) return;
+      active = true; sl.setPointerCapture(e.pointerId); apply(e.clientY); e.preventDefault();
+    });
+    sl.addEventListener('pointermove', e => { if (active && !P.locked) { apply(e.clientY); e.preventDefault(); } });
+    sl.addEventListener('pointerup',     () => active = false);
+    sl.addEventListener('pointercancel', () => active = false);
+  });
+
+  confirm.addEventListener('click', () => { if (!P.locked && opts.onConfirm) opts.onConfirm(P); });
+
+  P.paint = paint;
+  P.lock = () => { P.locked = true; confirm.disabled = true; };
+  P.rgb = () => hsb2rgb(P.h, P.s, P.b);
+  paint();
+  return P;
+}
+
+/* ═══════════ GAME FLOW ═══════════ */
+function startGame() {
+  hubReportPlay();          // §12 — count this play on the hub
+  const raw = document.getElementById('seedInput').value.trim();
+  S.code = raw ? raw.toUpperCase() : makeCode();
+  S.seed = codeToSeed(S.code);
+  S.players = [
+    (document.getElementById('p1name').value.trim() || 'Player 1'),
+    (document.getElementById('p2name').value.trim() || 'Player 2')
+  ];
+  const n = (S.mode === 'endless' || S.mode === 'practice') ? LOGOS.length : S.rounds;
+  S.queue = pickRounds(S.seed, Math.max(n, LOGOS.length));
+  S.idx = 0; S.history = []; S.endlessAlive = true;
+
+  showCountdown(() => beginRound());
+}
+
+function showCountdown(cb) {
+  const ov = document.getElementById('countdown'), num = document.getElementById('countdownNum');
+  ov.style.display = 'flex';
+  let n = 3;
+  num.textContent = n;
+  const t = setInterval(() => {
+    n--;
+    if (n > 0) num.textContent = n;
+    else if (n === 0) num.textContent = 'GO';
+    else { clearInterval(t); ov.style.display = 'none'; cb(); }
+  }, 700);
+}
+
+function currentRound() {
+  // endless & practice run past the pool size — extend with a freshly shuffled pass
+  let guard = 0;
+  while (S.idx >= S.queue.length && guard++ < 500) {
+    const pass = Math.floor(S.queue.length / LOGOS.length) + 1;
+    S.queue = S.queue.concat(pickRounds(S.seed + 104729 * pass, LOGOS.length));
+  }
+  return S.queue[S.idx];
+}
+
+function beginRound() {
+  clearInterval(S.tickHandle);
+  const R = currentRound(), logo = R.logo, ci = R.ci;
+  const rnd = mulberry32(S.seed + S.idx * 7919);
+  const startH = Math.floor(rnd() * 360);
+
+  document.getElementById('brandCaption').textContent = logo.name;
+  const chip = document.getElementById('roundChip');
+  if (S.mode === 'practice') chip.innerHTML = 'PRACTICE';
+  else if (S.mode === 'endless') chip.innerHTML = 'STREAK <b>' + S.history.length + '</b>';
+  else chip.innerHTML = '<b>' + (S.idx + 1) + '</b>/' + S.rounds;
+
+  const tile = document.getElementById('tile');
+  S.locked = {};
+
+  if (S.mode === 'pvp') {
+    document.getElementById('soloPicker').style.display = 'none';
+    document.getElementById('pvpPickers').style.display = 'grid';
+    tile.innerHTML =
+      '<div class="half left"  id="halfL">' + renderLogo(logo, ci, GREY) + '</div>' +
+      '<div class="half right" id="halfR">' + renderLogo(logo, ci, GREY) + '</div>' +
+      '<div class="divider"></div>' +
+      '<div class="tag l" id="tagL"></div><div class="tag r" id="tagR"></div>';
+    document.getElementById('tagL').textContent = S.players[0];
+    document.getElementById('tagR').textContent = S.players[1];
+
+    const host = document.getElementById('pvpPickers');
+    host.innerHTML = '<div class="pvp-col" id="col0"><div class="pvp-name"></div><div class="pk"></div></div>' +
+                     '<div class="pvp-col" id="col1"><div class="pvp-name"></div><div class="pk"></div></div>';
+    [0, 1].forEach(i => {
+      const col = document.getElementById('col' + i);
+      col.querySelector('.pvp-name').textContent = S.players[i];
+      const h2 = (startH + (i ? 180 : 0)) % 360;
+      S.pickers[i] = createPicker(col.querySelector('.pk'), {
+        h: h2, s: 60, b: 70,
+        onChange: p => {
+          if (!p.touched) return;
+          const half = document.getElementById(i ? 'halfR' : 'halfL');
+          half.innerHTML = renderLogo(logo, ci, rgb2hex(...hsb2rgb(p.h, p.s, p.b)));
+        },
+        onConfirm: p => lockPvp(i)
+      });
+    });
+    startPvpTimer();
+  } else {
+    document.getElementById('soloPicker').style.display = '';
+    document.getElementById('pvpPickers').style.display = 'none';
+    document.getElementById('playTimer').textContent = '';
+    tile.innerHTML = renderLogo(logo, ci, GREY);
+    S.pickers[0] = createPicker(document.getElementById('soloPicker'), {
+      h: startH, s: 60, b: 70,
+      onChange: p => { if (p.touched) tile.innerHTML = renderLogo(logo, ci, rgb2hex(...hsb2rgb(p.h, p.s, p.b))); },
+      onConfirm: p => submitSolo(p)
+    });
+  }
+  showScreen('screen-play');
+}
+
+/* ── PVP TIMER ── */
+function startPvpTimer() {
+  clearInterval(S.tickHandle);
+  const el = document.getElementById('playTimer');
+  if (!S.timerSecs) { el.textContent = ''; return; }
+  S.timeLeft = S.timerSecs;
+  el.textContent = S.timeLeft + 's';
+  S.tickHandle = setInterval(() => {
+    S.timeLeft--;
+    el.textContent = Math.max(0, S.timeLeft) + 's';
+    el.style.color = S.timeLeft <= 5 ? 'var(--red)' : 'var(--amber)';
+    if (S.timeLeft <= 0) {
+      clearInterval(S.tickHandle);
+      [0, 1].forEach(i => { if (!S.locked[i]) lockPvp(i, true); });
+    }
+  }, 1000);
+}
+
+function lockPvp(i, auto) {
+  if (S.locked[i]) return;
+  S.locked[i] = true;
+  S.pickers[i].lock();
+  document.getElementById('col' + i).classList.add('locked');
+  const tag = document.getElementById(i ? 'tagR' : 'tagL');
+  tag.textContent = auto ? 'time!' : 'locked ✓';
+  tag.classList.add('locked');
+  if (S.locked[0] && S.locked[1]) {
+    clearInterval(S.tickHandle);
+    document.getElementById('playTimer').textContent = '';
+    setTimeout(revealPvp, 220);
+  }
+}
+
+/* ── SUBMIT / REVEAL ── */
+function submitSolo(p) {
+  p.lock();
+  const R = currentRound();
+  const guessRGB = hsb2rgb(p.h, p.s, p.b);
+  const trueRGB  = hex2rgb(trueHex(R));
+  const sc = scoreColors(guessRGB, trueRGB);
+  S.history.push({ logo: R.logo, ci: R.ci, guess: [p.h, p.s, p.b], guessHex: rgb2hex(...guessRGB), score: sc });
+
+  const isPractice = S.mode === 'practice';
+  document.getElementById('revealScoreCard').style.display = isPractice ? 'none' : '';
+  document.getElementById('revealVs').style.display = 'none';
+  document.getElementById('miniGuessCap').textContent = 'Your mix';
+
+  if (!isPractice) {
+    const big = document.getElementById('scoreBig');
+    big.textContent = sc.toFixed(2);
+    big.style.color = scoreColor(sc);
+    document.getElementById('scoreFlavor').textContent = flavorFor(sc);
+  }
+
+  paintReveal(R, rgb2hex(...guessRGB), [p.h, p.s, p.b]);
+
+  if (S.mode === 'endless') {
+    S.endlessAlive = sc >= S.threshold;
+    document.getElementById('revealChip').innerHTML = 'STREAK <b>' + (S.endlessAlive ? S.history.length : S.history.length - 1) + '</b>';
+    document.getElementById('nextBtn').textContent = S.endlessAlive ? 'Next' : 'See results';
+  } else if (isPractice) {
+    document.getElementById('revealChip').innerHTML = 'PRACTICE';
+    document.getElementById('nextBtn').textContent = 'Next logo';
+  } else {
+    document.getElementById('revealChip').innerHTML = '<b>' + (S.idx + 1) + '</b>/' + S.rounds;
+    document.getElementById('nextBtn').textContent = (S.idx + 1 >= S.rounds) ? 'See results' : 'Next';
+  }
+  showScreen('screen-reveal');
+}
+
+function revealPvp() {
+  const R = currentRound(), logo = R.logo, ci = R.ci;
+  const trueRGB = hex2rgb(trueHex(R));
+  const g = [0, 1].map(i => {
+    const p = S.pickers[i], rgb = hsb2rgb(p.h, p.s, p.b);
+    return { hsb: [p.h, p.s, p.b], hex: rgb2hex(...rgb), score: scoreColors(rgb, trueRGB) };
+  });
+  S.history.push({ logo, ci, pvp: g });
+
+  document.getElementById('revealScoreCard').style.display = 'none';
+  document.getElementById('miniGuessCap').textContent = 'Both mixes';
+  const vs = document.getElementById('revealVs');
+  vs.style.display = 'flex';
+  const win = g[0].score === g[1].score ? -1 : (g[0].score > g[1].score ? 0 : 1);
+  vs.innerHTML = [0, 1].map(i =>
+    '<div class="vs-side' + (win === i ? ' win' : '') + '">' +
+      '<div class="n">' + esc(S.players[i]) + '</div>' +
+      '<div class="s" style="color:' + scoreColor(g[i].score) + '">' + g[i].score.toFixed(2) + '</div>' +
+    '</div>').join('');
+
+  // mini tiles: split guess tile
+  document.getElementById('miniGuess').innerHTML =
+    '<div style="position:relative;width:100%;height:100%">' +
+      '<div style="position:absolute;inset:0;clip-path:inset(0 50% 0 0)">' + renderLogo(logo, ci, g[0].hex) + '</div>' +
+      '<div style="position:absolute;inset:0;clip-path:inset(0 0 0 50%)">' + renderLogo(logo, ci, g[1].hex) + '</div>' +
+    '</div>';
+  document.getElementById('miniTrue').innerHTML = renderLogo(logo, ci, trueHex(R));
+  document.getElementById('revealCmp').innerHTML =
+    cmpItem(S.players[0], g[0].hex, g[0].hsb) + cmpItem(S.players[1], g[1].hex, g[1].hsb) +
+    cmpItem('Original · ' + roundLabel(R), trueHex(R), rgb2hsb(...trueRGB));
+
+  document.getElementById('revealChip').innerHTML = '<b>' + (S.idx + 1) + '</b>/' + S.rounds;
+  document.getElementById('nextBtn').textContent = (S.idx + 1 >= S.rounds) ? 'See results' : 'Next';
+  showScreen('screen-reveal');
+}
+
+function cmpItem(label, hex, hsb) {
+  return '<div class="cmp-item"><div class="cmp-swatch" style="background:' + hex + '"></div>' +
+    '<div class="cmp-meta"><div class="lbl">' + esc(label) + '</div>' +
+    '<div class="val">H' + Math.round(hsb[0]) + ' S' + Math.round(hsb[1]) + ' B' + Math.round(hsb[2]) +
+    ' · ' + hex.toUpperCase() + '</div></div></div>';
+}
+function paintReveal(R, guessHex, guessHsb) {
+  document.getElementById('miniGuess').innerHTML = renderLogo(R.logo, R.ci, guessHex);
+  document.getElementById('miniTrue').innerHTML  = renderLogo(R.logo, R.ci, trueHex(R));
+  document.getElementById('revealCmp').innerHTML =
+    cmpItem('Your mix', guessHex, guessHsb) +
+    cmpItem('Original · ' + roundLabel(R), trueHex(R), rgb2hsb(...hex2rgb(trueHex(R))));
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function nextRound() {
+  if (S.mode === 'endless' && !S.endlessAlive) { finish(); return; }
+  if (S.mode === 'practice') { S.idx++; beginRound(); return; }
+  S.idx++;
+  if (S.idx >= S.rounds && S.mode !== 'endless') { finish(); return; }
+  beginRound();
+}
+
+/* ── RESULTS ── */
+function finish() {
+  clearInterval(S.tickHandle);
+  const isPvp = S.mode === 'pvp';
+  document.getElementById('resCode').textContent = S.code;
+
+  const stats = document.getElementById('resStats');
+  const table = document.getElementById('resTable');
+
+  if (isPvp) {
+    const tot = [0, 1].map(i => S.history.reduce((a, r) => a + r.pvp[i].score, 0));
+    const winner = tot[0] === tot[1] ? null : (tot[0] > tot[1] ? 0 : 1);
+    document.getElementById('resTitle').textContent = winner === null ? 'DRAW' : 'WINNER';
+    document.getElementById('resSub').textContent = winner === null
+      ? 'Dead heat — ' + tot[0].toFixed(2) + ' each'
+      : S.players[winner] + ' · ' + tot[winner].toFixed(2) + ' pts';
+    stats.innerHTML = [0, 1].map(i =>
+      '<div class="stat"><div class="k">' + esc(S.players[i]) + '</div>' +
+      '<div class="v" style="color:' + (winner === i ? 'var(--green)' : 'var(--text)') + '">' +
+      tot[i].toFixed(2) + '</div></div>').join('');
+    table.innerHTML = S.history.map((r, i) =>
+      '<tr><td style="width:26px" class="name">' + (i + 1) + '</td>' +
+      '<td class="name">' + esc(roundLabel(r)) + '</td>' +
+      '<td style="text-align:right">' +
+        '<span class="sw" style="background:' + r.pvp[0].hex + '"></span> ' +
+        '<span class="sw" style="background:' + r.pvp[1].hex + '"></span> ' +
+        '<span class="sw" style="background:' + trueHex(r) + ';outline:2px solid var(--accent);outline-offset:1px"></span>' +
+      '</td>' +
+      '<td class="sc">' + r.pvp[0].score.toFixed(1) + ' · ' + r.pvp[1].score.toFixed(1) + '</td></tr>').join('');
+  } else {
+    const scores = S.history.map(r => r.score);
+    const total = scores.reduce((a, b) => a + b, 0);
+    const avg = scores.length ? total / scores.length : 0;
+    const best = Math.max(0, ...scores);
+
+    if (S.mode === 'endless') {
+      const streak = S.endlessAlive ? scores.length : scores.length - 1;
+      const prev = LS.get('best.endless', 0);
+      if (streak > prev) LS.set('best.endless', streak);
+      document.getElementById('resTitle').textContent = 'STREAK ' + streak;
+      document.getElementById('resSub').textContent = streak > prev ? 'New personal best!' : 'Best · ' + prev;
+      stats.innerHTML =
+        '<div class="stat"><div class="k">Streak</div><div class="v">' + streak + '</div></div>' +
+        '<div class="stat"><div class="k">Average</div><div class="v">' + avg.toFixed(2) + '</div></div>' +
+        '<div class="stat"><div class="k">Best round</div><div class="v">' + best.toFixed(2) + '</div></div>';
+    } else {
+      const prev = LS.get('best.solo', null);
+      if (prev === null || avg > prev) LS.set('best.solo', avg);
+      document.getElementById('resTitle').textContent = avg.toFixed(2);
+      document.getElementById('resSub').textContent =
+        (prev === null || avg > prev) ? 'New personal best average!' : 'Best average · ' + prev.toFixed(2);
+      stats.innerHTML =
+        '<div class="stat"><div class="k">Total</div><div class="v">' + total.toFixed(1) + '</div></div>' +
+        '<div class="stat"><div class="k">Average</div><div class="v">' + avg.toFixed(2) + '</div></div>' +
+        '<div class="stat"><div class="k">Best round</div><div class="v">' + best.toFixed(2) + '</div></div>';
+    }
+    table.innerHTML = S.history.map((r, i) =>
+      '<tr><td style="width:26px" class="name">' + (i + 1) + '</td>' +
+      '<td class="name">' + esc(roundLabel(r)) + '</td>' +
+      '<td style="text-align:right">' +
+        '<span class="sw" style="background:' + r.guessHex + '"></span> ' +
+        '<span class="sw" style="background:' + trueHex(r) + ';outline:2px solid var(--accent);outline-offset:1px"></span>' +
+      '</td>' +
+      '<td class="sc" style="color:' + scoreColor(r.score) + '">' + r.score.toFixed(2) + '</td></tr>').join('');
+  }
+  showScreen('screen-results');
+}
+
+function rematch() {
+  document.getElementById('seedInput').value = S.code;
+  startGame();
+}
+function newSet() {
+  document.getElementById('seedInput').value = '';
+  startGame();
+}
+function copyCode() {
+  const c = S.code;
+  if (navigator.clipboard) navigator.clipboard.writeText(c).then(() => toast('Code copied'), () => toast(c));
+  else toast(c);
+}
+
+/* ── EXIT ── */
+function askExit() { document.getElementById('exitModal').style.display = 'flex'; }
+function closeExit() { document.getElementById('exitModal').style.display = 'none'; }
+function doExit() {
+  closeExit(); clearInterval(S.tickHandle);
+  showScreen('screen-setup'); showBest();
+}
+
+/* ═══════════ EXPOSE PURE LOGIC (tests / future wiring) ═══════════ */
+window.HueRecall = {
+  LOGOS, mulberry32, codeToSeed, pickRounds, shuffle, roundLabel, trueHex,
+  hsb2rgb, rgb2hsb, hex2rgb, rgb2hex, rgb2lab, deltaE,
+  scoreFromDeltaE, scoreColors, flavorFor, renderLogo, DMAX, CURVE
+};
+
+syncSetupUI();
+</script>
+</body>
+</html>
