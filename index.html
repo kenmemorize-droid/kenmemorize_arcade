@@ -122,6 +122,110 @@
   .play-btn{ margin-top:12px; text-align:center; font-weight:800; font-size:0.8rem; letter-spacing:0.08em; text-transform:uppercase; padding:9px; border-radius:10px; background:var(--accent); color:#1a1330; }
 
   .empty-note{ text-align:center; color:var(--dim); max-width:500px; margin:60px auto; font-size:0.9rem; }
+
+  /* ---------- Ranked games: picker + featured card + leaderboard ---------- */
+
+  /* Board picker. WRAPS — never scrolls sideways — and sits full width above
+     the featured block rather than inside the narrower leaderboard column, so
+     roughly twice as many chips fit per line. */
+  .lb-pick{
+    max-width:1100px; margin:22px auto 10px;
+    display:flex; flex-wrap:wrap; gap:7px; align-items:center;
+  }
+  .lb-pick .lbl{
+    font-size:0.7rem; font-weight:800; letter-spacing:0.09em; text-transform:uppercase;
+    color:var(--dim); margin-right:2px;
+  }
+  .lb-pick button{
+    cursor:pointer; font-family:inherit; font-size:0.75rem; font-weight:700;
+    padding:6px 13px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;
+    border:1.5px solid var(--chip-border); background:var(--chip-bg); color:var(--dim);
+    transition:all 0.15s ease;
+  }
+  .lb-pick button[aria-pressed="true"]{
+    color:var(--text); border-color:var(--sel-c, var(--marquee));
+    background:color-mix(in srgb, var(--sel-c, var(--marquee)) 18%, var(--chip-bg));
+  }
+
+  /* --feat-c is set per selection so the whole block re-tints to the shown
+     game's category colour. Falls back to the Sequence hue. */
+  .featured{
+    max-width:1100px; margin:0 auto 8px;
+    display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:20px; align-items:stretch;
+  }
+  .feat-card{
+    position:relative; display:flex; flex-direction:column; text-decoration:none; color:inherit;
+    background:var(--panel); border:2px solid var(--feat-c, var(--c-sequence)); border-radius:20px;
+    padding:26px 22px 20px; box-shadow:0 10px 30px rgba(0,0,0,.32);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .feat-card:hover, .feat-card:focus-visible{
+    transform:translateY(-4px); outline:none;
+    box-shadow:0 16px 34px rgba(0,0,0,.4), 0 0 30px -6px var(--feat-c, var(--c-sequence));
+  }
+  .feat-badge{
+    position:absolute; top:-11px; left:22px; background:var(--feat-c, var(--c-sequence)); color:#12240c;
+    font-size:0.62rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    padding:4px 11px; border-radius:999px;
+  }
+  .feat-icon{ font-size:2.6rem; line-height:1; margin-bottom:10px; }
+  .feat-name{ font-size:1.5rem; font-weight:800; letter-spacing:.01em; }
+  /* The card stretches to match the leaderboard's height. Rather than let that
+     leave a void between blurb and button, real figures fill it and a spacer
+     takes the slack. */
+  .feat-blurb{ color:var(--dim); font-size:0.88rem; line-height:1.5; margin:8px 0 14px; }
+  .feat-stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:16px; }
+  .feat-stat{ background:var(--score-bg); border:1px solid var(--chip-border); border-radius:12px; padding:10px 12px; }
+  .feat-stat .v{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:1.15rem; font-weight:800; color:var(--marquee); }
+  .feat-stat .l{ font-size:0.62rem; letter-spacing:0.09em; text-transform:uppercase; color:var(--dim); margin-top:2px; }
+  .feat-spacer{ flex-grow:1; min-height:4px; }
+  .feat-play{
+    text-align:center; font-weight:800; font-size:0.84rem; letter-spacing:.08em;
+    text-transform:uppercase; padding:11px; border-radius:12px;
+    background:var(--feat-c, var(--c-sequence)); color:#12240c;
+  }
+
+  .lb-card{
+    background:var(--panel); border:2px solid var(--chip-border); border-radius:20px;
+    padding:20px 22px; display:flex; flex-direction:column;
+  }
+  .lb-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .lb-head h2{ margin:0; font-size:0.95rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--marquee); }
+  .lb-sub{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.72rem; color:var(--dim); }
+  .lb-list{ list-style:none; margin:0; padding:0; flex-grow:1; }
+  .lb-list li{
+    display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px;
+    font-size:0.86rem; border:1px solid transparent;
+  }
+  .lb-list li + li{ margin-top:3px; }
+  .lb-list .pos{
+    font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.74rem;
+    color:var(--dim); min-width:2.1em; font-weight:800;
+  }
+  .lb-list .who{ flex-grow:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lb-list .pts{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; color:var(--marquee); font-weight:800; }
+  .lb-list li.top .pos{ color:var(--marquee); }
+  .lb-list li.me{ background:color-mix(in srgb, var(--feat-c, var(--c-sequence)) 16%, var(--panel)); border-color:var(--feat-c, var(--c-sequence)); }
+  .lb-list li.me .who::after{ content:" (you)"; color:var(--feat-c, var(--c-sequence)); font-weight:700; font-size:.8em; }
+  .lb-empty{ color:var(--dim); font-size:0.84rem; justify-content:center; }
+  .lb-you{
+    margin-top:12px; padding-top:12px; border-top:1px dashed var(--chip-border);
+    font-size:0.84rem; color:var(--dim); display:flex; justify-content:space-between; gap:10px;
+  }
+  .lb-you b{ color:var(--feat-c, var(--c-sequence)); }
+
+  .more-head, .ranked-head{ max-width:1100px; margin:34px auto 4px; display:flex; align-items:center; gap:12px; }
+  .ranked-head{ margin-top:26px; }
+  .more-head span, .ranked-head span{
+    font-size:0.86rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; color:var(--dim);
+  }
+  .more-head .rule, .ranked-head .rule{ flex-grow:1; height:1px; background:var(--chip-border); }
+
+  @media (max-width:820px){
+    /* minmax(0,…) here too — a plain 1fr would let the picker's content set a
+       min-content floor and push the page wider than the viewport. */
+    .featured{ grid-template-columns:minmax(0,1fr); gap:16px; }
+  }
 </style>
 </head>
 <body data-theme="neon">
@@ -130,6 +234,37 @@
   <div class="marquee">Kenmemorize Arcade</div>
   <p>Pick a game. Play counts are shared by everyone.</p>
 </header>
+
+<!-- ============ RANKED GAMES ============
+     Every game carrying a global leaderboard is promoted to the top. The
+     picker switches which one is shown; FEATURED is just the default
+     selection. Everything else is demoted to the grid below.
+     To add a game here: put its id in RANKED and give it a PID_KEYS entry. -->
+<div class="ranked-head" id="rankedHead" hidden><span>Ranked games</span><div class="rule"></div></div>
+<div class="lb-pick" id="lbPick" hidden></div>
+
+<section class="featured" id="featured" hidden>
+  <a class="feat-card" id="featCard" href="#">
+    <div class="feat-badge" id="featBadge">Featured</div>
+    <div class="feat-icon" id="featIcon"></div>
+    <div class="feat-name" id="featName"></div>
+    <p class="feat-blurb" id="featBlurb"></p>
+    <div class="feat-stats" id="featStats"></div>
+    <div class="feat-spacer"></div>
+    <div class="feat-play">Play now</div>
+  </a>
+
+  <div class="lb-card">
+    <div class="lb-head">
+      <h2>Leaderboard</h2>
+      <span class="lb-sub" id="lbCount"></span>
+    </div>
+    <ol class="lb-list" id="lbList"><li class="lb-empty">Loading…</li></ol>
+    <div class="lb-you" id="lbYou" hidden></div>
+  </div>
+</section>
+
+<div class="more-head" id="moreHead" hidden><span>More games</span><div class="rule"></div></div>
 
 <div class="filters" id="filters"></div>
 <div id="sections"></div>
@@ -168,10 +303,10 @@ const BUILTIN_GAMES = [
   { id:"memory-mash",      name:"Memory Mash",        skill:"visual",   blurb:"Kim's-Game-style recall — How Many? and What's Missing?, with an optional timed Competition run.", url:"games/memory-mash.html",        icon:"🃏" },
   { id:"vision-test",      name:"VisionTest",         skill:"visual",   blurb:"Eye-chart orientation recall. Easy (C directions) or Hard (mixed letters).",                          url:"games/vision-test.html",        icon:"👁️" },
   { id:"quad-twist",       name:"Quad Twist",         skill:"spatial",  blurb:"Rotation puzzle in Classic and Numbers modes on 4×4, 6×6, and 8×8 grids.",                            url:"games/quad_twist.html",         icon:"🔄" },
-  { id:"ricochet-recall",  name:"Ricochet Recall",    skill:"spatial",  blurb:"Predict the mirror-bounce path. Solo (3 lives) or pass-and-play PvP.",                                url:"games/ricochet-recall.html",    icon:"🪞" },
+  { id:"ricochet-recall",  name:"Ricochet Recall",    skill:"spatial",  blurb:"Predict the mirror-bounce path. Solo (3 lives) or pass-and-play PvP.",                                url:"games/ricochet-recall.html",    icon:"🎱" },
   { id:"voxel-vault",      name:"Voxel Vault",        skill:"spatial",  blurb:"Spatial memory across four modes — count, rebuild, spot the odd one out, or assemble the pair.",      url:"games/voxel_vault.html",        icon:"🧊" },
   { id:"stone-spotter",    name:"Stone Spotter",      skill:"spatial",  blurb:"Memorise a weiqi board, then spot the stones that were added while you looked away.",              url:"games/stone_spotter.html",      icon:"⚫" },
-  { id:"memomath",         name:"MemoMath",           skill:"numeric",  blurb:"Memorise each coloured digit, then recall it and do the maths. Practice or Competition.",             url:"games/memomath.html",           icon:"🔐" },
+  { id:"memomath",         name:"MemoMath",           skill:"numeric",  blurb:"Memorise each coloured digit, then recall it and do the maths — a ranked solo run, or a 5-round online race",  url:"games/memomath.html",           icon:"🔐" },
   { id:"hexasum",          name:"HexaSum",            skill:"numeric",  blurb:"Hexagonal number-line sum puzzle. Solo and PvP.",                                                     url:"games/hexsum.html",             icon:"➕" },
   { id:"roll-remember",    name:"Roll & Remember",    skill:"visual" ,  blurb:"Face-grid dice recall for 1–4 players.",                                                              url:"games/roll_and_recall.html",    icon:"🎲" },
   { id:"cart-recall",      name:"Cart Recall",        skill:"visual"  , blurb:"Race to rebuild the shopping list from memory — online multiplayer with room codes.",                url:"games/cart_recall_pvp.html",    icon:"🛒" },
@@ -263,15 +398,145 @@ function cardTemplate(game, stats, catColor){
   `;
 }
 
+/* =========================================================
+   FEATURED GAME + LEADERBOARD
+   One game is promoted above the grid with its global board.
+   To feature a different game, change FEATURED to its id — it must
+   also write scores to /leaderboard/{id}, which today only Cart
+   Recall does. LB_TOP is how many rows are listed; a player outside
+   that still gets their own position on the line underneath.
+   ========================================================= */
+const FEATURED = "cart-recall";     // the default selection, not the only board
+const LB_TOP = 10;
+
+/* Every game that writes to /leaderboard/{id}. Order here = chip order. */
+const RANKED = ["cart-recall", "memomath"];
+
+/* Each game keeps its own player id under its own localStorage key. Same
+   origin, so the hub can read it and highlight the visitor's own row —
+   there is no shared identity across games. */
+const PID_KEYS = { "cart-recall":"cartRecallPid", "memomath":"memomathPid" };
+
+let SELECTED = FEATURED;
+let BOARDS = {};
+let STATS  = {};    // kept so the picker can re-render without refetching
+
+const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+async function fetchBoard(id){
+  try{
+    const r = await fetch(`${FIREBASE_DB_URL}/leaderboard/${id}.json`);
+    if(!r.ok) return {};
+    return asDataObject(await r.json());
+  }catch(e){ return {}; }
+}
+
+function myPlayerId(id){
+  const key = PID_KEYS[id];
+  if(!key) return null;
+  try{ return localStorage.getItem(key) || null; }catch(e){ return null; }
+}
+
+/* Which ranked ids actually exist in the live roster. A game removed via
+   admin.html must not leave a chip pointing at nothing. */
+function rankedIds(){
+  return RANKED.filter(id => GAMES.some(g => g.id === id));
+}
+
+function renderRanked(stats){
+  const ids = rankedIds();
+  const sec = document.getElementById("featured");
+  if(!ids.length) return;                  // no ranked game in the roster — skip silently
+  if(!ids.includes(SELECTED)) SELECTED = ids[0];
+
+  const game = GAMES.find(g => g.id === SELECTED);
+  if(!game) return;
+
+  sec.hidden = false;
+  document.getElementById("moreHead").hidden = false;
+  document.getElementById("rankedHead").hidden = false;
+
+  /* Re-tint the whole block to the shown game's category colour. */
+  const catColor = (CATEGORIES.find(c => c.key === game.skill) || {}).color || "var(--marquee)";
+  sec.style.setProperty("--feat-c", catColor);
+
+  /* One chip per board. Hidden entirely when there is only one — a picker
+     with a single option is noise. */
+  const pick = document.getElementById("lbPick");
+  pick.hidden = ids.length < 2;
+  pick.innerHTML = ids.length < 2 ? "" :
+    `<span class="lbl">Board</span>` + ids.map(id => {
+      const g = GAMES.find(x => x.id === id);
+      const c = (CATEGORIES.find(k => k.key === g.skill) || {}).color || "var(--marquee)";
+      return `<button type="button" data-lb="${id}" style="--sel-c:${c}" aria-pressed="${id === SELECTED}">${g.icon} ${esc(g.name)}</button>`;
+    }).join("");
+
+  const card = document.getElementById("featCard");
+  card.href = game.url;
+  document.getElementById("featBadge").textContent = game.id === FEATURED ? "Featured" : "Ranked";
+  document.getElementById("featIcon").textContent = game.icon;
+  document.getElementById("featName").textContent = game.name;
+  document.getElementById("featBlurb").textContent = game.blurb;
+
+  const rows = Object.entries(BOARDS[SELECTED] || {})
+    .filter(([,e]) => e && typeof e.score === "number")
+    .sort((a,b) => b[1].score - a[1].score);
+
+  document.getElementById("lbCount").textContent =
+    rows.length ? `${rows.length} player${rows.length === 1 ? "" : "s"}` : "";
+
+  const meId = myPlayerId(SELECTED);
+  const myIndex = rows.findIndex(([id]) => id === meId);
+
+  /* Real figures instead of blank space in the tall card. */
+  const plays = (stats[SELECTED]?.totalPlays) || 0;
+  const top   = rows.length ? Number(rows[0][1].score) : null;
+  const mine  = myIndex >= 0 ? Number(rows[myIndex][1].score) : null;
+  document.getElementById("featStats").innerHTML = [
+    ["Plays", plays.toLocaleString()],
+    ["Players ranked", rows.length.toLocaleString()],
+    ["Top score", top === null ? "—" : top.toLocaleString()],
+    ["Your best", mine === null ? "—" : mine.toLocaleString()]
+  ].map(([l,v]) => `<div class="feat-stat"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+
+  const list = document.getElementById("lbList");
+  if(!rows.length){
+    list.innerHTML = `<li class="lb-empty">No scores yet — be the first.</li>`;
+  }else{
+    list.innerHTML = rows.slice(0, LB_TOP).map(([id,e],i) => `
+      <li class="${i < 3 ? "top" : ""} ${id === meId ? "me" : ""}">
+        <span class="pos">${i+1}</span>
+        <span class="who">${esc(e.name || "—")}</span>
+        <span class="pts">${Number(e.score).toLocaleString()}</span>
+      </li>`).join("");
+  }
+
+  /* Outside the visible top N — show their own standing so there's a target. */
+  const you = document.getElementById("lbYou");
+  if(myIndex >= LB_TOP){
+    const [,mine] = rows[myIndex];
+    you.hidden = false;
+    you.innerHTML = `<span>You're <b>#${myIndex+1}</b> of ${rows.length}</span>`
+                  + `<span class="pts">${Number(mine.score).toLocaleString()}</span>`;
+  }else{
+    you.hidden = true;
+  }
+}
+
+/* The grid excludes the featured game, so the chips count that set too —
+   otherwise a category whose only game is featured would show a chip that
+   reveals an empty section. */
+let GRID_GAMES = [];
+
 function renderFilters(activeCats){
   const el = document.getElementById("filters");
   const catChips = CATEGORIES
-    .filter(c => GAMES.some(g => g.skill === c.key))
+    .filter(c => GRID_GAMES.some(g => g.skill === c.key))
     .map(c => {
       const on = activeCats.has(c.key);
       return `<button class="chip" data-cat="${c.key}" style="--chip-c:${c.color}" aria-pressed="${on}"><span class="dot"></span>${c.icon} ${c.label}</button>`;
     }).join("");
-  const allOn = CATEGORIES.every(c => !GAMES.some(g=>g.skill===c.key) || activeCats.has(c.key));
+  const allOn = CATEGORIES.every(c => !GRID_GAMES.some(g=>g.skill===c.key) || activeCats.has(c.key));
   el.innerHTML = `<button class="chip" data-cat="__all" aria-pressed="${allOn}">All</button>` + catChips;
 }
 
@@ -279,14 +544,24 @@ async function render(){
   const sectionsEl = document.getElementById("sections");
   const emptyNote  = document.getElementById("emptyNote");
 
-  const [stats, overlay] = await Promise.all([fetchGlobalStats(), fetchGamesOverlay()]);
+  const [stats, overlay, ...boards] = await Promise.all([
+    fetchGlobalStats(), fetchGamesOverlay(), ...RANKED.map(fetchBoard)
+  ]);
+  RANKED.forEach((id, i) => { BOARDS[id] = boards[i]; });
+  STATS = stats;
   GAMES = mergeGames(overlay);
   if(GAMES.length === 0){ emptyNote.style.display = "block"; return; }
+
+  /* Every ranked game is promoted above the grid, so none is listed twice. */
+  renderRanked(stats);
+  const promoted = new Set(rankedIds());
+  GRID_GAMES = GAMES.filter(g => !promoted.has(g.id));
+  const gridGames = GRID_GAMES;
 
   // build one section per non-empty category
   let html = "", delay = 0;
   for(const cat of CATEGORIES){
-    const games = GAMES.filter(g => g.skill === cat.key);
+    const games = gridGames.filter(g => g.skill === cat.key);
     if(!games.length) continue;
     const cards = games.map((g,i) => {
       const c = cardTemplate(g, stats, cat.color);
@@ -335,6 +610,16 @@ async function render(){
     applyFilter();
   });
 }
+
+/* Board picker. Delegated and bound once — the element exists from page load.
+   Only the ranked block needs redrawing: the grid excludes ALL ranked games
+   regardless of which one is selected, so it never changes here. */
+document.getElementById("lbPick").addEventListener("click", e => {
+  const b = e.target.closest("button[data-lb]");
+  if(!b) return;
+  SELECTED = b.getAttribute("data-lb");
+  renderRanked(STATS);
+});
 
 render();
 </script>

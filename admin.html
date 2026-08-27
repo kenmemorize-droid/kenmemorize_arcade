@@ -12,6 +12,21 @@
     --chip-bg:#271E4A; --chip-border:rgba(255,255,255,0.10);
     --danger:#FF6B6B; --ok:#9EE6C9;
   }
+
+  /* Confirm modal — STYLE_GUIDE.md §15 forbids native confirm(), which can
+     also be suppressed by the browser, making a destructive action look like
+     it silently did nothing. */
+  .modal-scrim{position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:200;
+    display:none; align-items:center; justify-content:center; padding:20px;}
+  .modal-scrim.open{display:flex;}
+  .modal-card{background:var(--panel); border:1px solid var(--chip-border);
+    border-radius:16px; padding:24px; max-width:420px; width:100%;
+    box-shadow:0 18px 40px rgba(0,0,0,.45);}
+  .modal-card h3{margin:0 0 10px; font-size:17px; color:var(--text);}
+  .modal-card p{margin:0 0 18px; font-size:13.5px; line-height:1.6; color:var(--dim);}
+  .modal-card .who{color:var(--text); font-weight:700;}
+  .modal-actions{display:flex; gap:10px;}
+  .modal-actions .btn{flex:1;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -46,6 +61,10 @@
   #panel{ display:none; }
   .toolbar{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
   .btn.secondary{ background:var(--panel-raised); color:var(--text); border:1.5px solid var(--chip-border); }
+  /* Leaderboard game picker — a bare <select> in the toolbar isn't covered by
+     the .field select rule, so it needs its own. */
+  #lbGamePick{ background:var(--panel-raised); color:var(--text); border:1.5px solid var(--chip-border);
+    border-radius:10px; padding:10px 12px; font-size:0.85rem; font-weight:800; font-family:inherit; cursor:pointer; }
   .btn.danger{ background:var(--danger); color:#3a0a0a; }
   .btn:disabled{ opacity:0.5; cursor:not-allowed; }
 
@@ -83,16 +102,19 @@
 <body>
 
 <div id="gate">
-  <h1>Admin Access</h1>
-  <p class="sub">Enter PIN to manage the game roster.</p>
-  <input type="password" id="pinInput" inputmode="numeric" maxlength="12" placeholder="••••">
-  <button onclick="checkPin()">Unlock</button>
+  <h1>Admin Sign-in</h1>
+  <p class="sub">Signed in with your Firebase admin account. This is a real
+     login — deleting leaderboard entries requires it.</p>
+  <input type="password" id="pinInput" maxlength="64" placeholder="Password" autocomplete="current-password">
+  <button onclick="checkPin()">Sign in</button>
   <div id="gateErr"></div>
 </div>
 
 <div class="wrap" id="panel">
   <h1>Game Roster — Admin</h1>
-  <p class="sub">Changes here write to Firebase and appear on the <a href="game-hub.html">Arcade hub</a> for everyone. This page is unlisted — don't share the link publicly.</p>
+  <!-- The hub moved to index.html at the repo root in the 2026-08-21 restructure;
+       this link still said game-hub.html and 404'd. -->
+  <p class="sub">Changes here write to Firebase and appear on the <a href="index.html">Arcade hub</a> for everyone. This page is unlisted — don't share the link publicly.</p>
 
   <div class="toolbar">
     <button class="btn" onclick="openForm()">+ Add game</button>
@@ -136,14 +158,46 @@
     </div>
     <div class="status" id="formStatus"></div>
   </div>
+
+  <!-- ============ LEADERBOARD MODERATION ============ -->
+  <h1 style="margin-top:38px">Leaderboard — <span id="lbGameName">Cart Recall</span></h1>
+  <p class="sub">One row per player, holding their best run. Deleting requires
+     the signed-in account; anonymous visitors cannot remove or lower scores.</p>
+
+  <div class="toolbar">
+    <select id="lbGamePick" onchange="switchBoard(this.value)"></select>
+    <button class="btn secondary" onclick="loadBoard()">Refresh</button>
+    <button class="btn secondary" onclick="verifyAll()">Verify all runs</button>
+    <span id="authState" style="font-size:0.78rem; color:var(--dim); align-self:center"></span>
+  </div>
+  <div class="status" id="lbStatus">Not loaded yet.</div>
+
+  <table>
+    <thead><tr><th>#</th><th>Name</th><th>Score</th><th>Rounds</th><th>When</th><th>Proof</th><th></th></tr></thead>
+    <tbody id="lbRows"><tr class="empty-row"><td colspan="7">Press Refresh to load.</td></tr></tbody>
+  </table>
+</div>
+
+<!-- Confirm dialog — §15 (never native confirm) -->
+<div class="modal-scrim" id="confirmScrim">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <h3 id="confirmTitle">Delete this score?</h3>
+    <p id="confirmBody"></p>
+    <div class="modal-actions">
+      <button class="btn secondary" id="confirmCancel">Cancel</button>
+      <button class="btn danger" id="confirmOk">Delete</button>
+    </div>
+  </div>
 </div>
 
 <script>
-/* Change this to re-lock the panel with a new PIN. Client-side only —
-   not real security, just a speed bump against stumbling on the URL. */
-const ADMIN_PIN = "4271";
+/* The old client-side ADMIN_PIN was removed on 2026-08-25. It gated this page
+   but not the database — a plain `curl -X DELETE` ignored it entirely. Access
+   is now a real Firebase Auth sign-in (see the auth block below), which the
+   security rules can actually enforce. Don't reintroduce a hard-coded PIN and
+   call it security. */
 
-/* Must match CATEGORIES in game-hub.html. */
+/* Must match CATEGORIES in index.html. */
 const CATEGORIES = [
   { key:"spatial",  label:"Spatial"  },
   { key:"visual",   label:"Visual"   },
@@ -158,7 +212,7 @@ const ICON_OPTIONS = [
   { e:"🎮", l:"Controller" }, { e:"🧠", l:"Brain" }, { e:"🕹️", l:"Joystick" },
   { e:"🌊", l:"Wave" }, { e:"🎨", l:"Palette" }, { e:"🎯", l:"Target" },
   { e:"🖼️", l:"Picture" }, { e:"🃏", l:"Card" }, { e:"👁️", l:"Eye" },
-  { e:"🔄", l:"Rotate" }, { e:"🪞", l:"Mirror" }, { e:"🧊", l:"Cube" },
+  { e:"🔄", l:"Rotate" }, { e:"🎱", l:"Billiard ball" }, { e:"🧊", l:"Cube" },
   { e:"🧩", l:"Puzzle" }, { e:"🔐", l:"Lock" }, { e:"➕", l:"Plus" },
   { e:"🎲", l:"Dice" }, { e:"🛒", l:"Cart" }, { e:"⚡", l:"Bolt" },
   { e:"🎰", l:"Slot machine" }, { e:"🀄", l:"Mahjong" }, { e:"🎴", l:"Playing cards" },
@@ -191,30 +245,84 @@ const api = p => `${DB_URL}/${p}.json`;
    when rules block a path — not a network failure. getGames() throws a
    distinct, catchable error for that case so the UI can explain it. */
 async function getGames(){
-  const res = await fetch(api("games"));
+  const res = await fetch(authq(api("games")));
   const data = await res.json();
   if(data && typeof data === "object" && data.error){
     throw new Error(`Firebase rules are blocking /games (${data.error}). Update the Realtime Database rules to allow read/write on /games and /globalStats, same as the other paths your PvP games use.`);
   }
   return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
 }
+/* Every call carries the signed-in token (authq is a no-op until sign-in
+   succeeds), so the rules can tell an admin apart from an anonymous caller.
+   Roster edits don't strictly need it today, but sending it uniformly means
+   tightening /games later is a rules change only, not a code change. */
 const db = {
-  put:   (p,v) => fetch(api(p), { method:"PUT",   body:JSON.stringify(v) }),
-  patch: (p,v) => fetch(api(p), { method:"PATCH", body:JSON.stringify(v) }),
+  get:   p     => fetch(authq(api(p))).then(r => r.json()),
+  put:   (p,v) => fetch(authq(api(p)), { method:"PUT",   body:JSON.stringify(v) }),
+  patch: (p,v) => fetch(authq(api(p)), { method:"PATCH", body:JSON.stringify(v) }),
+  del:   p     => fetch(authq(api(p)), { method:"DELETE" }),
 };
 
 let games = {};   // live overlay from /games, keyed by id
 let editingId = null;
 
-function checkPin(){
-  const val = document.getElementById("pinInput").value;
-  if(val === ADMIN_PIN){
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("panel").style.display = "block";
-    init();
-  }else{
-    document.getElementById("gateErr").textContent = "Wrong PIN.";
+/* ═══════════════════════════════════════════════════════════════════════
+   FIREBASE AUTH  —  real protection for destructive actions
+   -----------------------------------------------------------------------
+   The old PIN gated this PAGE. It could never gate the DATABASE: a plain
+   `curl -X DELETE` bypasses the page entirely, because the database never
+   sees the PIN. Proven, not assumed.
+
+   So deletes now require a real signed-in identity. Sign-in uses Google's
+   Identity Toolkit REST endpoint — no SDK, so this file stays dependency
+   free. The returned idToken is appended as ?auth=… to Realtime Database
+   requests, and the security rules only permit a delete when that token
+   belongs to the admin account.
+
+   The API key below is PUBLIC by design (it ships in every Firebase web
+   app and identifies the project, it does not grant access). The password
+   is never stored here — it is typed at sign-in and exchanged for a token
+   that expires in an hour.
+   ═══════════════════════════════════════════════════════════════════════ */
+const FB_API_KEY  = "AIzaSyDBY-zvTdHCcDC9T9ZiiSPnHzfHoyLwSWM";  // public by design — identifies the project, grants nothing
+const ADMIN_EMAIL = "kenmemorize@gmail.com";       // the account in Authentication → Users
+
+let idToken = null, tokenExpiry = 0;
+const authed = () => idToken && Date.now() < tokenExpiry;
+/* Append the token to a DB path so rules can see who is asking. */
+const authq = p => authed() ? (p.includes('?') ? p + '&' : p + '?') + 'auth=' + idToken : p;
+
+async function signIn(password){
+  if(FB_API_KEY.startsWith('PASTE_')){
+    return { ok:false, msg:'Auth not configured yet — FB_API_KEY still a placeholder.' };
   }
+  try{
+    const r = await fetch(
+      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + FB_API_KEY,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email:ADMIN_EMAIL, password, returnSecureToken:true }) });
+    const d = await r.json();
+    if(!r.ok){
+      const code = (d.error && d.error.message) || 'SIGN_IN_FAILED';
+      return { ok:false, msg: code === 'INVALID_LOGIN_CREDENTIALS' || code === 'INVALID_PASSWORD'
+                              ? 'Wrong password.' : 'Sign-in failed: ' + code };
+    }
+    idToken = d.idToken;
+    tokenExpiry = Date.now() + (Number(d.expiresIn||3600) - 60) * 1000;   // refresh a minute early
+    return { ok:true };
+  }catch(e){ return { ok:false, msg:'Could not reach the sign-in service.' }; }
+}
+
+async function checkPin(){
+  const val = document.getElementById("pinInput").value;
+  const err = document.getElementById("gateErr");
+  err.textContent = 'Signing in…';
+  const res = await signIn(val);
+  if(!res.ok){ err.textContent = res.msg; return; }
+  err.textContent = '';
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("panel").style.display = "block";
+  init();
 }
 document.getElementById("pinInput").addEventListener("keydown", e => { if(e.key === "Enter") checkPin(); });
 
@@ -231,7 +339,9 @@ function slugify(name){
 async function init(){
   const sel = document.getElementById("fSkill");
   sel.innerHTML = CATEGORIES.map(c => `<option value="${c.key}">${c.label}</option>`).join("");
+  initGamePicker();
   await loadGames();
+  await loadBoard();        // leaderboard is ready the moment you sign in
 }
 
 async function loadGames(){
@@ -336,7 +446,14 @@ async function saveGame(){
 async function deleteGame(id){
   const g = games[id];
   if(!g) return;
-  if(!confirm(`Remove "${g.name}" from the hub?`)) return;
+  const go = await askConfirm({
+    title: 'Remove this game?',
+    body: `Hide <span class="who">${escapeHtml(g.name)}</span> from the hub? `
+        + `This is a soft delete — the tile disappears but the entry is kept, `
+        + `so it can be restored later.`,
+    okLabel: 'Remove'
+  });
+  if(!go) return;
   try{
     await db.patch(`games/${id}`, { deleted:true });
     games[id] = { ...g, deleted:true };
@@ -376,6 +493,301 @@ async function seedFromHub(){
   }finally{
     btn.disabled = false;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEADERBOARD MODERATION + REPLAY VERIFIER
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Every game that carries a leaderboard. Adding one here is all it takes for
+   moderation + verification to cover it — provided that game exposes a
+   verification surface on window (see the verifier below). */
+const LB_GAMES = {
+  'cart-recall': { label:'Cart Recall', file:'games/cart_recall_pvp.html', ns:'CartRecall' },
+  'memomath':    { label:'MemoMath',    file:'games/memomath.html',        ns:'MemoMath'   }
+};
+let LB_GAME = 'cart-recall';
+let board = {};
+
+function initGamePicker(){
+  const sel = document.getElementById('lbGamePick');
+  sel.innerHTML = Object.entries(LB_GAMES)
+    .map(([id,g]) => `<option value="${id}"${id === LB_GAME ? ' selected' : ''}>${g.label}</option>`).join('');
+  document.getElementById('lbGameName').textContent = LB_GAMES[LB_GAME].label;
+}
+function switchBoard(id){
+  if(!LB_GAMES[id]) return;
+  LB_GAME = id;
+  board = {};
+  document.getElementById('lbGameName').textContent = LB_GAMES[id].label;
+  /* Drop the sandbox — it holds the *other* game, and reusing it would verify
+     runs against the wrong rules. */
+  const f = document.getElementById('verifyFrame');
+  if(f) f.remove();
+  loadBoard();
+}
+
+function lbStatus(msg, cls){
+  const el = document.getElementById('lbStatus');
+  el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : '');
+}
+
+/* Shows whether a usable token is held, and for how long — so an expired
+   session is visible before a delete fails rather than after. */
+function paintAuthState(){
+  const el = document.getElementById('authState');
+  if(!el) return;
+  if(authed()){
+    const mins = Math.max(0, Math.round((tokenExpiry - Date.now())/60000));
+    el.textContent = `● signed in — session ${mins} min left`;
+    el.style.color = 'var(--ok)';
+  }else{
+    el.textContent = '● not signed in — deletes will be refused';
+    el.style.color = 'var(--danger)';
+  }
+}
+setInterval(paintAuthState, 30000);
+
+async function loadBoard(){
+  paintAuthState();
+  lbStatus('Loading…');
+  try{
+    const d = await db.get('leaderboard/' + LB_GAME);
+    board = (d && typeof d === 'object' && !d.error) ? d : {};
+    renderBoard();
+    const n = Object.keys(board).length;
+    lbStatus(n ? n + ' player(s) on the board.' : 'No scores yet.');
+  }catch(e){ lbStatus('Could not load the leaderboard.', 'err'); }
+}
+
+const sortedBoard = () =>
+  Object.entries(board).sort((a,b) => (Number(b[1].score)||0) - (Number(a[1].score)||0));
+
+function renderBoard(){
+  const tb = document.getElementById('lbRows');
+  const rows = sortedBoard();
+  if(!rows.length){
+    tb.innerHTML = '<tr class="empty-row"><td colspan="7">No scores yet.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(([id,e],i) => {
+    const when = e.at ? new Date(e.at).toLocaleDateString() : '—';
+    const v = e._verdict;
+    const proof = !e.moves ? '<span style="color:var(--dim)">none</span>'
+      : v ? `<span style="color:${v.ok?'var(--ok)':'var(--danger)'}">${v.label}</span>`
+          : '<span style="color:var(--dim)">unchecked</span>';
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${escapeHtml(e.name || '—')}</td>
+      <td><b>${Number(e.score)||0}</b></td>
+      <td>${e.rounds ?? '—'}</td>
+      <td>${when}</td>
+      <td>${proof}</td>
+      <td class="actions">
+        <button class="btn secondary" onclick="verifyOne('${id}')">Verify</button>
+        <button class="btn danger" onclick="deleteScore('${id}')">Delete</button>
+      </td></tr>`;
+  }).join('');
+}
+const escapeHtml = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* Promise-based confirm. Native confirm() was replaced because §15 forbids it
+   and because a browser can suppress it — which made deleting look like it
+   silently did nothing. */
+function askConfirm(opts){
+  return new Promise(resolve => {
+    const scrim = document.getElementById('confirmScrim');
+    const ok = document.getElementById('confirmOk');
+    const cancel = document.getElementById('confirmCancel');
+    document.getElementById('confirmTitle').textContent = opts.title;
+    document.getElementById('confirmBody').innerHTML = opts.body;
+    ok.textContent = opts.okLabel || 'Confirm';
+    scrim.classList.add('open');
+    const close = v => { scrim.classList.remove('open');
+      ok.onclick = cancel.onclick = scrim.onclick = null;
+      document.removeEventListener('keydown', onKey); resolve(v); };
+    function onKey(e){ if(e.key === 'Escape') close(false); }
+    ok.onclick = () => close(true);
+    cancel.onclick = () => close(false);
+    scrim.onclick = e => { if(e.target === scrim) close(false); };
+    document.addEventListener('keydown', onKey);
+  });
+}
+
+async function deleteScore(id){
+  const e = board[id];
+  if(!e) return;
+
+  const go = await askConfirm({
+    title: 'Delete this score?',
+    body: `Remove <span class="who">${escapeHtml(e.name || id)}</span> — `
+        + `<span class="who">${Number(e.score)||0}</span> from the leaderboard? `
+        + `This cannot be undone.`,
+    okLabel: 'Delete'
+  });
+  if(!go) return;
+
+  if(!authed()){
+    lbStatus('Not signed in (or the session expired) — reload and sign in again.', 'err');
+    return;
+  }
+
+  lbStatus('Deleting…');
+  let res, bodyText = '';
+  try{
+    res = await db.del('leaderboard/' + LB_GAME + '/' + id);
+    bodyText = await res.text();
+  }catch(err){
+    lbStatus('Network error while deleting: ' + err.message, 'err'); return;
+  }
+
+  /* Report exactly what came back — a vague failure here is what made this
+     hard to diagnose the first time. */
+  if(!res.ok){
+    let hint = '';
+    if(res.status === 401){
+      hint = ' The rules rejected your token. Check that the leaderboard rule '
+           + "uses auth.uid === '2XV2dX2AhyMeVed5Fm14lfH9dUm2' and that it was published.";
+    }
+    lbStatus(`Delete failed — HTTP ${res.status}. ${bodyText.slice(0,120)}${hint}`, 'err');
+    return;
+  }
+
+  delete board[id];
+  renderBoard();
+  lbStatus(`Removed "${e.name || id}".`, 'ok');
+}
+
+/* ── Replay verifier ──────────────────────────────────────────────────
+   Loads the real game in a hidden iframe and regenerates the exact boards
+   the player saw from their recorded seed, then walks their taps.
+
+   What this PROVES: every tapped item genuinely existed on that round's
+   shelf, mistakes never exceeded the limit, and the claimed score sits
+   inside the range those moves could produce.
+
+   What it CANNOT prove: the exact score. The speed bonus depends on how
+   fast each round was cleared, and elapsed time isn't recorded in the
+   proof — so the check is a range, not an equality. A forged score with
+   invented moves fails immediately; a carefully hand-crafted one could
+   still land inside the range. Closing that needs server-side timing.
+   ─────────────────────────────────────────────────────────────────── */
+function gameSandbox(){
+  const g = LB_GAMES[LB_GAME];
+  return new Promise((resolve, reject) => {
+    const existing = document.getElementById('verifyFrame');
+    /* Only reuse the frame if it is holding THIS game — switchBoard removes it
+       on a change, but guard here too so a stale frame can never verify a run
+       against another game's rules. */
+    if(existing && existing.dataset.game === LB_GAME &&
+       existing.contentWindow && existing.contentWindow[g.ns])
+      return resolve(existing.contentWindow);
+    if(existing) existing.remove();
+    const f = document.createElement('iframe');
+    f.id = 'verifyFrame'; f.style.display = 'none';
+    f.dataset.game = LB_GAME; f.src = g.file;
+    f.onload = () => f.contentWindow[g.ns]
+      ? resolve(f.contentWindow)
+      : reject(new Error(`${g.label} exposes no verification surface (window.${g.ns})`));
+    f.onerror = () => reject(new Error('could not load ' + g.file));
+    document.body.appendChild(f);
+  });
+}
+
+/* Dispatch to the right replay for the selected game.
+
+   NOTE the difference in where the logic lives. Cart Recall's replay is
+   reimplemented below, inside this file, so it can drift from the game.
+   MemoMath instead exports its own verify() and we call that — the game is
+   the single source of truth and cannot drift. Prefer the MemoMath shape for
+   any future game. */
+function replayEntry(w, entry){
+  if(LB_GAME === 'memomath') return replayMemoMath(w.MemoMath, entry);
+  return replay(w.CartRecall, entry);
+}
+
+function replayMemoMath(MM, entry){
+  if(entry.v !== MM.PROOF_V)
+    return { ok:false, label:'stale v' + entry.v, detail:
+      `Proof format v${entry.v}, game is v${MM.PROOF_V}. Generation or scoring changed since this run, so it can no longer be replayed.` };
+
+  const r = MM.verify(entry.seed, entry.moves, Number(entry.score) || 0);
+  return {
+    ok: r.ok,
+    label: r.ok ? 'consistent' : 'failed',
+    detail: r.ok
+      ? `${r.rounds} round(s) cleared. Claimed ${Number(entry.score)||0}, valid range ${r.minScore}–${r.maxScore}.`
+      : r.reason
+  };
+}
+
+function replay(CR, entry){
+  if(entry.v !== CR.PROOF_V)
+    return { ok:false, label:'stale v' + entry.v, detail:
+      `Proof format v${entry.v}, game is v${CR.PROOF_V}. The item pool or scoring changed since this run, so it can no longer be replayed.` };
+
+  const moves = String(entry.moves||'').split(',').filter(Boolean)
+                  .map(s => s.split(':').map(Number));
+  if(!moves.length) return { ok:false, label:'no moves', detail:'Entry carries no move log.' };
+
+  CR.setRng(CR.mulberry32(entry.seed));
+  let round = 0, built = null, onList = null, taken = null;
+  let mistakes = 0, items = 0, cleared = 0, minScore = 0, maxSpeed = 0;
+
+  for(const [r, idx] of moves){
+    if(r !== round){                       // advance to the next round's board
+      if(built && onList.size === 0){ cleared++; minScore += 100 + round*25; maxSpeed += 40 * built.list.length; }
+      while(round < r){ round++; built = CR.buildRound(round); }
+      onList = new Set(built.list.map(i => i.id));
+      taken = new Set();
+    }
+    const item = CR.POOL[idx];
+    if(!item) return { ok:false, label:'bad index', detail:`Move references pool index ${idx}, which does not exist.` };
+    const onShelf = built.shelf.some(i => i.id === item.id);
+    if(!onShelf) return { ok:false, label:'impossible move', detail:
+      `Round ${r}: tapped "${item.n}", which was not on that shelf. These moves could not have happened.` };
+    if(taken.has(item.id)) continue;       // repeat tap on an already-resolved slot
+    taken.add(item.id);
+    if(onList.has(item.id)){ onList.delete(item.id); items++; minScore += 50 + r*10; }
+    else mistakes++;
+  }
+  if(built && onList.size === 0){ cleared++; minScore += 100 + round*25; maxSpeed += 40 * built.list.length; }
+
+  if(mistakes > 3) return { ok:false, label:'too many misses', detail:
+    `${mistakes} wrong grabs — the run should have ended at 3.` };
+
+  const claimed = Number(entry.score) || 0;
+  const maxScore = minScore + maxSpeed;
+  if(claimed < minScore || claimed > maxScore) return { ok:false, label:'score mismatch', detail:
+    `Claimed ${claimed}, but these moves can only produce ${minScore}–${maxScore}.` };
+
+  return { ok:true, label:'consistent', detail:
+    `${items} correct, ${mistakes} missed, ${cleared} round(s) cleared. Claimed ${claimed}, valid range ${minScore}–${maxScore}.` };
+}
+
+async function verifyOne(id){
+  const e = board[id]; if(!e) return;
+  lbStatus('Replaying ' + (e.name||id) + '…');
+  try{
+    const w = await gameSandbox();
+    e._verdict = replayEntry(w, e);
+    renderBoard();
+    lbStatus(`${e.name}: ${e._verdict.label} — ${e._verdict.detail}`, e._verdict.ok ? 'ok' : 'err');
+  }catch(err){ lbStatus('Verifier error: ' + err.message, 'err'); }
+}
+
+async function verifyAll(){
+  lbStatus('Replaying every run…');
+  try{
+    const w = await gameSandbox();
+    let bad = 0;
+    for(const [id,e] of Object.entries(board)){
+      e._verdict = replayEntry(w, e);
+      if(!e._verdict.ok) bad++;
+    }
+    renderBoard();
+    lbStatus(bad ? `${bad} entr(y/ies) failed verification — see the Proof column.`
+                 : 'All runs replay consistently.', bad ? 'err' : 'ok');
+  }catch(err){ lbStatus('Verifier error: ' + err.message, 'err'); }
 }
 </script>
 </body>
