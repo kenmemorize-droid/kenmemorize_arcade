@@ -217,6 +217,9 @@ input.code{text-align:center; letter-spacing:10px; font-size:26px; font-weight:8
 .sheet h3{margin:0 0 6px; font-size:21px; letter-spacing:1px;}
 .sheet p{margin:0 0 16px; color:var(--muted); font-size:14.5px; line-height:1.6;}
 .sheet .row{display:flex; gap:10px;} .sheet .row > *{flex:1;}
+/* leaderboard outcome line on the results sheet */
+.lb-line{min-height:1.3em; font-size:14px; color:var(--muted); margin:0 0 12px !important;}
+.lb-line b{color:var(--accent);}
 .sheet ol{text-align:left;}
 .stat{display:flex; justify-content:space-between; gap:12px; padding:10px 2px; border-bottom:1px dashed var(--line); font-size:14.5px; text-align:left;}
 .stat:last-of-type{border-bottom:none;}
@@ -311,17 +314,8 @@ input.code{text-align:center; letter-spacing:10px; font-size:26px; font-weight:8
     <div class="stat"><span>Wrong grab</span><b>a strike, no penalty</b></div>
   </div>
 
-  <div class="card">
-    <h2>Glance time</h2>
-    <div class="seg" id="paceSeg">
-      <button data-pace="1.3" aria-pressed="false">Relaxed<small>+30% time</small></button>
-      <button data-pace="1" aria-pressed="true">Standard<small>as designed</small></button>
-      <button data-pace="0.75" aria-pressed="false">Brisk<small>−25% time</small></button>
-    </div>
-  </div>
-
   <button class="play" id="btnSolo">Solo run</button>
-  <button class="play alt" id="btnMulti">Race · up to 4 phones</button>
+  <button class="play alt" id="btnMulti">PvP · up to 4 phones</button>
   <div class="best" id="bestLine">Best solo run — none yet</div>
 </section>
 
@@ -463,9 +457,52 @@ input.code{text-align:center; letter-spacing:10px; font-size:26px; font-weight:8
     <div class="big-score" id="finalScore">0</div>
     <p id="finalLine"></p>
     <div id="finalStats" style="margin-bottom:16px"></div>
+
+    <!-- Leaderboard outcome + share. Populated by handleLeaderboard(). -->
+    <p id="lbLine" class="lb-line"></p>
+    <div id="lbActions" hidden style="margin-bottom:14px">
+      <button class="play alt" style="margin:0" id="btnShare">Share your score</button>
+    </div>
+
     <div class="row">
       <button class="play alt" style="margin:0" id="btnMenu">Main menu</button>
       <button class="play" style="margin:0" id="btnAgain">Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share fallback — used when the native sheet and clipboard are unavailable
+     (notably on file://, where neither API exists) -->
+<div class="veil" id="veilShare">
+  <div class="sheet">
+    <h3>Share your score</h3>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:10px">
+      Copy this and send it to a friend.
+    </p>
+    <textarea id="shareText" readonly rows="3"
+      style="width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+             background:var(--card2); color:var(--ink); font-size:13px; font-family:inherit;
+             resize:none; line-height:1.5"></textarea>
+    <p id="shareHint" style="color:var(--muted); font-size:12px; min-height:1.1em; margin:6px 0 0"></p>
+    <div class="row" style="margin-top:12px">
+      <button class="play alt" style="margin:0" id="btnShareClose">Close</button>
+      <button class="play" style="margin:0" id="btnShareCopy">Copy</button>
+    </div>
+  </div>
+</div>
+
+<!-- Name prompt — shown once, the first time a player makes the board -->
+<div class="veil" id="veilName">
+  <div class="sheet">
+    <h3>You made the leaderboard</h3>
+    <p style="color:var(--muted); font-size:13px; margin-bottom:14px">
+      Enter a name to appear on the board. Shown publicly — no need to use your real one.
+    </p>
+    <input type="text" id="nameInput" maxlength="20" placeholder="Your name" autocomplete="off">
+    <p id="nameErr" style="color:var(--wrong); font-size:12px; min-height:1.1em; margin:6px 0 0"></p>
+    <div class="row" style="margin-top:12px">
+      <button class="play alt" style="margin:0" id="btnNameSkip">Not now</button>
+      <button class="play" style="margin:0" id="btnNameOk">Save</button>
     </div>
   </div>
 </div>
@@ -549,7 +586,7 @@ function subscribe(path, onChange, onError){
 /* ---------------- item pool, grouped into confusable families ---------------- */
 const FAMILIES = {
   orchard: [['🍎','Apple'],['🍏','Green apple'],['🍐','Pear'],['🍑','Peach'],['🥭','Mango'],['🍊','Orange']],
-  berry:   [['🍓','Strawberry'],['🍒','Cherries'],['🍇','Grapes'],['🫐','Blueberries']],
+  berry:   [['🍓','Strawberry'],['🍒','Cherries'],['🍇','Grapes']],  /* blueberry dropped: U+1FAD0 is Emoji 13 and renders as a blank box on Windows 10 */
   green:   [['🥝','Kiwi'],['🥑','Avocado'],['🥒','Cucumber'],['🥬','Lettuce'],['🥦','Broccoli']],
   bakery:  [['🍞','Bread'],['🥖','Baguette'],['🥐','Croissant'],['🥨','Pretzel'],['🥯','Bagel'],['🧇','Waffle']],
   dairy:   [['🧀','Cheese'],['🥛','Milk'],['🧈','Butter'],['🥚','Egg']],
@@ -584,7 +621,26 @@ function toggleTheme(){
 }
 applyTheme();
 
-const rnd = n => Math.floor(Math.random()*n);
+/* ── SEEDED RNG — makes a solo run reproducible ──
+   Every ranked run records the seed it was generated from plus the taps the
+   player made, so the whole run can be replayed and re-scored later (see
+   buildProof / the admin verifier). Without determinism a submitted score is
+   just an unverifiable number.
+   `_rng` stays Math.random for anything that must NOT be reproducible
+   (player ids) and for race mode, where rounds arrive over the wire from the
+   host rather than being generated locally. */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let _rng = Math.random;                       // solo runs swap this for a seeded one
+const newSeed = () => (Math.random() * 0xFFFFFFFF) >>> 0;
+
+const rnd = n => Math.floor(_rng()*n);
 const pick = a => a[rnd(a.length)];
 const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=rnd(i+1);[a[i],a[j]]=[a[j],a[i]];} return a; };
 const store = {
@@ -596,7 +652,10 @@ const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'
 /* ---------------- state ---------------- */
 const MAX_MISTAKES = 3, PLACE_BONUS = [200,120,60,0];
 const S = { mode:'solo', round:1, score:0, mistakes:0, pace:1, list:[], shelf:[],
-            found:0, roundStart:0, roundScore:0, timer:null, raf:null, paused:false, done:false };
+            found:0, roundStart:0, roundScore:0, timer:null, raf:null, paused:false, done:false,
+            /* replay proof (solo only): the seed the run was generated from and
+               every tap in order, as [round, itemId]. Submitted with the score. */
+            seed:0, moves:[] };
 const M = { code:null, pid:null, isHost:false, name:'', room:null, es:null, hb:null,
             startRound:1, lastKey:'', joined:false, refereedRound:-1,
             playReported:false };   // §12 — hub only: guards one play per race, not per round
@@ -659,7 +718,12 @@ function toast(msg, kind){
    ===================================================================== */
 function startSolo(){
   hubReportPlay();          // §12 — count this play on the hub
-  S.mode='solo'; S.round=1; S.score=0; S.mistakes=0;
+  /* Ranked runs are fixed: always start at round 1 with standard glance time.
+     The difficulty and pace selectors were removed so every score on the
+     leaderboard comes from identical conditions. */
+  S.mode='solo'; S.round=1; S.score=0; S.mistakes=0; S.pace=1;
+  S.seed = newSeed(); S.moves = [];
+  _rng = mulberry32(S.seed);        // from here the whole run is reproducible
   $('rivals').hidden = true;
   show('s-play'); paintHud(); soloRound();
 }
@@ -740,6 +804,9 @@ function renderShelf(){
 
 function grab(item, el){
   if(S.paused || S.done || el.classList.contains('found') || el.classList.contains('gone')) return;
+  /* Record the tap for replay proof. Only solo runs are ranked, and the cap
+     keeps a pathological run from bloating the payload. */
+  if(S.mode === 'solo' && S.moves.length < 2000) S.moves.push([S.round, item.id]);
   const onList = S.list.some(i => i.id === item.id);
   if(onList){
     el.classList.add('found');
@@ -803,11 +870,210 @@ function bustOut(){
     <div class="stat"><span>Longest list</span><b>${config(S.round).listSize} items</b></div>`;
   veil('veilOver', true);
   paintBest();
+  handleLeaderboard();      // async; never blocks the results screen
+}
+
+/* Run finished → work out where this sits on the board, ask for a name the
+   first time, and submit only if it beats this player's own best. */
+async function handleLeaderboard(){
+  const line = $('lbLine'), actions = $('lbActions');
+  line.textContent = 'Checking the leaderboard…';
+  actions.hidden = true;
+
+  const all = await lbFetchAll();
+  const mine = all[playerId()];
+  const prevBest = mine ? Number(mine.score) || 0 : 0;
+  const beatsMine = S.score > prevBest;
+
+  if(!beatsMine){
+    const { rank, total } = lbRank(all, prevBest);
+    line.innerHTML = `Your best is still <b>${prevBest}</b> — #${rank} of ${total}.`;
+    showShare(prevBest, rank);
+    return;
+  }
+
+  let name = playerName();
+  if(!name){
+    const entered = await askName();
+    if(entered === null){            // declined — score simply isn't submitted
+      line.textContent = 'Not submitted. Play again to join the board.';
+      showShare(S.score, null);
+      return;
+    }
+    name = entered; store.set('cartRecallName', name);
+  }
+
+  line.textContent = 'Submitting…';
+  const ok = await lbSubmit(name);
+  if(!ok){
+    line.textContent = 'Could not reach the leaderboard — your score is safe locally.';
+    showShare(S.score, null);
+    return;
+  }
+  const after = await lbFetchAll();
+  const { rank, total } = lbRank(after, S.score);
+  line.innerHTML = prevBest
+    ? `New personal best — you're <b>#${rank}</b> of ${total}.`
+    : `You're on the board at <b>#${rank}</b> of ${total}.`;
+  showShare(S.score, rank);
+}
+
+function showShare(score, rank){
+  const actions = $('lbActions');
+  actions.hidden = false;
+  $('btnShare').onclick = () => shareScore(score, rank);
+}
+
+/* Native share sheet on phones, clipboard everywhere else. */
+/* Build the link to the arcade. On file:// there is no origin (it reads as the
+   literal string "null"), so fall back to the public site rather than emitting
+   a broken URL. */
+const SHARE_HOME = 'https://kenmemorize.com/';        // adjust once the real domain is live
+function shareUrl(){
+  if(location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
+  return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');
+}
+
+/* Three tiers, because the first two are unavailable in plenty of real
+   situations: navigator.share is mostly mobile, and BOTH share and clipboard
+   require a secure context — neither exists on file://. The last tier always
+   works, so the button can never appear to do nothing.
+   (It previously swallowed every error silently, which is exactly how it
+   looked broken.) */
+async function shareScore(score, rank){
+  const text = rank
+    ? `I scored ${score} on Cart Recall (#${rank} on the board) — think you can beat me?`
+    : `I scored ${score} on Cart Recall — think you can beat me?`;
+  const full = text + ' ' + shareUrl();
+
+  // 1. native share sheet (phones, some desktops)
+  if(navigator.share){
+    try{ await navigator.share({ title:'Cart Recall', text, url:shareUrl() }); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; }   // user dismissed — not a failure
+  }
+  // 2. clipboard (needs https or localhost, and a focused document)
+  if(navigator.clipboard && window.isSecureContext){
+    try{ await navigator.clipboard.writeText(full);
+         toast('Copied — paste it to a friend', 'good'); return; }
+    catch(e){ /* fall through to the manual sheet */ }
+  }
+  // 3. always-works fallback: show the text for manual copying
+  showShareSheet(full);
+}
+
+function showShareSheet(text){
+  const ta = $('shareText');
+  ta.value = text;
+  veil('veilShare', true);
+  setTimeout(() => { ta.focus(); ta.select(); }, 60);
+  $('btnShareCopy').onclick = async () => {
+    let ok = false;
+    try{ ok = document.execCommand && document.execCommand('copy'); }catch(e){}
+    if(!ok && navigator.clipboard){
+      try{ await navigator.clipboard.writeText(text); ok = true; }catch(e){}
+    }
+    $('shareHint').textContent = ok ? 'Copied.' : 'Select the text above and copy it.';
+  };
+  $('btnShareClose').onclick = () => veil('veilShare', false);
+}
+
+/* Name prompt — resolves to the trimmed name, or null if declined. */
+function askName(){
+  return new Promise(resolve => {
+    const veilEl = $('veilName'), input = $('nameInput'), err = $('nameErr');
+    input.value = ''; err.textContent = '';
+    veil('veilName', true);
+    setTimeout(() => input.focus(), 50);
+
+    const done = val => { veil('veilName', false);
+      $('btnNameOk').onclick = $('btnNameSkip').onclick = null;
+      input.onkeydown = null; resolve(val); };
+
+    $('btnNameOk').onclick = () => {
+      const v = input.value.trim();
+      if(v.length < 2){ err.textContent = 'At least 2 characters.'; return; }
+      if(v.length > 20){ err.textContent = 'Keep it under 20 characters.'; return; }
+      done(v);
+    };
+    $('btnNameSkip').onclick = () => done(null);
+    input.onkeydown = e => { if(e.key === 'Enter') $('btnNameOk').onclick(); };
+  });
 }
 const paintBest = () => {
   const b = parseInt(store.get('cartRecallBest')||'0', 10);
   $('bestLine').textContent = b ? 'Best solo run — ' + b : 'Best solo run — none yet';
 };
+
+/* =====================================================================
+   LEADERBOARD  —  /leaderboard/cart-recall/{playerId}
+   ---------------------------------------------------------------------
+   One slot per player, holding their BEST run. A lower score never
+   overwrites a higher one.
+
+   Each entry carries a replay proof: the seed the run was generated from
+   plus every tap, so the run can be regenerated and re-scored from
+   scratch (see admin.html's verifier). A faked score has to survive that
+   replay, not merely look plausible.
+
+   Honest limits, so nobody is misled by this:
+   - playerId lives in localStorage. Clearing it yields a new slot, so
+     this is "one slot per browser", not per human. It is a leaderboard,
+     not an auth system.
+   - The proof makes cheating *expensive*, not impossible. A determined
+     person can still forge a consistent seed+move log. Only server-side
+     verification closes that, which needs Cloud Functions.
+   ===================================================================== */
+const LB_GAME = 'cart-recall';
+const LB_PROOF_V = 1;          // bump when POOL or scoring changes — older proofs
+                               // can no longer be replayed against new rules
+const lbApi = p => `${DB_URL}/${p}.json`;
+
+function playerId(){
+  let id = store.get('cartRecallPid');
+  if(!id){ id = 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); store.set('cartRecallPid', id); }
+  return id;
+}
+const playerName = () => store.get('cartRecallName') || '';
+
+/* Moves are stored as "round:poolIndex" pairs — far smaller than emoji and
+   free of encoding surprises. POOL order is deterministic, so an index is
+   stable for a given LB_PROOF_V. */
+function buildProof(){
+  const idx = new Map(POOL.map((it,i) => [it.id, i]));
+  return S.moves.map(([r,id]) => r + ':' + (idx.has(id) ? idx.get(id) : -1)).join(',');
+}
+
+async function lbFetchAll(){
+  try{
+    const r = await fetch(lbApi('leaderboard/' + LB_GAME));
+    if(!r.ok) return {};
+    const d = await r.json();
+    return (d && typeof d === 'object' && !d.error) ? d : {};
+  }catch(e){ return {}; }
+}
+
+/* Rank = position when every entry is sorted by score desc. */
+function lbRank(all, score){
+  const better = Object.values(all).filter(e => e && Number(e.score) > score).length;
+  return { rank: better + 1, total: Object.keys(all).length };
+}
+
+async function lbSubmit(name){
+  const entry = {
+    name: String(name).slice(0, 20),
+    score: S.score,
+    rounds: S.round - 1,
+    at: Date.now(),
+    v: LB_PROOF_V,
+    seed: S.seed,
+    moves: buildProof()
+  };
+  try{
+    const r = await fetch(lbApi('leaderboard/' + LB_GAME + '/' + playerId()),
+                          { method:'PUT', body: JSON.stringify(entry) });
+    return r.ok;
+  }catch(e){ return false; }
+}
 
 /* =====================================================================
    RACE MODE
@@ -1059,11 +1325,9 @@ setInterval(() => {
 /* =====================================================================
    WIRING
    ===================================================================== */
-$('paceSeg').onclick = e => {
-  const b = e.target.closest('button'); if(!b) return;
-  [...$('paceSeg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-  S.pace = parseFloat(b.dataset.pace);
-};
+/* The Glance-time selector was removed so every ranked solo run uses identical
+   timing (S.pace stays 1). diffSeg below is the RACE lobby's starting round —
+   it never affects a solo score, so it stays. */
 $('diffSeg').onclick = e => {
   const b = e.target.closest('button'); if(!b) return;
   [...$('diffSeg').children].forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -1108,6 +1372,18 @@ $('btnQuit').onclick = () => {
   if(S.mode === 'race') leaveRoom(); else show('s-menu');
 };
 window.addEventListener('beforeunload', () => { if(M.joined) leaveRoom(); });
+
+/* ── VERIFICATION SURFACE ──
+   admin.html loads this file in a hidden iframe and replays submitted runs
+   through THESE functions, so the verifier always uses the game's real
+   generation logic rather than a copy that could silently drift out of sync.
+   Top-level const/let bindings aren't reachable cross-window, so the pieces
+   the verifier needs are exported explicitly. */
+window.CartRecall = {
+  PROOF_V: LB_PROOF_V,
+  POOL, FAMILIES, config, buildRound, mulberry32,
+  setRng: fn => { _rng = fn; }
+};
 
 paintBest(); paintHud();
 </script>

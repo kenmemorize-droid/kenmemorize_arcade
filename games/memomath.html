@@ -211,6 +211,39 @@ h1 .m2{color:var(--accent);}
 .stat-box .l{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px;}
 .best-flag{text-align:center; color:var(--correct); font-weight:800; margin-bottom:12px; font-size:15px;}
 
+/* Menu scoring readout */
+.stat-line{display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:13px; color:var(--muted); padding:5px 0;}
+.stat-line + .stat-line{border-top:1px solid var(--line);}
+.stat-line b{color:var(--text); font-family:'Consolas','Courier New',monospace; font-size:13px; text-align:right;}
+
+/* Online — text inputs, room code, player list */
+.txt{width:100%; box-sizing:border-box; background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+     padding:13px 14px; color:var(--text); font-size:16px; font-family:inherit; text-align:center;}
+.txt:focus{outline:none; border-color:var(--accent);}
+.txt.code{font-family:'Consolas','Courier New',monospace; font-size:26px; letter-spacing:10px; text-transform:uppercase; padding-left:24px;}
+.err{color:var(--wrong); font-size:13px; text-align:center; min-height:19px; margin-bottom:10px;}
+.codebox{text-align:center; margin-bottom:18px;}
+.codebox .big{font-family:'Consolas','Courier New',monospace; font-size:46px; font-weight:900; letter-spacing:12px;
+              color:var(--accent); text-shadow:0 0 30px rgba(255,209,102,.4); padding-left:12px;}
+.codebox small{display:block; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;}
+.plist{display:flex; flex-direction:column; gap:8px;}
+.prow{display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line);
+      border-radius:12px; padding:10px 14px; font-size:14px;}
+.prow .badge{margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent);
+             border:1px solid var(--accent); border-radius:999px; padding:2px 8px;}
+.rk{display:inline-block; min-width:1.7em; color:var(--muted); font-family:'Consolas','Courier New',monospace; font-weight:800;}
+
+/* Rivals strip during a race */
+.rivals{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; justify-content:center;}
+.rival{background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:12px; color:var(--muted);}
+.rival b{color:var(--text); font-family:'Consolas','Courier New',monospace;}
+.rival.done{border-color:var(--correct); color:var(--correct);}
+.rival.me{border-color:var(--accent);}
+
+/* Answer-phase countdown (§16 — counts DOWN, warns before expiry) */
+.timer-fill.warn{background:linear-gradient(90deg,var(--accent),#f0891f);}
+.timer-fill.danger{background:linear-gradient(90deg,#f0891f,var(--wrong));}
+
 /* Modal — §6: theme-independent scrim, surface card, 16–20px radius */
 .overlay{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; z-index:70; padding:20px;}
 .overlay.active{display:flex;}
@@ -266,43 +299,80 @@ h1 .m2{color:var(--accent);}
 
     <div class="howto-box">
       <div class="howto-title">How to Play</div>
-      <p>Coloured tiles flash up, each holding <strong>one digit</strong>. Memorise them before the bar runs out.</p>
+      <p>Four coloured tiles flash up, each holding <strong>one digit</strong>. Memorise them before the bar runs out.</p>
       <p>The digits hide and every tile shows a rule instead, like <strong>− 3</strong>. Apply it to the digit that was there and keep only the <strong>last digit</strong> of the answer.</p>
-      <p>Tap a tile, key in its result, fill them all, then press Enter.</p>
+      <p>Tap a tile, key in its result, fill all four, then press Enter. <strong>One wrong round ends a solo run</strong> — and both clocks get tighter every round.</p>
       <button class="ghost-btn full-rules" id="btnHowtoOpen">Full rules &amp; worked example →</button>
     </div>
 
     <div class="panel">
-      <div class="section-title">Difficulty</div>
-      <div class="pill-group" id="diffGroup">
-        <button class="pill active" data-diff="easy">Easy<span class="sub">4 digits · +/−</span></button>
-        <button class="pill" data-diff="medium">Medium<span class="sub">6 digits · +/−/×</span></button>
-        <button class="pill" data-diff="hard">Hard<span class="sub">8 digits · all</span></button>
-      </div>
+      <div class="section-title">Scoring</div>
+      <div class="stat-line"><span>Each correct round</span><b id="scLineBase">100 + 10 × round</b></div>
+      <div class="stat-line"><span>Answering fast</span><b>up to +80</b></div>
+      <div class="stat-line"><span>Race placement (1st/2nd/3rd)</span><b>200 / 120 / 60</b></div>
+      <div class="stat-line"><span>A wrong round</span><b>ends a solo run</b></div>
     </div>
 
-    <div class="panel">
-      <div class="section-title">Mode</div>
-      <div class="pill-group" id="modeGroup">
-        <button class="pill active" data-mode="practice">Practice<span class="sub">No pressure</span></button>
-        <button class="pill" data-mode="competition">Competition<span class="sub">Scored</span></button>
-      </div>
-      <div class="field" id="sessionField" style="margin-top:16px; display:none;">
-        <label>Session type</label>
-        <div class="pill-group" id="sessionGroup">
-          <button class="pill active" data-session="rounds">Rounds<span class="sub">Best of 10</span></button>
-          <button class="pill" data-session="timed">Timed<span class="sub">60 sec</span></button>
-          <button class="pill" data-session="streak">Streak<span class="sub">Until a miss</span></button>
-        </div>
-      </div>
-    </div>
+    <button class="big-btn" id="btnSolo">Solo run</button>
+    <button class="ghost-btn" id="btnOnline" style="width:100%; margin-top:10px;">Online &middot; up to 4 players</button>
 
-    <div class="panel" id="bestPanel" style="display:none;">
-      <div class="section-title">Personal best</div>
+    <div class="panel" id="bestPanel" style="display:none; margin-top:18px;">
+      <div class="section-title">Best solo run</div>
       <div id="bestText" style="text-align:center; font-size:15px;"></div>
     </div>
+  </div>
 
-    <button class="big-btn" id="btnPlay">Play</button>
+  <!-- ROOM SETUP (Online) -->
+  <div class="screen" id="screen-rooms">
+    <div class="logo">
+      <h1>Race</h1>
+      <div class="subtitle">Same digits &middot; Same second &middot; Own phone</div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Your name</div>
+      <input type="text" id="inName" class="txt" maxlength="12" placeholder="Tap to type" autocomplete="off">
+    </div>
+    <div class="panel">
+      <div class="section-title">Start a new room</div>
+      <button class="big-btn" id="btnCreate" style="margin-top:4px;">Create room</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Join a room</div>
+      <input type="text" id="inCode" class="txt code" maxlength="4" placeholder="CODE" autocomplete="off">
+      <button class="ghost-btn" id="btnJoin" style="width:100%; margin-top:10px;">Join</button>
+    </div>
+    <div class="err" id="roomErr"></div>
+    <button class="ghost-btn" id="btnRoomsBack" style="width:100%;">Back to menu</button>
+  </div>
+
+  <!-- LOBBY -->
+  <div class="screen" id="screen-lobby">
+    <div class="codebox">
+      <div class="big" id="lobbyCode">----</div>
+      <small>Room code &mdash; share it</small>
+    </div>
+    <div class="panel">
+      <div class="section-title">Players <span id="lobbyCount"></span></div>
+      <div class="plist" id="lobbyList"></div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Format</div>
+      <div style="text-align:center; color:var(--muted); font-size:13px;">
+        <b style="color:var(--accent)">5 rounds</b> &middot; 4 digits &middot; all four operators.<br>
+        Everyone gets the identical board each round.
+      </div>
+    </div>
+    <button class="big-btn" id="btnLaunch">Start the race</button>
+    <div class="phase-sub" id="lobbyWait" style="margin-top:12px;"></div>
+    <button class="ghost-btn" id="btnLeave" style="width:100%;">Leave room</button>
+  </div>
+
+  <!-- RACE STANDINGS (between rounds) -->
+  <div class="screen" id="screen-standings">
+    <h1 id="standTitle">Round standings</h1>
+    <div class="panel"><div id="standList"></div></div>
+    <button class="big-btn" id="btnNextRound">Next round</button>
+    <div class="phase-sub" id="standWait" style="margin-top:12px;"></div>
   </div>
 
   <!-- FULL RULES — the deeper reference view (§3). The menu keeps its own
@@ -345,8 +415,9 @@ h1 .m2{color:var(--accent);}
 
   <!-- MEMORIZE -->
   <div class="screen" id="screen-memorize">
+    <div class="rivals" id="memRivals" hidden></div>
     <div class="hud">
-      <span class="chip" id="memHudLeft">Practice</span>
+      <span class="chip" id="memHudLeft">Solo run</span>
       <span class="chip" id="memHudRight"></span>
     </div>
     <div class="phase-label">Memorise</div>
@@ -358,6 +429,7 @@ h1 .m2{color:var(--accent);}
 
   <!-- RECALL + ANSWER -->
   <div class="screen" id="screen-answer">
+    <div class="rivals" id="ansRivals" hidden></div>
     <div class="hud">
       <span class="chip" id="ansHudLeft"></span>
       <span class="chip" id="ansHudRight"></span>
@@ -365,7 +437,10 @@ h1 .m2{color:var(--accent);}
     <div class="phase-label">Apply the rules</div>
     <div class="phase-sub">Tap a tile, then key its result. The original digits are hidden.</div>
     <div class="tile-grid" id="ansGrid"></div>
+    <!-- §16: the answer clock counts DOWN and shifts to warn/danger before it expires -->
+    <div class="timer-bar"><div class="timer-fill" id="ansTimerFill"></div></div>
     <div class="pad" id="numPad"></div>
+    <button class="ghost-btn" id="btnQuit" style="width:100%; margin-top:12px;">Quit run</button>
   </div>
 
   <!-- RESULT -->
@@ -381,7 +456,7 @@ h1 .m2{color:var(--accent);}
 
   <!-- SUMMARY -->
   <div class="screen" id="screen-summary">
-    <h1>Session <span class="m2">Over</span></h1>
+    <h1 id="sumTitle">Run <span class="m2">Over</span></h1>
     <div class="panel">
       <div class="score-big" id="sumScore">0</div>
       <div class="score-label" id="sumScoreLabel">Total score</div>
@@ -389,20 +464,56 @@ h1 .m2{color:var(--accent);}
       <div class="stat-grid" id="sumStats"></div>
       <div style="text-align:center; color:var(--muted); font-size:13px;" id="sumBestLine"></div>
     </div>
+
+    <!-- Global leaderboard outcome. Async — never blocks this screen. -->
+    <div class="panel" id="lbPanel">
+      <div class="section-title">Leaderboard</div>
+      <div style="text-align:center; font-size:14px; color:var(--muted);" id="lbLine">Checking the leaderboard…</div>
+      <button class="ghost-btn" id="btnShare" style="width:100%; margin-top:12px;" hidden>Share your score</button>
+    </div>
+
     <button class="big-btn" id="btnPlayAgain" style="margin-bottom:10px;">Play again</button>
     <button class="ghost-btn" id="btnSumMenu" style="width:100%;">Back to menu</button>
   </div>
 
 </div>
 
-<!-- EXIT MODAL -->
+<!-- EXIT MODAL — §15. Never a native confirm(): browsers can suppress it, and a
+     suppressed confirm() returns false, so the guarded action silently never runs. -->
 <div class="overlay" id="exitOverlay">
   <div class="modal">
-    <h3>Leave this round?</h3>
-    <p id="exitMsg">Your progress in this session will be lost.</p>
+    <h3 id="exitTitle">Quit this run?</h3>
+    <p id="exitMsg">Your score for this run will be lost.</p>
     <div class="modal-btns">
       <button class="ghost-btn" id="btnExitCancel">Stay</button>
-      <button class="ghost-btn danger-btn" id="btnExitConfirm">Leave</button>
+      <button class="ghost-btn danger-btn" id="btnExitConfirm">Quit</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME PROMPT — same reasoning as above applies to native prompt() -->
+<div class="overlay" id="nameOverlay">
+  <div class="modal">
+    <h3>You made the leaderboard</h3>
+    <p>Pick a name to show. It stays on this device.</p>
+    <input type="text" id="inLbName" class="txt" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="ghost-btn" id="btnNameSkip">Not now</button>
+      <button class="big-btn" id="btnNameOk" style="flex:1;">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL SHARE SHEET — tier 3. navigator.share and the clipboard both need a
+     secure context, so on file:// and plain http neither exists; without this
+     fallback the share button would fail silently. -->
+<div class="overlay" id="shareOverlay">
+  <div class="modal">
+    <h3>Share your score</h3>
+    <p>Copy this and paste it anywhere.</p>
+    <textarea id="shareText" class="txt" rows="4" readonly style="text-align:left; font-size:13px; resize:none;"></textarea>
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="ghost-btn" id="btnShareClose">Close</button>
     </div>
   </div>
 </div>
@@ -440,28 +551,31 @@ function mulberry32(a){
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
-let rng = mulberry32((Date.now() ^ (Math.random()*1e9)) | 0);
-function rint(min, max){ return Math.floor(rng() * (max - min + 1)) + min; }
-function shuffle(arr){
-  const a = arr.slice();
-  for(let i = a.length - 1; i > 0; i--){
-    const j = Math.floor(rng() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
+/* There is deliberately NO ambient rng here any more. Every random draw that
+   affects a board goes through generateRound(seed), so a round is always
+   reproducible; anything else (room codes, player ids) uses Math.random
+   directly because it never needs replaying. */
 
-/* ---------- Config ---------- */
-const DIFFS = {
-  easy:   { digits:4, ops:['+','-'],         memTime:4, mult:1.0, label:'Easy' },
-  medium: { digits:6, ops:['+','-','*'],     memTime:5, mult:1.6, label:'Medium' },
-  hard:   { digits:8, ops:['+','-','*','/'], memTime:6, mult:2.4, label:'Hard' }
+/* ---------- Config ----------
+   ONE fixed difficulty (2026-08-25). The Easy/Medium/Hard selector was
+   removed so every ranked run is played under identical conditions — the
+   same reason Cart Recall lost its glance-time picker. Difficulty now comes
+   from the ROUND NUMBER instead: the digit count never changes, both clocks
+   tighten as the run goes on. */
+const DIGITS = 4;
+const OPS = ['+','-','*','/'];        // all four, always
+const RACE_ROUNDS = 5;                // Online races are a fixed 5 rounds
+const MAX_PLAYERS = 4;
+
+/* Both ramps are linear with a floor. Round 1 opens at 4.0s / 30s; the
+   memorise clock bottoms out around round 15 and the answer clock around
+   round 19. Tunable — nothing else depends on these exact numbers. */
+const RAMP = {
+  memStart: 4.0, memFloor: 1.8, memStep: 0.15,   // seconds to memorise
+  ansStart: 30,  ansFloor: 8,   ansStep: 1.2     // seconds to answer
 };
-const SESSIONS = {
-  rounds: { label:'Rounds', totalRounds:10 },
-  timed:  { label:'Timed',  seconds:60 },
-  streak: { label:'Streak' }
-};
+const memTimeFor = r => Math.max(RAMP.memFloor, RAMP.memStart - (r - 1) * RAMP.memStep);
+const ansTimeFor = r => Math.max(RAMP.ansFloor, RAMP.ansStart - (r - 1) * RAMP.ansStep);
 /* Palette: red, blue, green, yellow first (Easy uses exactly these four),
    then orange, purple, teal, pink for Medium (6) and Hard (8). */
 const PALETTE = [
@@ -477,67 +591,107 @@ const PALETTE = [
 function colsFor(n){ return n === 6 ? 3 : 4; } // 4→4 cols, 6→3, 8→4 (even rows)
 
 /*
-  SCORING (Competition) — documented constants
-  Per correct answer: base + difficultyBonus + speedBonus.
-    base = 100
-    difficultyBonus = base * (mult - 1)   // Easy +0, Medium +60, Hard +140
-    speedBonus decays linearly SPEED_MAX→0 from FAST_SEC to SLOW_SEC.
-    points = round(...), never negative. Wrong answer = 0 (ends Streak sessions).
+  SCORING — documented constants
+  Per correct round: base + speedBonus, where
+    base       = 100 + 10 * (round - 1)   // deeper rounds are worth more,
+                                          // mirroring Cart Recall's 50 + 10 × round
+    speedBonus decays linearly speedMax→0 from fastSec to slowSec.
+  points = round(...), never negative. A wrong round scores 0 and ends a solo run.
+
+  The old difficultyBonus is gone with the difficulty selector — one difficulty
+  means one multiplier, so it was a constant.
 */
-const SCORE = { base:100, speedMax:80, fastSec:3, slowSec:15 };
+const SCORE = { base:100, perRound:10, speedMax:80, fastSec:3, slowSec:15 };
 function speedBonus(sec){
   if(sec <= SCORE.fastSec) return SCORE.speedMax;
   if(sec >= SCORE.slowSec) return 0;
   return SCORE.speedMax * ((SCORE.slowSec - sec) / (SCORE.slowSec - SCORE.fastSec));
 }
-function roundPoints(diffKey, sec){
-  const d = DIFFS[diffKey];
-  const diffBonus = SCORE.base * (d.mult - 1);
-  return Math.max(0, Math.round(SCORE.base + diffBonus + speedBonus(sec)));
+function roundPoints(roundNo, sec){
+  const base = SCORE.base + SCORE.perRound * (roundNo - 1);
+  return Math.max(0, Math.round(base + speedBonus(sec)));
+}
+/* Bounds on one round's score, ignoring elapsed time. The verifier can check a
+   replayed run against these but cannot pin an exact score — elapsed time is
+   not recorded, which is the same honest limit Cart Recall's proof carries. */
+function roundPointsRange(roundNo){
+  const base = SCORE.base + SCORE.perRound * (roundNo - 1);
+  return { min: base, max: base + SCORE.speedMax };
 }
 
 /* ---------- Rule generation ----------
-   Colours are the first N palette entries (Easy = R/B/G/Y), shuffled across
+   Colours are the first four palette entries (R/B/G/Y), shuffled across
    positions so the colour is a genuine memory anchor. Operations line up
-   left-to-right with the memorised digits (positional). */
-function generateRound(diffKey){
-  const d = DIFFS[diffKey];
-  const colors = shuffle(PALETTE.slice(0, d.digits)); // distinct, position-shuffled
+   left-to-right with the memorised digits (positional).
+
+   DETERMINISTIC FROM A SEED — the same seed always yields the same round.
+   That is what lets an Online race deal one seed per round and have every
+   phone build a byte-identical board, and what lets admin.html replay a solo
+   run to verify it. Nothing here may read Math.random or the ambient rng. */
+function newSeed(){ return (Date.now() ^ (Math.random() * 0xFFFFFFFF)) | 0; }
+
+/* Mix the run seed with the round number so any round can be regenerated on
+   its own, without replaying the rounds before it. */
+function roundSeedFor(runSeed, roundNo){
+  return (Math.imul(runSeed ^ Math.imul(roundNo, 0x9E3779B1), 0x85EBCA6B) ^ roundNo) | 0;
+}
+
+function generateRound(seed){
+  const r = mulberry32(seed);
+  const ri = (min, max) => Math.floor(r() * (max - min + 1)) + min;
+  const shuf = arr => {
+    const a = arr.slice();
+    for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+  };
+
+  const colors = shuf(PALETTE.slice(0, DIGITS));
   const rules = [];
-  for(let i = 0; i < d.digits; i++){
-    const digit = rint(0, 9);
+  for(let i = 0; i < DIGITS; i++){
+    const digit = ri(0, 9);
     let op, operand, result;
-    let ops = d.ops.slice();
+    let ops = OPS.slice();
     while(true){
-      op = ops[Math.floor(rng() * ops.length)];
+      op = ops[Math.floor(r() * ops.length)];
       if(op === '/'){
+        /* Division must come out WHOLE — only divisors that divide the digit
+           exactly are eligible. 0 and 1 have none in 2..9, so for those digits
+           '/' is dropped and another operator is drawn. No remainders, ever. */
         const divisors = [];
         for(let k = 2; k <= 9; k++){ if(digit !== 0 && digit % k === 0) divisors.push(k); }
-        if(divisors.length === 0){
-          ops = ops.filter(o => o !== '/');
-          if(ops.length === 0){ op = '+'; } else { continue; }
-        } else {
-          operand = divisors[Math.floor(rng() * divisors.length)];
-          result = (digit / operand) % 10; break;
-        }
+        if(divisors.length === 0){ ops = ops.filter(o => o !== '/'); continue; }
+        operand = divisors[Math.floor(r() * divisors.length)];
+        result = (digit / operand) % 10; break;
       }
-      if(op === '+'){ operand = rint(1,9); result = ((digit + operand) % 10 + 10) % 10; break; }
-      if(op === '-'){ operand = rint(1,9); result = ((digit - operand) % 10 + 10) % 10; break; }
-      if(op === '*'){ operand = rint(2,9); result = (digit * operand) % 10; break; }
+      if(op === '+'){ operand = ri(1,9); result = ((digit + operand) % 10 + 10) % 10; break; }
+      if(op === '-'){ operand = ri(1,9); result = ((digit - operand) % 10 + 10) % 10; break; }
+      if(op === '*'){ operand = ri(2,9); result = (digit * operand) % 10; break; }
     }
     rules.push({ digit, op, operand, result, color: colors[i] });
   }
-  return { rules, answer: rules.map(r => r.result).join('') };
+  return { rules, answer: rules.map(x => x.result).join('') };
 }
 function opSymbol(op){ return op === '*' ? '×' : op === '/' ? '÷' : op; }
 
-/* ---------- Game state ---------- */
+/* ---------- Game state ----------
+   mode: 'solo' — ranked, endless, ONE wrong round ends it (§13 "Solo")
+         'race' — Online, fixed 5 rounds, up to 4 players           */
 const G = {
-  diff:'easy', mode:'practice', session:'rounds',
-  round:null, nDigits:0, answerDigits:[], activeTile:0,
-  roundIndex:0, score:0, correctCount:0, attempts:0, streak:0, bestStreak:0,
-  ansStartTs:0, memTimer:null, sessionTimer:null,
-  sessionEndsAt:0, memEndsAt:0, _helpReturn:'screen-menu'
+  mode:'solo',
+  round:null, roundNo:1, answerDigits:[], activeTile:0,
+  score:0, correctCount:0, attempts:0,
+  ansStartTs:0, memTimer:null, ansTimer:null,
+  memEndsAt:0, ansEndsAt:0, _helpReturn:'screen-menu',
+  /* replay proof (solo only) — the seed the run was generated from and every
+     answer submitted, so admin.html can regenerate the run and re-score it */
+  seed:0, moves:[], done:false
+};
+
+/* Online race state, kept separate from G the way Cart Recall separates S/M —
+   they answer different questions (my run vs. the shared room). */
+const M = {
+  code:null, pid:null, name:'', isHost:false, joined:false,
+  room:null, es:null, hb:null, lastKey:'', refereedRound:0, playReported:false
 };
 
 /* ---------- Safe storage ---------- */
@@ -569,34 +723,18 @@ $('theme-btn').addEventListener('click', () => {
   store.set('memomath_theme', next);
 });
 
-/* ---------- Menu selectors ---------- */
-function bindPills(groupId, key, onChange){
-  $(groupId).addEventListener('click', e => {
-    const btn = e.target.closest('.pill'); if(!btn) return;
-    [...$(groupId).children].forEach(c => c.classList.remove('active'));
-    btn.classList.add('active');
-    G[key] = btn.dataset[Object.keys(btn.dataset)[0]];
-    if(onChange) onChange();
-  });
-}
-bindPills('diffGroup', 'diff', updateBest);
-bindPills('modeGroup', 'mode', () => {
-  $('sessionField').style.display = G.mode === 'competition' ? '' : 'none';
-  updateBest();
-});
-bindPills('sessionGroup', 'session', updateBest);
-
-function bestKey(){ return `memomath_best_${G.diff}_${G.session}`; }
-function getBest(){ const v = store.get(bestKey()); return v ? parseInt(v,10) : 0; }
+/* ---------- Personal best (local) ----------
+   One key now, not one per difficulty/session — there is only one solo format.
+   The old memomath_best_{diff}_{session} keys are simply left behind; they are
+   never read, and the game must not crash on a browser that still has them. */
+const BEST_KEY = 'memomath_best_solo';
+function getBest(){ const v = store.get(BEST_KEY); return v ? parseInt(v, 10) || 0 : 0; }
 function updateBest(){
-  if(G.mode !== 'competition'){ $('bestPanel').style.display = 'none'; return; }
-  $('bestPanel').style.display = '';
   const best = getBest();
-  const sLabel = SESSIONS[G.session].label;
-  const unit = G.session === 'streak' ? (best === 1 ? 'round' : 'rounds') : 'pts';
+  $('bestPanel').style.display = best > 0 ? '' : 'none';
   $('bestText').innerHTML = best > 0
-    ? `<b style="color:var(--accent); font-size:20px;">${best}</b> ${unit} &nbsp;·&nbsp; ${DIFFS[G.diff].label} / ${sLabel}`
-    : `No best yet for ${DIFFS[G.diff].label} / ${sLabel}`;
+    ? `<b style="color:var(--accent); font-size:20px;">${best}</b> pts`
+    : '';
 }
 
 /* ---------- Full rules (§3 — the menu card is the summary, this is the manual) ---------- */
@@ -610,17 +748,30 @@ $('btnHowtoOpen').addEventListener('click', openHowto);
 $('btnHowtoBack').addEventListener('click', () => showScreen(G._helpReturn || 'screen-menu'));
 
 /* ---------- Start / countdown ---------- */
-$('btnPlay').addEventListener('click', startSession);
-function startSession(){
+$('btnSolo').addEventListener('click', startSolo);
+$('btnOnline').addEventListener('click', () => {
+  $('inName').value = store.get('memomathName') || '';
+  raceErr(''); showScreen('screen-rooms');
+});
+
+/* A ranked solo run. Every run gets a FRESH random seed — players do not share
+   boards — but the run is fully reproducible from that one number. */
+function startSolo(){
   hubReportPlay();          // §12 — count this play on the hub
-  G.roundIndex = 0; G.score = 0; G.correctCount = 0; G.attempts = 0; G.streak = 0; G.bestStreak = 0;
-  if(G.mode === 'competition' && G.session === 'timed'){ G.sessionEndsAt = Date.now() + SESSIONS.timed.seconds * 1000; }
+  G.mode = 'solo';
+  G.roundNo = 1; G.score = 0; G.correctCount = 0; G.attempts = 0; G.done = false;
+  G.seed = newSeed(); G.moves = [];
+  $('memRivals').hidden = true; $('ansRivals').hidden = true;
   beginRound();
 }
+
 function beginRound(){
-  if(G.mode === 'competition' && G.session === 'timed' && Date.now() >= G.sessionEndsAt){ endSession(); return; }
-  G.round = generateRound(G.diff);
-  G.nDigits = G.round.rules.length;
+  /* Solo derives each round from the run seed; a race is dealt its seed by
+     the host so every phone builds the identical board. */
+  const seed = G.mode === 'race'
+    ? (M.room && M.room.round && M.room.round.seed) | 0
+    : roundSeedFor(G.seed, G.roundNo);
+  G.round = generateRound(seed);
   runCountdown(enterMemorize);
 }
 function runCountdown(done){
@@ -645,7 +796,7 @@ function enterMemorize(){
   showScreen('screen-memorize');
   updateHud('memHudLeft', 'memHudRight');
   const grid = $('memGrid');
-  grid.style.gridTemplateColumns = `repeat(${colsFor(G.nDigits)}, 1fr)`;
+  grid.style.gridTemplateColumns = `repeat(${colsFor(DIGITS)}, 1fr)`;
   grid.innerHTML = '';
   G.round.rules.forEach(r => {
     const t = document.createElement('div');
@@ -654,9 +805,11 @@ function enterMemorize(){
     t.textContent = r.digit;
     grid.appendChild(t);
   });
-  const durMs = DIFFS[G.diff].memTime * 1000;
+  /* The memorise clock tightens every round (RAMP.memStep) down to memFloor. */
+  const durMs = memTimeFor(G.roundNo) * 1000;
   G.memEndsAt = Date.now() + durMs;
   const fill = $('memTimerFill');
+  fill.className = 'timer-fill';
   fill.style.transition = 'none'; fill.style.width = '100%'; void fill.offsetWidth;
   fill.style.transition = `width ${durMs}ms linear`; fill.style.width = '0%';
   clearInterval(G.memTimer);
@@ -668,12 +821,12 @@ $('btnSkipMem').addEventListener('click', () => { clearInterval(G.memTimer); ent
 function enterAnswer(){
   showScreen('screen-answer');
   G.ansStartTs = Date.now();
-  G.answerDigits = new Array(G.nDigits).fill(null);
+  G.answerDigits = new Array(DIGITS).fill(null);
   G.activeTile = 0;
   updateHud('ansHudLeft', 'ansHudRight');
 
   const grid = $('ansGrid');
-  grid.style.gridTemplateColumns = `repeat(${colsFor(G.nDigits)}, 1fr)`;
+  grid.style.gridTemplateColumns = `repeat(${colsFor(DIGITS)}, 1fr)`;
   grid.innerHTML = '';
   G.round.rules.forEach((r, i) => {
     const t = document.createElement('button');
@@ -687,7 +840,31 @@ function enterAnswer(){
   });
   buildPad();
   refreshTiles();
+  startAnswerClock();
 }
+
+/* ---------- Answer clock — §16 ----------
+   Counts DOWN from ansTimeFor(round), starting at 30s and tightening as the
+   run goes on. Shifts warn→danger over the last 25% so it never expires
+   without warning. Running out counts as a wrong round, which ends a solo run. */
+function startAnswerClock(){
+  const durMs = ansTimeFor(G.roundNo) * 1000;
+  G.ansEndsAt = Date.now() + durMs;
+  const fill = $('ansTimerFill');
+  fill.className = 'timer-fill';
+  fill.style.transition = 'none'; fill.style.width = '100%'; void fill.offsetWidth;
+  fill.style.transition = `width ${durMs}ms linear`; fill.style.width = '0%';
+
+  clearInterval(G.ansTimer);
+  G.ansTimer = setInterval(() => {
+    const left = G.ansEndsAt - Date.now();
+    const frac = left / durMs;
+    fill.className = 'timer-fill' + (frac <= 0.12 ? ' danger' : frac <= 0.25 ? ' warn' : '');
+    updateHud('ansHudLeft', 'ansHudRight');
+    if(left <= 0){ stopAnswerClock(); submitAnswer(true); }
+  }, 100);
+}
+function stopAnswerClock(){ clearInterval(G.ansTimer); G.ansTimer = null; }
 
 function setActive(i){ G.activeTile = i; refreshTiles(); }
 
@@ -708,8 +885,8 @@ function enterDigit(d){
   G.answerDigits[G.activeTile] = d;
   // advance to next empty tile (wrap), else stay
   let next = -1;
-  for(let k = 1; k <= G.nDigits; k++){
-    const idx = (G.activeTile + k) % G.nDigits;
+  for(let k = 1; k <= DIGITS; k++){
+    const idx = (G.activeTile + k) % DIGITS;
     if(G.answerDigits[idx] === null){ next = idx; break; }
   }
   if(next !== -1) G.activeTile = next;
@@ -727,7 +904,11 @@ function buildPad(){
   layout.forEach(k => {
     const b = document.createElement('button');
     if(k === 'del'){ b.className = 'pad-del'; b.textContent = '⌫'; b.onclick = deleteDigit; }
-    else if(k === 'ok'){ b.className = 'pad-submit'; b.id = 'padSubmit'; b.textContent = 'Enter'; b.onclick = submitAnswer; }
+    /* Must be wrapped, not passed by reference: as a bare handler the click's
+       MouseEvent lands in submitAnswer's timedOut parameter and is truthy,
+       which both mislabels a wrong answer "Out of time" and skips the
+       incomplete-answer guard. */
+    else if(k === 'ok'){ b.className = 'pad-submit'; b.id = 'padSubmit'; b.textContent = 'Enter'; b.onclick = () => submitAnswer(false); }
     else { b.textContent = k; b.onclick = () => enterDigit(k); }
     pad.appendChild(b);
   });
@@ -739,30 +920,42 @@ document.addEventListener('keydown', e => {
   if(e.key >= '0' && e.key <= '9'){ enterDigit(e.key); }
   else if(e.key === 'Backspace'){ e.preventDefault(); deleteDigit(); }
   else if(e.key === 'Enter'){ if(!G.answerDigits.some(d => d === null)) submitAnswer(); }
-  else if(e.key === 'ArrowRight'){ G.activeTile = (G.activeTile + 1) % G.nDigits; refreshTiles(); }
-  else if(e.key === 'ArrowLeft'){ G.activeTile = (G.activeTile - 1 + G.nDigits) % G.nDigits; refreshTiles(); }
+  else if(e.key === 'ArrowRight'){ G.activeTile = (G.activeTile + 1) % DIGITS; refreshTiles(); }
+  else if(e.key === 'ArrowLeft'){ G.activeTile = (G.activeTile - 1 + DIGITS) % DIGITS; refreshTiles(); }
 });
 
-/* ---------- Submit / result ---------- */
-function submitAnswer(){
-  if(G.answerDigits.some(d => d === null)) return;
-  const entered = G.answerDigits.join('');
+/* ---------- Submit / result ----------
+   timedOut=true comes from the answer clock expiring. Whatever is on the tiles
+   is submitted as-is, which is almost always wrong — and a wrong round ends a
+   solo run. That is the intended pressure, not an edge case. */
+function submitAnswer(timedOut){
+  if(!timedOut && G.answerDigits.some(d => d === null)) return;
+  stopAnswerClock();
+  const entered = G.answerDigits.map(d => d === null ? '_' : d).join('');
   const sec = (Date.now() - G.ansStartTs) / 1000;
   const correct = entered === G.round.answer;
   G.attempts++;
+
+  /* Replay proof: record what was submitted for this round. Capped so a very
+     long run can't produce an unbounded payload. */
+  if(G.mode === 'solo' && G.moves.length < 500) G.moves.push([G.roundNo, entered]);
+
   let earned = 0;
-  // G.bestStreak is the high-water mark: the miss below resets G.streak to 0, and a
-  // Streak session ends on that very miss, so endSession() must not read G.streak.
-  if(correct){ G.correctCount++; G.streak++; if(G.streak > G.bestStreak) G.bestStreak = G.streak; if(G.mode === 'competition'){ earned = roundPoints(G.diff, sec); G.score += earned; } }
-  else { G.streak = 0; }
-  showResult(correct, earned, entered);
+  if(correct){
+    G.correctCount++;
+    earned = roundPoints(G.roundNo, sec);
+    G.score += earned;
+  }
+
+  if(G.mode === 'race'){ pushMe(correct); }
+  showResult(correct, earned, entered, timedOut);
 }
 
-function showResult(correct, earned, entered){
+function showResult(correct, earned, entered, timedOut){
   showScreen('screen-result');
   const banner = $('resultBanner');
   banner.className = 'result-banner ' + (correct ? 'ok' : 'no');
-  banner.textContent = correct ? (G.mode === 'competition' ? `Correct!  +${earned}` : 'Correct!') : 'Not quite';
+  banner.textContent = correct ? `Correct!  +${earned}` : (timedOut ? 'Out of time' : 'Not quite');
 
   $('yourAnswerLine').innerHTML = correct
     ? `Answer: <b style="color:var(--correct)">${G.round.answer}</b>`
@@ -779,74 +972,594 @@ function showResult(correct, earned, entered){
   });
 
   const actions = $('resultActions'); actions.innerHTML = '';
-  const endsSession =
-    (G.mode === 'competition' && G.session === 'streak' && !correct) ||
-    (G.mode === 'competition' && G.session === 'rounds' && (G.roundIndex + 1) >= SESSIONS.rounds.totalRounds) ||
-    (G.mode === 'competition' && G.session === 'timed' && Date.now() >= G.sessionEndsAt);
 
-  if(G.mode === 'practice'){
-    actions.appendChild(mkBtn('Next round', 'big-btn', beginRound));
-    actions.appendChild(mkBtn('Menu', 'ghost-btn', backToMenu));
-  } else if(endsSession){
+  if(G.mode === 'race'){
+    /* The host referees round end; this client just waits for the phase change. */
+    actions.appendChild(mkBtn('Waiting for the others…', 'ghost-btn', () => {}));
+    actions.firstChild.disabled = true;
+    return;
+  }
+
+  /* SOLO: one wrong round ends the run.
+     Order matters — .result-actions is a flex row, so append order is
+     left-to-right. The primary action (Next round) sits on the RIGHT, with the
+     quieter Stop here on the left. */
+  if(!correct){
     actions.appendChild(mkBtn('See results', 'big-btn', endSession));
-  } else {
-    actions.appendChild(mkBtn('Next round', 'big-btn', () => { G.roundIndex++; beginRound(); }));
+  }else{
+    actions.appendChild(mkBtn('Stop here', 'ghost-btn', endSession));
+    actions.appendChild(mkBtn('Next round', 'big-btn', () => { G.roundNo++; beginRound(); }));
   }
 }
 function mkBtn(text, cls, fn){ const b = document.createElement('button'); b.className = cls; b.textContent = text; b.onclick = fn; return b; }
 
 /* ---------- End session / summary ---------- */
 function endSession(){
-  clearInterval(G.sessionTimer);
+  stopAnswerClock();
+  clearInterval(G.memTimer);
+  G.done = true;
   showScreen('screen-summary');
-  let scoreVal, scoreLabel, unit;
-  // Read the high-water mark, not G.streak — the run-ending miss already zeroed
-  // G.streak, which used to make memomath_best_*_streak save 0 every time.
-  if(G.session === 'streak'){ scoreVal = G.bestStreak; scoreLabel = 'Best streak'; unit = 'rounds'; }
-  else { scoreVal = G.score; scoreLabel = 'Total score'; unit = 'pts'; }
+
+  const scoreVal = G.score;
+  /* Reset the shared summary screen's labels — a previous race renames them. */
+  $('btnPlayAgain').textContent = 'Play again';
+  $('btnSumMenu').textContent   = 'Back to menu';
+  $('sumTitle').innerHTML = 'Run <span class="m2">Over</span>';
   $('sumScore').textContent = scoreVal;
-  $('sumScoreLabel').textContent = scoreLabel;
+  $('sumScoreLabel').textContent = 'Total score';
 
   const prevBest = getBest();
   const isBest = scoreVal > prevBest && scoreVal > 0;
-  if(isBest) store.set(bestKey(), String(scoreVal));
+  if(isBest) store.set(BEST_KEY, String(scoreVal));
   $('sumBestFlag').style.display = isBest ? '' : 'none';
 
   const stats = $('sumStats'); stats.innerHTML = '';
   const acc = G.attempts ? Math.round(100 * G.correctCount / G.attempts) : 0;
-  [['Correct', G.correctCount],['Attempts', G.attempts],['Accuracy', acc + '%'],['Difficulty', DIFFS[G.diff].label]]
+  [['Rounds cleared', G.correctCount], ['Attempts', G.attempts],
+   ['Accuracy', acc + '%'], ['Reached', 'R' + G.roundNo]]
     .forEach(([l,v]) => { const box = document.createElement('div'); box.className = 'stat-box'; box.innerHTML = `<div class="v">${v}</div><div class="l">${l}</div>`; stats.appendChild(box); });
 
-  const shownBest = Math.max(prevBest, scoreVal);
-  $('sumBestLine').innerHTML = `Personal best (${DIFFS[G.diff].label} / ${SESSIONS[G.session].label}): <b style="color:var(--accent)">${shownBest} ${unit}</b>`;
+  $('sumBestLine').innerHTML = `Best solo run: <b style="color:var(--accent)">${Math.max(prevBest, scoreVal)} pts</b>`;
+
+  handleLeaderboard();      // async; never blocks this screen
 }
-$('btnPlayAgain').addEventListener('click', startSession);
-$('btnSumMenu').addEventListener('click', backToMenu);
+/* One handler that dispatches on mode. Do NOT add a second listener and then
+   also assign .onclick elsewhere — the summary screen is shared by solo and
+   race, and a rebind leaves both wired, firing startSolo and leaveRoom on the
+   same click. */
+$('btnPlayAgain').addEventListener('click', () => {
+  if(G.mode === 'race') leaveRoom(); else startSolo();
+});
+$('btnSumMenu').addEventListener('click', () => {
+  if(G.mode === 'race') leaveRoom(); else backToMenu();
+});
 
 /* ---------- HUD ---------- */
 function updateHud(leftId, rightId){
-  let left, right = '';
-  if(G.mode === 'practice'){ left = 'Practice'; right = DIFFS[G.diff].label; }
-  else {
-    if(G.session === 'timed'){ left = `Timed · ${DIFFS[G.diff].label}`; startTimedHud(rightId); $(leftId).innerHTML = left; return; }
-    left = `${SESSIONS[G.session].label} · ${DIFFS[G.diff].label}`;
-    if(G.session === 'rounds') right = `Round <b>${G.roundIndex + 1}</b>/10`;
-    else if(G.session === 'streak') right = `Streak <b>${G.streak}</b>`;
+  const left = G.mode === 'race' ? `Race · R${G.roundNo}/${RACE_ROUNDS}` : 'Solo run';
+  let right = `R<b>${G.roundNo}</b> · ${G.score}`;
+  /* On the answer screen the right chip doubles as the visible countdown. */
+  if(rightId === 'ansHudRight' && G.ansTimer){
+    const remain = Math.max(0, Math.ceil((G.ansEndsAt - Date.now()) / 1000));
+    right = `⏱ <b>${remain}s</b> · ${G.score}`;
   }
-  $(leftId).innerHTML = left; $(rightId).innerHTML = right;
-}
-function startTimedHud(rightId){
-  clearInterval(G.sessionTimer);
-  const upd = () => {
-    const remain = Math.max(0, Math.ceil((G.sessionEndsAt - Date.now())/1000));
-    $(rightId).innerHTML = `⏱ <b>${remain}s</b> · ${G.score}`;
-    if(remain <= 0) clearInterval(G.sessionTimer);
-  };
-  upd(); G.sessionTimer = setInterval(upd, 250);
+  $(leftId).innerHTML = left;
+  $(rightId).innerHTML = right;
 }
 
-/* ---------- Exit modal ---------- */
-function backToMenu(){ clearInterval(G.memTimer); clearInterval(G.sessionTimer); showScreen('screen-menu'); updateBest(); }
+/* ---------- Exit / confirm — §15 ----------
+   A promise-based modal, never window.confirm(): browsers can suppress the
+   native dialog, and a suppressed confirm() returns false, so the guarded
+   action silently never runs. Cancelling RESUMES the exact prior state,
+   including the paused answer clock (Ricochet Recall is the reference). */
+function askConfirm(title, msg, okLabel){
+  return new Promise(resolve => {
+    $('exitTitle').textContent = title;
+    $('exitMsg').textContent = msg;
+    $('btnExitConfirm').textContent = okLabel || 'Quit';
+    $('exitOverlay').classList.add('active');
+    const done = v => {
+      $('exitOverlay').classList.remove('active');
+      $('btnExitCancel').onclick = null;
+      $('btnExitConfirm').onclick = null;
+      resolve(v);
+    };
+    $('btnExitCancel').onclick  = () => done(false);
+    $('btnExitConfirm').onclick = () => done(true);
+  });
+}
+
+/* Quitting mid-run: pause the clock, ask, then either resume it or bail out. */
+$('btnQuit').addEventListener('click', async () => {
+  const remain = G.ansEndsAt - Date.now();
+  stopAnswerClock();
+  $('ansTimerFill').style.transition = 'none';   // freeze the bar while asking
+
+  const quit = await askConfirm(
+    G.mode === 'race' ? 'Leave the race?' : 'Quit this run?',
+    G.mode === 'race' ? 'You will drop out of this race.' : 'Your score for this run will be lost.',
+    G.mode === 'race' ? 'Leave' : 'Quit');
+
+  if(quit){ G.mode === 'race' ? leaveRoom() : backToMenu(); return; }
+  resumeAnswerClock(Math.max(1000, remain));     // cancelled — resume where we were
+});
+
+function resumeAnswerClock(remainMs){
+  G.ansEndsAt = Date.now() + remainMs;
+  const fill = $('ansTimerFill');
+  const pct = (fill.getBoundingClientRect().width /
+               Math.max(1, fill.parentElement.getBoundingClientRect().width)) * 100;
+  fill.style.transition = 'none'; fill.style.width = pct + '%'; void fill.offsetWidth;
+  fill.style.transition = `width ${remainMs}ms linear`; fill.style.width = '0%';
+  clearInterval(G.ansTimer);
+  G.ansTimer = setInterval(() => {
+    const left = G.ansEndsAt - Date.now();
+    fill.className = 'timer-fill' + (left <= remainMs * .12 ? ' danger' : left <= remainMs * .25 ? ' warn' : '');
+    updateHud('ansHudLeft', 'ansHudRight');
+    if(left <= 0){ stopAnswerClock(); submitAnswer(true); }
+  }, 100);
+}
+
+function backToMenu(){
+  stopAnswerClock(); clearInterval(G.memTimer);
+  $('memRivals').hidden = true; $('ansRivals').hidden = true;
+  showScreen('screen-menu'); updateBest();
+}
+
+/* =====================================================================
+   LEADERBOARD  —  /leaderboard/memomath/{playerId}
+   ---------------------------------------------------------------------
+   One slot per player, holding their BEST run; a lower score never
+   overwrites a higher one. Mirrors Cart Recall's model exactly, including
+   its two honest limits:
+   - playerId lives in localStorage, so this is one slot per BROWSER, not
+     per human. It is a leaderboard, not an auth system.
+   - The proof makes cheating expensive, not impossible. It verifies a
+     score RANGE, because elapsed time (and so the speed bonus) is not
+     recorded. Closing that needs server-side timing.
+   ===================================================================== */
+const LB_GAME = 'memomath';
+const LB_PROOF_V = 1;      // bump whenever generateRound or scoring changes —
+                           // older proofs can no longer be replayed against new rules
+const lbApi = p => `${HUB_DB}/${p}.json`;
+
+function playerId(){
+  let id = store.get('memomathPid');
+  if(!id){ id = 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); store.set('memomathPid', id); }
+  return id;
+}
+const playerName = () => store.get('memomathName') || '';
+
+/* Moves are "round:answer" pairs — compact and free of encoding surprises. */
+function buildProof(){ return G.moves.map(([r, ans]) => r + ':' + ans).join(','); }
+
+async function lbFetchAll(){
+  try{
+    const r = await fetch(lbApi('leaderboard/' + LB_GAME));
+    if(!r.ok) return {};
+    const d = await r.json();
+    return (d && typeof d === 'object' && !d.error) ? d : {};
+  }catch(e){ return {}; }
+}
+function lbRank(all, score){
+  const better = Object.values(all).filter(e => e && Number(e.score) > score).length;
+  return { rank: better + 1, total: Object.keys(all).length };
+}
+async function lbSubmit(name){
+  const entry = {
+    name: String(name).slice(0, 20),
+    score: G.score,
+    rounds: G.correctCount,
+    at: Date.now(),
+    v: LB_PROOF_V,
+    seed: G.seed,
+    moves: buildProof()
+  };
+  try{
+    const r = await fetch(lbApi('leaderboard/' + LB_GAME + '/' + playerId()),
+                          { method:'PUT', body: JSON.stringify(entry) });
+    return r.ok;
+  }catch(e){ return false; }
+}
+
+/* Run finished → find where it sits, ask for a name the first time, and submit
+   only if it beats this player's own best. Races are never ranked: placement
+   bonuses and opponent count make race scores non-comparable. */
+async function handleLeaderboard(){
+  const line = $('lbLine'), share = $('btnShare');
+  share.hidden = true;
+  if(G.mode !== 'solo'){ $('lbPanel').hidden = true; return; }
+  $('lbPanel').hidden = false;
+  line.textContent = 'Checking the leaderboard…';
+
+  const all = await lbFetchAll();
+  const mine = all[playerId()];
+  const prevBest = mine ? Number(mine.score) || 0 : 0;
+
+  if(G.score <= prevBest){
+    const { rank, total } = lbRank(all, prevBest);
+    line.innerHTML = `Your best is still <b style="color:var(--accent)">${prevBest}</b> — #${rank} of ${total}.`;
+    showShare(prevBest, rank);
+    return;
+  }
+
+  let name = playerName();
+  if(!name){
+    const entered = await askName();
+    if(entered === null){          // declined — the score simply isn't submitted
+      line.textContent = 'Not submitted. Play again to join the board.';
+      showShare(G.score, null);
+      return;
+    }
+    name = entered; store.set('memomathName', name);
+  }
+
+  line.textContent = 'Submitting…';
+  const ok = await lbSubmit(name);
+  if(!ok){
+    line.textContent = 'Could not reach the leaderboard — your score is safe locally.';
+    showShare(G.score, null);
+    return;
+  }
+  const after = await lbFetchAll();
+  const { rank, total } = lbRank(after, G.score);
+  line.innerHTML = prevBest
+    ? `New personal best — you're <b style="color:var(--accent)">#${rank}</b> of ${total}.`
+    : `You're on the board at <b style="color:var(--accent)">#${rank}</b> of ${total}.`;
+  showShare(G.score, rank);
+}
+
+/* Name prompt — a modal, not window.prompt(), for the §15 reason. */
+function askName(){
+  return new Promise(resolve => {
+    const ov = $('nameOverlay'), input = $('inLbName');
+    input.value = playerName();
+    ov.classList.add('active');
+    setTimeout(() => input.focus(), 50);
+    const done = v => {
+      ov.classList.remove('active');
+      $('btnNameOk').onclick = null; $('btnNameSkip').onclick = null; input.onkeydown = null;
+      resolve(v);
+    };
+    const ok = () => { const n = input.value.trim(); if(n) done(n); };
+    $('btnNameOk').onclick = ok;
+    $('btnNameSkip').onclick = () => done(null);
+    input.onkeydown = e => { if(e.key === 'Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ----------
+   navigator.share and the clipboard BOTH need a secure context, and
+   navigator.share is largely mobile-only, so on desktop and on file:// neither
+   exists. The manual copy sheet is the guaranteed fallback. */
+const SHARE_HOME = 'https://kenmemorize.com/';   // adjust once the real domain is live
+function shareUrl(){
+  if(location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
+  return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');
+}
+function showShare(score, rank){
+  const b = $('btnShare');
+  b.hidden = false;
+  b.onclick = () => shareScore(score, rank);
+}
+async function shareScore(score, rank){
+  const text = `I scored ${score} on MemoMath${rank ? ` — #${rank} on the board` : ''}. ${shareUrl()}`;
+  try{
+    if(navigator.share){ await navigator.share({ title:'MemoMath', text }); return; }
+  }catch(e){ if(e && e.name === 'AbortError') return; }   // user dismissed — not a failure
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      $('lbLine').innerHTML += ' <span style="color:var(--correct)">Copied.</span>';
+      return;
+    }
+  }catch(e){}
+  $('shareText').value = text;                 // tier 3 — always works
+  $('shareOverlay').classList.add('active');
+}
+$('btnShareClose').addEventListener('click', () => $('shareOverlay').classList.remove('active'));
+
+/* =====================================================================
+   ONLINE RACE  —  /rooms/{code}
+   ---------------------------------------------------------------------
+   Ported from Cart Recall, which already had this layer debugged. Same
+   database, same /rooms path — that rule already exists, so no rules change
+   is needed for online play (unlike /leaderboard/memomath, see CLAUDE.md).
+
+   The one thing that makes this fair: the host deals a SEED per round, and
+   every phone calls generateRound(seed) on it. Nobody transmits digits, and
+   all four boards are byte-identical.
+
+   Deliberate difference from solo: a wrong round scores 0 but does NOT end
+   your race. One miss ending it would empty a 4-player race by round 2.
+   ===================================================================== */
+const api = p => `${HUB_DB}/${p}.json`;
+const net = {
+  get:  p     => fetch(api(p)).then(r => r.json()),
+  put:  (p,v) => fetch(api(p), {method:'PUT',   body:JSON.stringify(v)}),
+  patch:(p,v) => fetch(api(p), {method:'PATCH', body:JSON.stringify(v)}),
+  del:  p     => fetch(api(p), {method:'DELETE'})
+};
+const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+/* Live subscription: keeps a local mirror, calls back on every change. */
+function subscribe(path, onChange, onError){
+  let mirror = null;
+  const es = new EventSource(api(path));
+  const walk = (obj, segs) => {
+    let o = obj;
+    for(let i = 0; i < segs.length - 1; i++){ o[segs[i]] ??= {}; o = o[segs[i]]; }
+    return o;
+  };
+  const applyPut = (p, d) => {
+    if(p === '/'){ mirror = d; return; }
+    const segs = p.split('/').filter(Boolean);
+    const parent = walk(mirror ??= {}, segs);
+    const key = segs[segs.length - 1];
+    if(d === null) delete parent[key]; else parent[key] = d;
+  };
+  es.addEventListener('put', e => { const m = JSON.parse(e.data); applyPut(m.path, m.data); onChange(mirror); });
+  es.addEventListener('patch', e => {
+    const m = JSON.parse(e.data);
+    const base = m.path === '/' ? '' : m.path;
+    for(const k in m.data) applyPut((base + '/' + k).replace('//','/'), m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error', () => onError && onError());
+  return es;
+}
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I/O — they read as 1/0 on a phone
+const newCode = () => Array.from({length:4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
+const newPid  = () => 'p' + Math.random().toString(36).slice(2,9);
+const PLACE_BONUS = [200, 120, 60];
+const P = () => (M.room && M.room.players) || {};
+const meNode = () => P()[M.pid] || {};
+const freshPlayer = name => ({ name, score:0, bonus:0, done:false, correct:false, finishedAt:0, hb:Date.now() });
+
+function raceErr(msg){ $('roomErr').textContent = msg || ''; }
+
+async function createRoom(){
+  const name = $('inName').value.trim();
+  if(!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name = name; M.pid = newPid(); M.isHost = true;
+  store.set('memomathName', name);
+  let code, tries = 0;
+  do { code = newCode(); } while(await net.get('rooms/' + code) && ++tries < 6);
+  M.code = code;
+  const ok = await net.put('rooms/' + code, {
+    host: M.pid, phase:'lobby', createdAt: Date.now(),
+    players: { [M.pid]: freshPlayer(name) }
+  }).catch(() => null);
+  if(!ok || !ok.ok) return raceErr('Could not reach the database. Online play needs a "rooms" rule.');
+  watchRoom();
+}
+
+async function joinRoom(){
+  const name = $('inName').value.trim();
+  const code = $('inCode').value.trim().toUpperCase();
+  if(!name) return raceErr('Type a name first.');
+  if(code.length !== 4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  const room = await net.get('rooms/' + code).catch(() => null);
+  if(!room) return raceErr('No room with that code.');
+  if(room.phase !== 'lobby') return raceErr('That race has already started.');
+  if(Object.keys(room.players || {}).length >= MAX_PLAYERS) return raceErr('That room is full.');
+  M.name = name; M.pid = newPid(); M.isHost = false; M.code = code;
+  store.set('memomathName', name);
+  await net.put(`rooms/${code}/players/${M.pid}`, freshPlayer(name));
+  watchRoom();
+}
+
+function watchRoom(){
+  raceErr('');
+  M.joined = true; M.lastKey = ''; M.refereedRound = 0; M.playReported = false;
+  G.mode = 'race';
+  M.es = subscribe('rooms/' + M.code, onRoom, () => raceErr('Connection dropped.'));
+  clearInterval(M.hb);
+  M.hb = setInterval(() => { if(M.joined) net.patch(`rooms/${M.code}/players/${M.pid}`, { hb: Date.now() }); }, 5000);
+  showScreen('screen-lobby');
+}
+
+function leaveRoom(){
+  if(M.code && M.pid) net.del(`rooms/${M.code}/players/${M.pid}`);
+  if(M.isHost && M.code) net.del('rooms/' + M.code);
+  M.es && M.es.close(); clearInterval(M.hb);
+  M.joined = false; M.code = null; M.room = null;
+  G.mode = 'solo';
+  backToMenu();
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if(!room){ if(M.joined){ raceErr('Room closed.'); leaveRoom(); } return; }
+  M.room = room;
+
+  if(room.phase === 'lobby'){ M.playReported = false; paintLobby(); return; }
+  if(room.phase === 'over'){ paintFinal(); return; }
+  if(room.phase === 'result'){ paintStandings(); if(M.isHost) hostReferee(); return; }
+
+  const key = room.phase + ':' + (room.round && room.round.n);
+  if(key !== M.lastKey && room.phase === 'playing' && room.round){
+    M.lastKey = key;
+    beginRaceRound(room.round);
+  }
+  paintRivals();
+  if(M.isHost) hostReferee();
+}
+
+function paintLobby(){
+  showScreen('screen-lobby');
+  $('lobbyCode').textContent = M.code;
+  const ps = Object.entries(P());
+  $('lobbyCount').textContent = `(${ps.length}/${MAX_PLAYERS})`;
+  $('lobbyList').innerHTML = ps.map(([id,p]) =>
+    `<div class="prow"><span>${esc(p.name)}</span>` +
+    `${id === M.room.host ? '<span class="badge">Host</span>' : ''}` +
+    `${id === M.pid && id !== M.room.host ? '<span class="badge">You</span>' : ''}</div>`).join('');
+  $('btnLaunch').hidden = !M.isHost;
+  $('btnLaunch').disabled = ps.length < 2;
+  $('lobbyWait').textContent = M.isHost
+    ? (ps.length < 2 ? 'Waiting for at least one more player…' : '')
+    : 'Waiting for the host to start…';
+}
+
+async function launchRace(){
+  if(Object.keys(P()).length < 2) return;
+  hostDealRound(1);
+}
+
+async function hostDealRound(n){
+  const reset = {};
+  for(const [id,p] of Object.entries(P()))
+    reset[id] = { ...p, done:false, correct:false, finishedAt:0 };
+  await net.patch(`rooms/${M.code}`, {
+    round: { n, seed: newSeed(), dealtAt: Date.now() },
+    players: reset,
+    phase: 'playing'
+  });
+}
+
+function beginRaceRound(round){
+  if(!M.playReported){ M.playReported = true; hubReportPlay(); }   // §12 — once per race, not per round
+  G.mode = 'race';
+  G.roundNo = round.n;
+  G.score = (meNode().score || 0) + (meNode().bonus || 0);
+  $('memRivals').hidden = false; $('ansRivals').hidden = false;
+  beginRound();     // reads round.seed from M.room — identical board on every phone
+}
+
+/* ---- push my state up ---- */
+function pushMe(correct){
+  if(G.mode !== 'race' || !M.code) return;
+  net.patch(`rooms/${M.code}/players/${M.pid}`, {
+    score: G.score - (meNode().bonus || 0),
+    correct: !!correct, done: true, finishedAt: Date.now(), hb: Date.now()
+  });
+}
+
+/* ---- host referees: placement bonuses, round end, race end ---- */
+async function hostReferee(){
+  const room = M.room;
+  if(room.phase !== 'playing' || !room.round) return;
+  const now = Date.now();
+  const entries = Object.entries(P());
+
+  /* drop anyone whose phone stopped reporting, so one dead client can't
+     stall the whole race */
+  for(const [id,p] of entries)
+    if(p.hb && now - p.hb > 25000 && !p.done)
+      await net.patch(`rooms/${M.code}/players/${id}`, { done:true, correct:false });
+
+  if(!entries.every(([,p]) => p.done)) return;
+  if(M.refereedRound === room.round.n) return;   // pay placements once per round
+  M.refereedRound = room.round.n;
+
+  /* Placement rewards being FIRST AND RIGHT — a wrong answer earns nothing. */
+  const finishers = entries.filter(([,p]) => p.correct && p.finishedAt)
+                           .sort((a,b) => a[1].finishedAt - b[1].finishedAt);
+  const patch = {};
+  finishers.forEach(([id,p], i) => { patch[id + '/bonus'] = (p.bonus || 0) + (PLACE_BONUS[i] || 0); });
+  if(Object.keys(patch).length) await net.patch(`rooms/${M.code}/players`, patch);
+
+  await net.patch(`rooms/${M.code}`,
+    { phase: room.round.n >= RACE_ROUNDS ? 'over' : 'result' });
+}
+
+function standings(){
+  return Object.entries(P())
+    .map(([id,p]) => ({ id, name:p.name, total:(p.score||0) + (p.bonus||0) }))
+    .sort((a,b) => b.total - a.total);
+}
+
+function paintStandings(){
+  showScreen('screen-standings');
+  const rows = standings();
+  $('standTitle').textContent = `Round ${M.room.round.n} of ${RACE_ROUNDS}`;
+  $('standList').innerHTML = rows.map((r,i) =>
+    `<div class="stat-line"><span><span class="rk">${i+1}</span>${esc(r.name)}${r.id === M.pid ? ' (you)' : ''}</span><b>${r.total}</b></div>`).join('');
+  $('btnNextRound').hidden = !M.isHost;
+  $('standWait').textContent = M.isHost ? '' : 'Waiting for the host…';
+}
+
+function paintFinal(){
+  const rows = standings();
+  const me = rows.find(r => r.id === M.pid);
+  const i = rows.indexOf(me);
+  showScreen('screen-summary');
+  $('lbPanel').hidden = true;                   // races are never ranked
+  $('sumTitle').innerHTML = i === 0 ? 'You <span class="m2">Won</span>' : 'Race <span class="m2">Over</span>';
+  $('sumScore').textContent = me ? me.total : 0;
+  $('sumScoreLabel').textContent = 'Final score';
+  $('sumBestFlag').style.display = 'none';
+  $('sumStats').innerHTML = '';
+  $('sumBestLine').innerHTML = rows.map((r,n) =>
+    `<div class="stat-line"><span><span class="rk">${n+1}</span>${esc(r.name)}</span><b>${r.total}</b></div>`).join('');
+  $('btnPlayAgain').textContent = 'Back to menu';   // behaviour comes from the
+  $('btnSumMenu').textContent   = 'Leave room';     // mode dispatch, not a rebind
+}
+
+/* ---- rivals strip ---- */
+function paintRivals(){
+  if(G.mode !== 'race') return;
+  const html = standings().map(r =>
+    `<span class="rival ${r.id === M.pid ? 'me' : ''} ${(P()[r.id]||{}).done ? 'done' : ''}">${esc(r.name)} <b>${r.total}</b></span>`).join('');
+  $('memRivals').innerHTML = html;
+  $('ansRivals').innerHTML = html;
+}
+
+/* ---- race wiring ---- */
+$('btnCreate').addEventListener('click', createRoom);
+$('btnJoin').addEventListener('click', joinRoom);
+$('btnLeave').addEventListener('click', leaveRoom);
+$('btnLaunch').addEventListener('click', launchRace);
+$('btnRoomsBack').addEventListener('click', () => showScreen('screen-menu'));
+$('btnNextRound').addEventListener('click', () => { if(M.isHost) hostDealRound(M.room.round.n + 1); });
+$('inCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+
+/* =====================================================================
+   REPLAY-PROOF EXPORT — admin.html's verifier loads this file in a hidden
+   iframe and calls window.MemoMath, so verification always runs the game's
+   REAL logic rather than a copy that can drift. Do not delete this.
+   ===================================================================== */
+window.MemoMath = {
+  PROOF_V: LB_PROOF_V,
+  DIGITS, OPS, RAMP, SCORE, RACE_ROUNDS,
+  generateRound, roundSeedFor, roundPoints, roundPointsRange, speedBonus,
+  memTimeFor, ansTimeFor,
+  /* Replay a submitted proof and report whether the claimed score is possible.
+     Returns { ok, reason, rounds, minScore, maxScore }. */
+  verify(seed, movesStr, claimedScore){
+    const moves = String(movesStr || '').split(',').filter(Boolean).map(s => {
+      const i = s.indexOf(':');
+      return [parseInt(s.slice(0, i), 10), s.slice(i + 1)];
+    });
+    if(!moves.length) return { ok:false, reason:'No moves recorded', rounds:0, minScore:0, maxScore:0 };
+
+    let minScore = 0, maxScore = 0, cleared = 0;
+    for(let i = 0; i < moves.length; i++){
+      const [roundNo, entered] = moves[i];
+      if(roundNo !== i + 1) return { ok:false, reason:`Round ${i+1} is out of sequence`, rounds:cleared, minScore, maxScore };
+      const round = generateRound(roundSeedFor(seed | 0, roundNo));
+      const correct = entered === round.answer;
+      if(correct){
+        const r = roundPointsRange(roundNo);
+        minScore += r.min; maxScore += r.max; cleared++;
+      }else if(i !== moves.length - 1){
+        /* A solo run ends on the FIRST wrong round, so a miss anywhere but the
+           last entry means the move log was fabricated. */
+        return { ok:false, reason:`Wrong answer at round ${roundNo} but the run continued`, rounds:cleared, minScore, maxScore };
+      }
+    }
+    const ok = claimedScore >= minScore && claimedScore <= maxScore;
+    return {
+      ok, rounds: cleared, minScore, maxScore,
+      reason: ok ? 'Score is within the replayable range'
+                 : `Claimed ${claimedScore}, but this run can only score ${minScore}–${maxScore}`
+    };
+  }
+};
 
 /* init */
 updateBest();
