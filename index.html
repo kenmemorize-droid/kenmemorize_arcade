@@ -296,7 +296,10 @@ const CATEGORIES = [
    so every url is "games/<file>.html". No "../" anywhere.
    ========================================================= */
 const BUILTIN_GAMES = [
-  { id:"tidal-recall",     name:"Tidal Recall",       skill:"visual",   blurb:"Working-memory game — spot the new item washed in by the tide. Classic, Zen, and pass-and-play PvP.", url:"games/tidal_recall.html",       icon:"🌊" },
+  /* Renamed to Tidal Drift 2026-08-27. The id stays "tidal-recall" on purpose —
+     it is the Firebase key for the play count and the /games overlay, and
+     changing it would orphan both. The id is never shown to players. */
+  { id:"tidal-recall",     name:"Tidal Drift",        skill:"visual",   blurb:"Every wave scatters the shore — spot the treasure you haven't seen before, in a ranked solo run or a 5-wave online race",  url:"games/tidal_recall.html",       icon:"🌊" },
   { id:"hue-recall",       name:"Hue Recall",         skill:"visual",   blurb:"Recall mixed brand-logo colours; scored on colour distance. Solo, Endless, Practice, and PvP.",       url:"games/hue-recall.html",         icon:"🎨" },
   { id:"ring-match",       name:"Ring Match",         skill:"spatial",   blurb:"Colour-matching slider puzzle with Zen and PvP race modes.",                                          url:"games/ring-match.html",         icon:"🎯" },
   { id:"overlap-pictures", name:"Overlapping Pictures", skill:"visual", blurb:"Competition-format memory-sports trainer with a 300-icon pool.",                                     url:"games/overlapping-picture-memory-game.html", icon:"🖼️" },
@@ -410,12 +413,16 @@ const FEATURED = "cart-recall";     // the default selection, not the only board
 const LB_TOP = 10;
 
 /* Every game that writes to /leaderboard/{id}. Order here = chip order. */
-const RANKED = ["cart-recall", "memomath"];
+const RANKED = ["cart-recall", "memomath", "tidal-recall"];
 
 /* Each game keeps its own player id under its own localStorage key. Same
    origin, so the hub can read it and highlight the visitor's own row —
    there is no shared identity across games. */
-const PID_KEYS = { "cart-recall":"cartRecallPid", "memomath":"memomathPid" };
+const PID_KEYS = {
+  "cart-recall":  "cartRecallPid",
+  "memomath":     "memomathPid",
+  "tidal-recall": "tidalDriftPid"   // key follows the NEW name; the id does not
+};
 
 let SELECTED = FEATURED;
 let BOARDS = {};
