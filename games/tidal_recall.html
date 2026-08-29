@@ -4,7 +4,7 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
      crossorigin="anonymous"></script>
 <meta charset="UTF-8">
-<title>Tidal Recall</title>
+<title>Tidal Drift</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <style>
 /* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
@@ -42,7 +42,8 @@ body{
 /* §5 — the menu/settings screen reads at the shared 720px max-width; the
    board, summaries and leaderboard keep this game's narrower 520px shell. */
 .app{width:100%; max-width:720px; position:relative;}
-#screen-countdown, #screen-play, #screen-round, #screen-final, #screen-lb{
+#screen-countdown, #screen-play, #screen-final,
+#screen-rooms, #screen-lobby, #screen-standings{
   max-width:520px; margin:0 auto;}
 .screen{display:none;}
 .screen.active{display:block; animation:fadeIn .3s ease;}
@@ -96,10 +97,14 @@ h1{text-align:center; margin:2px 0 2px; font-size:28px; letter-spacing:1px; font
 .field label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:600;}
 .hint{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.45;}
 
-input[type=text]{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
-  background:var(--tile2); color:var(--text); font-size:14px;
-  font-family:'Consolas','Courier New',monospace; letter-spacing:.06em;}
-input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px;}
+/* font-size 16px is deliberate: iOS Safari ZOOMS the whole page when a focused
+   input is under 16px, which then leaves the layout scrolled sideways — exactly
+   the horizontal scrolling we are trying to avoid. min-height meets the 44px
+   touch floor. */
+input[type=text], textarea{width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px;
+  border:1px solid var(--line); background:var(--tile2); color:var(--text); font-size:16px;
+  min-height:46px; font-family:'Consolas','Courier New',monospace; letter-spacing:.06em;}
+input[type=text]:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
 
 .big-btn{display:block; width:100%; margin-top:12px; padding:15px; border-radius:14px; border:none;
   background:linear-gradient(135deg,var(--accent),var(--accent2)); color:var(--on-accent); font-size:16px;
@@ -107,9 +112,11 @@ input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px;}
   font-family:inherit; transition:filter .15s, transform .1s;}
 .big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
 .big-btn:active{transform:translateY(1px);}
+/* min-height 44px: the Apple HIG / WCAG 2.5.5 touch-target floor. Audited
+   2026-08-27 — these were rendering at 40px on a 375px phone. */
 .ghost-btn{padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:var(--tile2);
   color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; font-weight:600;
-  transition:border-color .15s, color .15s;}
+  min-height:46px; transition:border-color .15s, color .15s;}
 .ghost-btn:hover{border-color:var(--accent); color:var(--accent);}
 .ghost-btn.danger-btn:hover{border-color:var(--wrong); color:var(--wrong);}
 .danger-btn{border-color:var(--wrong); color:var(--wrong);}
@@ -199,6 +206,32 @@ table.lb tr:last-child td{border-bottom:none;}
 table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800;}
 .empty{color:var(--muted); font-size:13px; text-align:center; padding:14px 0;}
 
+/* ---- Menu scoring readout ---- */
+.stat-line{display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  font-size:13px; color:var(--muted); padding:5px 0;}
+.stat-line + .stat-line{border-top:1px solid var(--line);}
+.stat-line b{color:var(--text); font-family:'Consolas','Courier New',monospace; font-size:13px; text-align:right;}
+
+/* ---- Online: room code, player list, rivals ---- */
+.codein{font-family:'Consolas','Courier New',monospace; font-size:26px; letter-spacing:10px;
+  text-transform:uppercase; text-align:center; padding-left:24px;}
+.codebox{text-align:center; margin-bottom:18px;}
+.codebox .big{font-family:'Consolas','Courier New',monospace; font-size:44px; font-weight:900;
+  letter-spacing:12px; color:var(--accent); padding-left:12px;}
+.codebox small{display:block; color:var(--muted); font-size:11px; letter-spacing:1px; text-transform:uppercase;}
+.plist{display:flex; flex-direction:column; gap:8px;}
+.prow{display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:12px; padding:10px 14px; font-size:14px;}
+.prow .badge{margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:1px;
+  color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:2px 8px;}
+.rk{display:inline-block; min-width:1.7em; color:var(--muted);
+  font-family:'Consolas','Courier New',monospace; font-weight:800;}
+.rival{background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  padding:5px 12px; font-size:12px; color:var(--muted); white-space:nowrap;}
+.rival b{color:var(--text); font-family:'Consolas','Courier New',monospace;}
+.rival.done{border-color:var(--correct); color:var(--correct);}
+.rival.me{border-color:var(--accent);}
+
 .modal-bg{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center;
   justify-content:center; z-index:80; padding:20px;}
 .modal-bg.show{display:flex; animation:fadeIn .2s ease;}
@@ -257,7 +290,7 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
 <section id="screen-home" class="screen active">
   <div class="logo">
     <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 7c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2"/><path d="M2 12c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2"/><path d="M2 17c2.2 0 2.2 2 4.4 2s2.2-2 4.4-2 2.2 2 4.4 2 2.2-2 4.4-2"/></svg></span>
-    <h1>TIDAL RECALL</h1>
+    <h1>TIDAL DRIFT</h1>
     <p class="subtitle">Every wave scatters the shore. Find the treasure you haven't seen before</p>
   </div>
 
@@ -265,70 +298,76 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
     <div class="howto-title">How to Play</div>
     <p>The tide drops <b>two treasures</b> on the grid. Tap either one to begin.</p>
     <p>The shore washes blank and everything reappears <b>in new positions</b> — plus <b>one treasure you have never seen</b>. Tap that new one. Position tells you nothing, so you have to remember the treasures themselves.</p>
-    <p>Tap something you have already seen and it costs a life; the one you missed is revealed in green.</p>
-    <p>The grid and the pile grow every wave, later beaches add <b>mirrored and re-tinted lookalikes</b>, and surviving a full beach banks a bonus of <b>finds × 100</b>.</p>
+    <p>Tap something you have already seen and it costs a life. <b>Three lives and the run is over.</b></p>
+    <p>The pile grows every wave and the shore mixes in <b>mirrored and re-tinted lookalikes</b>, so it gets harder the longer you last.</p>
   </div>
 
   <div class="panel">
-    <div class="section-title">Mode</div>
-    <div class="pill-group" id="modePills">
-      <button class="pill active" data-mode="classic">Classic</button>
-      <button class="pill" data-mode="zen">Zen</button>
-      <button class="pill" data-mode="pvp">Pass &amp; Play</button>
-    </div>
-    <p class="hint" id="modeHint">Three beaches on a growing grid. Run out of lives and you wash on to the next.</p>
+    <div class="section-title">Scoring</div>
+    <div class="stat-line"><span>Each correct find</span><b>100</b></div>
+    <div class="stat-line"><span>Consecutive finds</span><b>+25 each, up to +200</b></div>
+    <div class="stat-line"><span>Race placement (1st/2nd/3rd)</span><b>200 / 120 / 60</b></div>
+    <div class="stat-line"><span>A wrong tap</span><b>costs a life</b></div>
   </div>
 
-  <div class="panel" id="settingsPanel">
-    <div class="section-title">Settings</div>
+  <button class="big-btn" id="btnSolo">SOLO RUN</button>
+  <button class="ghost-btn" id="btnOnline" style="width:100%; margin-top:10px;">Online &middot; up to 4 players</button>
 
-    <div class="field" id="livesField">
-      <label>Lives per beach</label>
-      <div class="pill-group" id="livesPills">
-        <button class="pill" data-lives="1">1 · Purist</button>
-        <button class="pill active" data-lives="2">2 · Standard</button>
-        <button class="pill" data-lives="3">3 · Relaxed</button>
-      </div>
-    </div>
-
-    <div class="field">
-      <label>Scoring</label>
-      <div class="pill-group" id="scorePills">
-        <button class="pill active" data-scoring="flat">Flat 100</button>
-        <button class="pill" data-scoring="streak">Streak bonus</button>
-      </div>
-    </div>
-
-    <div class="field" id="poolField" style="display:none;">
-      <label>PvP shore</label>
-      <div class="pill-group" id="poolPills">
-        <button class="pill active" data-pool="shared">Shared shore</button>
-        <button class="pill" data-pool="own">Own shore</button>
-      </div>
-      <p class="hint" id="poolHint">Shared: one shore keeps growing between you, so you must remember what your opponents saw too.</p>
-    </div>
-
-    <div class="field" id="playersField" style="display:none;">
-      <label>Players</label>
-      <div class="pill-group" id="playerCountPills">
-        <button class="pill active" data-pc="2">2</button>
-        <button class="pill" data-pc="3">3</button>
-        <button class="pill" data-pc="4">4</button>
-      </div>
-      <div id="nameInputs" style="margin-top:8px;"></div>
-    </div>
-
-    <div class="field">
-      <label>Challenge code <span style="opacity:.6">(optional — same code, same shore)</span></label>
-      <input type="text" id="seedInput" placeholder="Leave blank for random" maxlength="12" autocomplete="off">
-    </div>
+  <div class="panel" id="bestPanel" style="display:none; margin-top:18px;">
+    <div class="section-title">Best solo run</div>
+    <div id="bestText" style="text-align:center; font-size:15px;"></div>
   </div>
+</section>
 
-  <button class="big-btn" id="startBtn">START</button>
-
-  <div class="btn-row">
-    <button class="ghost-btn" id="lbBtn">🏆 Leaderboard</button>
+<!-- ================= ROOM SETUP (Online) ================= -->
+<section id="screen-rooms" class="screen">
+  <div class="logo"><h1 style="font-size:24px;">RACE</h1>
+    <p class="subtitle">Same shore &middot; Same second &middot; Own device</p></div>
+  <div class="panel">
+    <div class="section-title">Your name</div>
+    <input type="text" id="inName" maxlength="12" placeholder="Tap to type" autocomplete="off">
   </div>
+  <div class="panel">
+    <div class="section-title">Start a new room</div>
+    <button class="big-btn" id="btnCreate" style="margin-top:4px;">Create room</button>
+  </div>
+  <div class="panel">
+    <div class="section-title">Join a room</div>
+    <input type="text" id="inCode" class="codein" maxlength="4" placeholder="CODE" autocomplete="off">
+    <button class="ghost-btn" id="btnJoin" style="width:100%; margin-top:10px;">Join</button>
+  </div>
+  <p class="hint" id="roomErr" style="text-align:center; min-height:18px;"></p>
+  <button class="ghost-btn" id="btnRoomsBack" style="width:100%;">Back</button>
+</section>
+
+<!-- ================= LOBBY ================= -->
+<section id="screen-lobby" class="screen">
+  <div class="codebox">
+    <div class="big" id="lobbyCode">----</div>
+    <small>Room code &mdash; share it</small>
+  </div>
+  <div class="panel">
+    <div class="section-title">Players <span id="lobbyCount"></span></div>
+    <div class="plist" id="lobbyList"></div>
+  </div>
+  <div class="panel">
+    <div class="section-title">Format</div>
+    <p class="hint" style="text-align:center;">
+      <b>5 waves</b> on your own shore. Everyone's shore is built from the
+      identical seed, so the difficulty is the same for all players.
+    </p>
+  </div>
+  <button class="big-btn" id="btnLaunch">START THE RACE</button>
+  <p class="hint" id="lobbyWait" style="text-align:center;"></p>
+  <button class="ghost-btn" id="btnLeave" style="width:100%;">Leave room</button>
+</section>
+
+<!-- ================= RACE STANDINGS ================= -->
+<section id="screen-standings" class="screen">
+  <h1 id="standTitle" style="font-size:22px;">Wave standings</h1>
+  <div class="panel"><div id="standList"></div></div>
+  <button class="big-btn" id="btnNextWave">NEXT WAVE</button>
+  <p class="hint" id="standWait" style="text-align:center;"></p>
 </section>
 
 <!-- ================= COUNTDOWN ================= -->
@@ -360,21 +399,8 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
   <div class="board" id="board"></div>
 </section>
 
-<!-- ================= ROUND SUMMARY ================= -->
-<section id="screen-round" class="screen">
-  <div class="panel">
-    <div class="banner" id="roundBanner">Beach 1 complete</div>
-    <div class="big-num" id="roundItems">0</div>
-    <div class="big-label">Treasures found</div>
-    <div class="sum-rows" id="roundRows"></div>
-  </div>
-  <div class="panel">
-    <div class="section-title">Everything that washed ashore</div>
-    <div class="mini-board" id="roundBoard"></div>
-    <p class="hint" id="roundNote"></p>
-  </div>
-  <button class="big-btn" id="nextBeachBtn">NEXT BEACH</button>
-</section>
+<!-- The per-beach ROUND SUMMARY screen was removed with the beaches: a solo run
+     is one continuous shore, and a race reports through screen-standings. -->
 
 <!-- ================= FINAL ================= -->
 <section id="screen-final" class="screen">
@@ -384,29 +410,45 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
     <div class="big-label" id="finalScoreLabel">Final score</div>
     <div class="sum-rows" id="finalRows"></div>
   </div>
+
+  <!-- Global leaderboard outcome. Async — never blocks this screen. -->
+  <div class="panel" id="lbPanel">
+    <div class="section-title">Leaderboard</div>
+    <p class="hint" id="lbLine" style="text-align:center;">Checking the leaderboard…</p>
+    <button class="ghost-btn" id="btnShare" style="width:100%; margin-top:10px;" hidden>Share your score</button>
+  </div>
+
   <button class="big-btn" id="playAgainBtn">PLAY AGAIN</button>
   <div class="btn-row">
     <button class="ghost-btn" id="homeBtn">Home</button>
-    <button class="ghost-btn" id="shareBtn">Copy challenge code</button>
   </div>
 </section>
 
-<!-- ================= LEADERBOARD ================= -->
-<section id="screen-lb" class="screen">
-  <h1 style="font-size:22px;">LEADERBOARD</h1>
-  <div class="panel">
-    <div class="pill-group" id="lbPills">
-      <button class="pill active" data-lb="classic">Classic</button>
-      <button class="pill" data-lb="zen">Zen</button>
-      <button class="pill" data-lb="pvp">Pass &amp; Play</button>
+<!-- NAME PROMPT — a modal, never window.prompt() (§15) -->
+<div class="modal-bg" id="nameBg">
+  <div class="modal">
+    <h3>You made the leaderboard</h3>
+    <p>Pick a name to show. It stays on this device.</p>
+    <input type="text" id="inLbName" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="ghost-btn" id="btnNameSkip">Not now</button>
+      <button class="big-btn" id="btnNameOk" style="flex:1;">Submit</button>
     </div>
-    <div id="lbBody" style="margin-top:14px;"></div>
   </div>
-  <div class="btn-row">
-    <button class="ghost-btn" id="lbBackBtn">Back</button>
-    <button class="ghost-btn danger-btn" id="lbClearBtn">Clear</button>
+</div>
+
+<!-- MANUAL SHARE SHEET — tier 3; navigator.share and the clipboard both need a
+     secure context, so neither exists on file:// or plain http -->
+<div class="modal-bg" id="shareBg">
+  <div class="modal">
+    <h3>Share your score</h3>
+    <p>Copy this and paste it anywhere.</p>
+    <textarea id="shareText" rows="4" readonly style="width:100%; resize:none;"></textarea>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="ghost-btn" id="btnShareClose">Close</button>
+    </div>
   </div>
-</section>
+</div>
 
 </div>
 
@@ -422,7 +464,7 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
 </div>
 <div id="toast"></div>
 <script>
-/* ============ Tidal Recall — engine (wave / scatter model) ============ */
+/* ============ Tidal Drift — engine (wave / scatter model) ============ */
 (function(){
 'use strict';
 
@@ -509,14 +551,28 @@ function iconMarkup(key){
 /* ---------- Config ----------
    Each wave adds exactly one never-before-seen treasure. Wave 1 drops two.
    Board size after wave n = n + 1 items, scattered in a grid×grid field.      */
-var BEACHES = [
-  {name:'Beach 1', tier:1, target:10, grid:4},
-  {name:'Beach 2', tier:2, target:15, grid:5},
-  {name:'Beach 3', tier:3, target:20, grid:6}
-];
-var ZEN_CFG = {name:'Endless Shore',   tier:3, target:30, grid:7};
-var PVP_CFG = {name:'Contested Shore', tier:2, target:16, grid:6};
+/* ONE fixed solo format (2026-08-27). The Classic / Zen / Pass & Play selector
+   and the lives, scoring, shore and challenge-code pickers were all removed so
+   every ranked run is played under identical conditions — the same reasoning
+   that took the glance-time picker off Cart Recall and the difficulty selector
+   off MemoMath. A user-supplied seed in particular had to go: it would let a
+   player farm an easy shore and submit it.
+
+   Solo is ENDLESS. target:48 is the ceiling a 7×7 field allows (48 treasures
+   plus the new one = 49 cells), not a finish line — three lives end the run
+   long before that. By wave 20 there are 21 treasures on screen and exactly
+   one of them is new. */
+var SOLO_CFG   = {name:'Open Shore',      tier:3, target:48, grid:7};
+var RACE_CFG   = {name:'Contested Shore', tier:3, target:5,  grid:5};
+var SOLO_LIVES = 3;
+var RACE_WAVES = 5;
+var MAX_PLAYERS = 4;
 var TURN_SECONDS = 30;
+
+/* Streak scoring is the only rule now: 100 per find, +25 for each consecutive
+   find, capped at +200. Kept as constants so the verifier can reuse them. */
+var SCORE_BASE = 100, SCORE_STEP = 25, SCORE_STEP_CAP = 8;
+function findPoints(streak){ return SCORE_BASE + SCORE_STEP * Math.min(streak - 1, SCORE_STEP_CAP); }
 
 /* ---------- Board model ---------- */
 var tileSeq = 0, boardSeq = 0;
@@ -563,7 +619,7 @@ function markAllSeen(b){
 }
 
 /* Returns {ok, key, gain, newKeys} or null */
-function pickTile(b, tileId, scoring){
+function pickTile(b, tileId){
   if (b.resolved) return null;
   var t = null;
   for (var i=0;i<b.display.length;i++) if (b.display[i].id === tileId){ t = b.display[i]; break; }
@@ -573,7 +629,7 @@ function pickTile(b, tileId, scoring){
   if (isNew){
     b.correct++; b.streak++;
     if (b.streak > b.bestStreak) b.bestStreak = b.streak;
-    gain = scoring === 'streak' ? 100 + 25*Math.min(b.streak-1, 8) : 100;
+    gain = findPoints(b.streak);   // streak scoring is the only rule now
   } else {
     b.mistakes++; b.streak = 0; b.wrongKeys[t.key] = 1;
   }
@@ -595,32 +651,13 @@ function boardFits(cfg){
 }
 
 /* ---------- Persistence ---------- */
-var LB_KEY = 'tidalrecall_lb_v2', THEME_KEY = 'tidalrecall_theme';
-function loadLB(){
-  try { return JSON.parse(localStorage.getItem(LB_KEY)) || {classic:[],zen:[],pvp:[]}; }
-  catch(e){ return {classic:[],zen:[],pvp:[]}; }
-}
-function saveLB(lb){ try { localStorage.setItem(LB_KEY, JSON.stringify(lb)); } catch(e){} }
-function addScore(mode, entry){
-  var lb = loadLB();
-  if (!lb[mode]) lb[mode] = [];
-  lb[mode].push(entry);
-  lb[mode].sort(function(a,b){ return b.score - a.score; });
-  lb[mode] = lb[mode].slice(0, 10);
-  saveLB(lb);
-  return lb[mode].indexOf(entry) + 1;
-}
-function rankRows(list){
-  var out = [], lastScore = null, lastRank = 0;
-  for (var i=0;i<list.length;i++){
-    var r = (list[i].score === lastScore) ? lastRank : i+1;
-    lastScore = list[i].score; lastRank = r;
-    out.push({rank:r, e:list[i]});
-  }
-  return out;
-}
+/* THEME_KEY deliberately keeps its old `tidalrecall_` prefix even though the
+   game is now Tidal Drift — renaming it would silently reset every existing
+   player's light/dark choice. */
+var THEME_KEY = 'tidalrecall_theme';
+/* loadLB/saveLB/addScore/rankRows were removed with the per-device
+   leaderboard screen — the global board replaces them. */
 
-/* ---------- DOM helpers ---------- */
 function $(id){ return document.getElementById(id); }
 function show(id){
   var s = document.querySelectorAll('.screen');
@@ -632,16 +669,7 @@ function toast(msg){
   var t = $('toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 1700);
 }
-function bindPills(containerId, attr, cb){
-  var c = $(containerId);
-  c.addEventListener('click', function(e){
-    var b = e.target.closest('.pill'); if (!b) return;
-    var ps = c.querySelectorAll('.pill');
-    for (var i=0;i<ps.length;i++) ps[i].classList.remove('active');
-    b.classList.add('active');
-    cb(b.getAttribute(attr), b);
-  });
-}
+/* bindPills() was removed with the last pill group — the menu is two buttons. */
 function hearts(n){
   if (!isFinite(n)) return '∞';
   n = Math.max(0, Math.min(6, Math.floor(n)));
@@ -653,53 +681,44 @@ function escapeHtml(s){
   });
 }
 
-/* ---------- Settings ---------- */
-var S = { mode:'classic', lives:2, scoring:'flat', pool:'shared', playerCount:2, names:[] };
-var MODE_HINTS = {
-  classic:'Three beaches on a growing grid. Run out of lives and you wash on to the next.',
-  zen:'One long shore, no lives, no game over. Misses are noted but never end the run.',
-  pvp:'Take turns on one device. Each player has their own lives — last one standing (or highest score) wins.'
-};
-
-/* ---------- Game state ---------- */
+/* ---------- Game state ----------
+   mode: 'solo' — ranked, endless, three lives (§13 "Solo")
+         'race' — Online, fixed 5 waves, up to 4 players on their own shores */
 var G = null;
 
-function buildPlayerInputs(){
-  var box = $('nameInputs'); box.innerHTML = '';
-  for (var i=0;i<S.playerCount;i++){
-    var inp = document.createElement('input');
-    inp.type = 'text'; inp.maxLength = 12; inp.autocomplete = 'off';
-    inp.placeholder = 'Player ' + (i+1);
-    inp.value = S.names[i] || '';
-    (function(idx, el){ el.addEventListener('input', function(){ S.names[idx] = el.value; }); })(i, inp);
-    box.appendChild(inp);
-  }
+/* Online race state, kept separate from G the way Cart Recall separates S/M —
+   they answer different questions (my run vs. the shared room). */
+var M = { code:null, pid:null, name:'', isHost:false, joined:false,
+          room:null, es:null, hb:null, lastKey:'', refereedWave:0, playReported:false };
+
+/* A ranked solo run. Every run gets a FRESH random seed — players never share
+   a shore — but the run stays fully reproducible from that one code. */
+function startSolo(){
+  hubReportPlay();          // §12 — count this play on the hub
+  var code = randomSeedCode();
+  G = { mode:'solo', code:code, rng:mulberry32(hashSeed(code)),
+        totalScore:0, totalCorrect:0, totalMistakes:0, bestStreak:0,
+        lives:SOLO_LIVES, moves:[], players:[], current:0, boards:[],
+        timer:null, timeLeft:0, over:false, busy:false };
+  G.cfg = SOLO_CFG;
+  G.board = newBoard(SOLO_CFG, G.rng);
+  $('playersBar').style.display = 'none';
+  countdown(function(){ show('screen-play'); renderPlay(); });
 }
 
-function startGame(){
-  hubReportPlay();          // §12 — count this play on the hub
-  var raw = $('seedInput').value.trim().toUpperCase();
-  var code = raw || randomSeedCode();
-  var rng = mulberry32(hashSeed(code));
-
-  G = { mode:S.mode, code:code, rng:rng, scoring:S.scoring,
-        beachIndex:0, totalScore:0, totalCorrect:0, totalMistakes:0, bestStreak:0,
-        roundLog:[], players:[], current:0, boards:[], sharedBoard:null,
-        timer:null, timeLeft:0, over:false, busy:false };
-
-  if (S.mode === 'pvp'){
-    for (var i=0;i<S.playerCount;i++){
-      G.players.push({ name:(S.names[i]||'').trim() || ('Player '+(i+1)),
-                       score:0, lives:S.lives, out:false, correct:0, mistakes:0 });
-    }
-    if (S.pool === 'shared') G.sharedBoard = newBoard(PVP_CFG, rng);
-    else for (var j=0;j<S.playerCount;j++) G.boards.push(newBoard(PVP_CFG, rng));
-    G.cfg = PVP_CFG;
-  } else if (S.mode === 'zen'){
-    G.cfg = ZEN_CFG; G.board = newBoard(ZEN_CFG, rng); G.lives = Infinity;
-  } else {
-    G.cfg = BEACHES[0]; G.board = newBoard(BEACHES[0], rng); G.lives = S.lives;
-  }
+/* One wave of a race. The host deals a seed; every device builds its OWN shore
+   from it, so all four shores are identical without any of them interfering. */
+function startRaceWave(waveNo, seed){
+  G = G || {};
+  G.mode = 'race'; G.code = seed; G.rng = mulberry32(hashSeed(seed));
+  G.cfg = RACE_CFG;
+  G.board = newBoard(RACE_CFG, G.rng);
+  G.lives = SOLO_LIVES;
+  G.waveNo = waveNo;
+  G.over = false; G.busy = false;
+  G.totalScore = (meNode().score || 0) + (meNode().bonus || 0);
+  G.totalCorrect = 0; G.totalMistakes = 0; G.bestStreak = 0; G.moves = [];
+  $('playersBar').style.display = '';
   countdown(function(){ show('screen-play'); renderPlay(); startTurnTimer(); });
 }
 
@@ -719,10 +738,11 @@ function countdown(done){
   /* A countdown always precedes a fresh, playable board, so clear any leftover
      interaction lock here.
      Why: onBoardClick adds .locked (pointer-events:none) and only washTo() ever
-     removes it. When a click COMPLETES a beach the flow goes
-     afterResolve -> endBeach -> screen-round -> nextBeach, which never calls
-     washTo — so Beach 2 rendered with the lock still on and nothing could be
-     tapped. Unlocking here fixes that path and any future caller of countdown(). */
+     removes it. A flow that reached a new board WITHOUT going through washTo
+     therefore rendered it un-tappable — which is exactly how Beach 2 became
+     unplayable before this was fixed. The beach flow is gone now, but the same
+     trap applies to every new caller of countdown() (startSolo, startRaceWave),
+     so the unlock stays here rather than in any one caller. */
   function finish(){
     $('board').classList.remove('locked');
     if (G) G.busy = false;
@@ -731,47 +751,47 @@ function countdown(done){
   step();
 }
 
-function activePlayer(){ return (G && G.mode === 'pvp') ? G.players[G.current] : null; }
-function currentBoard(){
-  if (G.mode !== 'pvp') return G.board;
-  return S.pool === 'shared' ? G.sharedBoard : G.boards[G.current];
-}
+/* Every player now has their OWN shore, in both modes — there is no shared
+   pool and no turn-passing, so the current board is simply this device's. */
+function currentBoard(){ return G.board; }
 
 /* ---------- Rendering ---------- */
 function renderPlay(){
   var b = currentBoard();
-  $('livesStat').style.display = (G.mode === 'zen') ? 'none' : '';
-  if (G.mode === 'pvp'){
-    var p = activePlayer();
-    $('hudCorrect').textContent = p.correct;
-    $('hudScore').textContent = p.score;
-    $('hudLives').textContent = hearts(p.lives);
+  $('livesStat').style.display = '';
+  $('hudCorrect').textContent = b.correct;
+  $('hudScore').textContent = G.totalScore;
+  $('hudLives').textContent = hearts(G.lives);
+
+  if (G.mode === 'race'){
     $('playersBar').style.display = '';
     $('turnTimer').style.display = '';
     renderPlayers();
+    $('beachLabel').textContent = 'Wave ' + G.waveNo + ' of ' + RACE_WAVES;
+    $('quotaLabel').textContent = 'Find ' + b.wave + ' / ' + b.cfg.target;
+    $('progressBar').style.width = Math.min(100, (b.wave-1) / b.cfg.target * 100) + '%';
   } else {
-    $('hudCorrect').textContent = b.correct;
-    $('hudScore').textContent = G.totalScore;
-    if (G.mode !== 'zen') $('hudLives').textContent = hearts(G.lives);
     $('playersBar').style.display = 'none';
     $('turnTimer').style.display = 'none';
+    $('beachLabel').textContent = G.cfg.name;
+    /* Endless: show the wave reached, not a fraction of a target nobody hits. */
+    $('quotaLabel').textContent = 'Wave ' + b.wave;
+    $('progressBar').style.width = Math.min(100, (b.wave-1) / 25 * 100) + '%';
   }
-  $('beachLabel').textContent = G.mode === 'classic'
-    ? 'Beach ' + (G.beachIndex+1) + ' of 3' : G.cfg.name;
-  $('quotaLabel').textContent = 'Wave ' + b.wave + ' / ' + b.cfg.target;
-  $('progressBar').style.width = Math.min(100, (b.wave-1) / b.cfg.target * 100) + '%';
   renderBoard();
 }
 
+/* Rivals strip — live standings from the room, not local turn state. */
 function renderPlayers(){
   var bar = $('playersBar'); bar.innerHTML = '';
-  for (var i=0;i<G.players.length;i++){
-    var p = G.players[i];
+  var rows = standings();
+  for (var i=0;i<rows.length;i++){
+    var r = rows[i], p = P()[r.id] || {};
     var d = document.createElement('div');
-    d.className = 'player-chip' + (i === G.current ? ' current' : '') + (p.out ? ' out' : '');
-    d.innerHTML = '<div class="pname">'+escapeHtml(p.name)+'</div>'+
-                  '<div class="pscore">'+p.score+'</div>'+
-                  '<div class="plives">'+(p.out ? 'OUT' : hearts(p.lives))+'</div>';
+    d.className = 'player-chip' + (r.id === M.pid ? ' current' : '') + (p.done ? ' out' : '');
+    d.innerHTML = '<div class="pname">'+escapeHtml(r.name)+'</div>'+
+                  '<div class="pscore">'+r.total+'</div>'+
+                  '<div class="plives">'+(p.done ? 'DONE' : hearts(p.lives == null ? SOLO_LIVES : p.lives))+'</div>';
     bar.appendChild(d);
   }
 }
@@ -829,10 +849,12 @@ function floater(node, text, neg){
   setTimeout(function(){ f.remove(); }, 800);
 }
 
-/* ---------- Turn timer (PvP) ---------- */
+/* ---------- Wave timer (Online only) ----------
+   Solo is untimed — the pressure there is the growing shore and three lives.
+   In a race the clock stops one slow player stalling everyone else. */
 function startTurnTimer(){
   stopTurnTimer();
-  if (!G || G.mode !== 'pvp' || G.over) return;
+  if (!G || G.mode !== 'race' || G.over) return;
   G.timeLeft = TURN_SECONDS;
   $('turnTimer').firstElementChild.style.width = '100%';
   G.timer = setInterval(function(){
@@ -843,7 +865,10 @@ function startTurnTimer(){
       stopTurnTimer();
       var b = currentBoard();
       if (passWave(b)){
-        toast(activePlayer().name + ' ran out of time');
+        toast('Out of time');
+        G.lives--;                 // a timeout costs a life, same as a wrong tap
+        G.totalMistakes++;
+        pushMe();
         afterResolve(null);
       }
     }
@@ -856,29 +881,29 @@ function onBoardClick(e){
   var tile = e.target.closest('.tile');
   if (!tile || !G || G.over || G.busy) return;
   var b = currentBoard();
-  var res = pickTile(b, +tile.dataset.id, G.scoring);
+  var res = pickTile(b, +tile.dataset.id);
   if (!res) return;
   stopTurnTimer();
   $('board').classList.add('locked');
 
+  /* Replay proof: record which treasure was tapped on each wave. Capped so a
+     very long run can't produce an unbounded payload. */
+  if (G.moves.length < 400) G.moves.push(b.wave + ':' + res.key);
+
   if (res.ok){
     tile.classList.add('good');
     floater(tile, '+' + res.gain, false);
-    if (G.mode === 'pvp'){ var p = activePlayer(); p.score += res.gain; p.correct++; }
-    else G.totalScore += res.gain;
+    G.totalScore += res.gain;
+    G.totalCorrect++;
   } else {
     tile.classList.add('bad');
     revealAnswer(b);
-    if (G.mode === 'zen'){
-      floater(tile, 'seen it', true);
-    } else {
-      floater(tile, '−1 ♥', true);
-      if (G.mode === 'pvp'){
-        var q = activePlayer(); q.lives--; q.mistakes++;
-        if (q.lives <= 0) q.out = true;
-      } else G.lives--;
-    }
+    floater(tile, '−1 ♥', true);
+    G.lives--;
+    G.totalMistakes++;
   }
+  G.bestStreak = Math.max(G.bestStreak, b.bestStreak);
+  if (G.mode === 'race') pushMe();
   setTimeout(function(){ afterResolve(res); }, res.ok ? 620 : 1150);
 }
 
@@ -895,154 +920,485 @@ function revealAnswer(b){
 function afterResolve(res){
   var b = currentBoard();
 
-  if (G.mode === 'pvp'){
-    var alive = G.players.filter(function(p){ return !p.out; });
-    var boardsDone;
-    if (S.pool === 'shared') boardsDone = boardComplete(G.sharedBoard);
-    else boardsDone = alive.every(function(p){ return boardComplete(G.boards[G.players.indexOf(p)]); });
-    if (alive.length <= 1 || boardsDone) return finishPvp();
-    return nextTurn();
+  if (G.mode === 'race'){
+    /* A race wave ends when the shore is exhausted or this player is out of
+       lives. Being out does NOT eliminate you from the race — you simply stop
+       scoring this wave and wait, so a 4-player race can't empty by wave 2. */
+    if (G.lives <= 0 || boardComplete(b)) return finishRaceWave();
+    nextWave(b, G.rng);
+    washTo(renderPlay, startTurnTimer);
+    return;
   }
 
-  if (boardComplete(b)){
-    if (G.mode === 'zen') return finishRun('You outlasted the whole shore!');
-    return endBeach(true);
-  }
-  if (G.mode !== 'zen' && G.lives <= 0) return endBeach(false);
+  /* SOLO: three lives end the run. boardComplete is the 7×7 ceiling, which
+     nobody realistically reaches. */
+  if (G.lives <= 0) return finishRun('The tide took your last life');
+  if (boardComplete(b)) return finishRun('You outlasted the whole shore!');
 
   nextWave(b, G.rng);
   washTo(renderPlay);
 }
 
-function nextTurn(){
-  var guard = 0;
-  do { G.current = (G.current + 1) % G.players.length; guard++; }
-  while (G.players[G.current].out && guard < 20);
-
-  var b = currentBoard();
-  if (b.resolved) nextWave(b, G.rng);   // shared shore advances once per turn
-  washTo(renderPlay, startTurnTimer);
-}
-
 /* ---------- Endings ---------- */
 function row(k, v){ return '<div class="sum-row"><span>'+k+'</span><span>'+v+'</span></div>'; }
 
-function endBeach(cleared){
-  var b = G.board;
-  var bonus = cleared ? b.correct * 100 : 0;
-  G.totalScore += bonus;
-  G.totalCorrect += b.correct;
-  G.totalMistakes += b.mistakes;
-  G.bestStreak = Math.max(G.bestStreak, b.bestStreak);
-  G.roundLog.push({name:G.cfg.name, correct:b.correct, bonus:bonus,
-                   cleared:cleared, mistakes:b.mistakes, streak:b.bestStreak});
-
-  $('roundBanner').textContent = cleared ? (G.cfg.name + ' survived!') : (G.cfg.name + ' — tide came in');
-  $('roundItems').textContent = b.correct;
-  $('roundRows').innerHTML =
-    row('Waves survived', (cleared ? b.wave : b.wave) + ' / ' + b.cfg.target) +
-    row('Missed', b.mistakes) +
-    row('Grid', b.cfg.grid + ' × ' + b.cfg.grid) +
-    row('Survival bonus', cleared ? (b.correct + ' × 100 = ' + bonus) : '—') +
-    row('Best streak', b.bestStreak) +
-    '<div class="sum-row total"><span>Score so far</span><span>' + G.totalScore + '</span></div>';
-
-  var mb = $('roundBoard'); mb.innerHTML = '';
-  for (var i=0;i<b.seen.length;i++){
-    var k = b.seen[i], d = document.createElement('div');
-    d.className = 'tile' + (b.wrongKeys[k] ? ' marked' : '');
-    d.innerHTML = iconMarkup(k);
-    mb.appendChild(d);
-  }
-  $('roundNote').textContent = b.mistakes
-    ? 'Outlined in white: the treasures you mistook for new ones.'
-    : 'A clean run — you spotted every new treasure on the first try.';
-
-  $('nextBeachBtn').textContent = (G.beachIndex >= BEACHES.length - 1) ? 'SEE RESULTS' : 'NEXT BEACH';
-  show('screen-round');
-}
-
-function nextBeach(){
-  if (G.beachIndex >= BEACHES.length - 1) return finishRun(null);
-  G.beachIndex++;
-  G.cfg = BEACHES[G.beachIndex];
-  G.board = newBoard(G.cfg, G.rng);
-  G.lives = S.lives;
-  countdown(function(){ show('screen-play'); renderPlay(); });
-}
-
 function finishRun(note){
   G.over = true; stopTurnTimer();
-  if (G.mode === 'zen'){
-    G.totalCorrect = G.board.correct;
-    G.totalMistakes = G.board.mistakes;
-    G.bestStreak = G.board.bestStreak;
-  }
+  var b = G.board;
   var attempts = G.totalCorrect + G.totalMistakes;
   var acc = attempts ? Math.round(G.totalCorrect / attempts * 100) : 0;
 
-  $('finalBanner').textContent = note || (G.mode === 'zen' ? 'Shore session ended' : 'Run complete');
+  $('finalBanner').textContent = note || 'Run complete';
   $('finalScoreLabel').textContent = 'Final score';
   $('finalScore').textContent = G.totalScore;
 
-  var html = row('Treasures found', G.totalCorrect) +
-             row('Missed', G.totalMistakes) +
-             row('Accuracy', acc + '%') +
-             row('Best streak', G.bestStreak) +
-             row('Challenge code', G.code);
+  var best = getBest();
+  var isBest = G.totalScore > best;
+  if (isBest) setBest(G.totalScore);
 
-  var rank = addScore(G.mode, {score:G.totalScore, correct:G.totalCorrect, date:Date.now(), code:G.code});
-  var lb = loadLB()[G.mode] || [];
-  html += (lb.length && G.totalScore >= lb[0].score)
-    ? row('Personal best', '🏆 New best!')
-    : row('Leaderboard', rank <= 10 ? '#' + rank : 'outside top 10');
+  $('finalRows').innerHTML =
+    row('Treasures found', G.totalCorrect) +
+    row('Missed', G.totalMistakes) +
+    row('Accuracy', acc + '%') +
+    row('Best streak', G.bestStreak) +
+    row('Waves reached', b.wave) +
+    row('Best solo run', (isBest ? '🏆 ' : '') + Math.max(best, G.totalScore));
 
-  $('finalRows').innerHTML = html;
+  $('lbPanel').hidden = false;
   show('screen-final');
+  handleLeaderboard();          // async; never blocks this screen
 }
 
-function finishPvp(){
+/* ---- one wave of a race is over for THIS player ---- */
+function finishRaceWave(){
   G.over = true; stopTurnTimer();
-  var ranked = G.players.slice().sort(function(a,b){
-    if (b.score !== a.score) return b.score - a.score;
-    return b.lives - a.lives;
-  });
-  var win = ranked[0];
-  var tied = ranked.filter(function(p){ return p.score === win.score && p.lives === win.lives; });
+  pushMe(true);
+  $('standWait').textContent = 'Waiting for the others…';
+  show('screen-standings');
+  paintStandings();
+}
 
-  $('finalBanner').textContent = tied.length > 1 ? 'It\'s a tie!' : win.name + ' wins!';
-  $('finalScoreLabel').textContent = tied.length > 1 ? 'Top score' : win.name + '\'s score';
-  $('finalScore').textContent = win.score;
+/* =====================================================================
+   LEADERBOARD  —  /leaderboard/tidal-recall/{playerId}
+   ---------------------------------------------------------------------
+   Same model as Cart Recall and MemoMath: one slot per player holding
+   their BEST run; a lower score never overwrites a higher one. Note the
+   Firebase key stays "tidal-recall" even though the game is now called
+   Tidal Drift — the id is internal, and changing it would orphan the
+   existing play count and every /games overlay entry.
 
-  var html = '', lastScore = null, lastRank = 0;
-  for (var i=0;i<ranked.length;i++){
-    var p = ranked[i];
-    var r = (p.score === lastScore) ? lastRank : i+1;
-    lastScore = p.score; lastRank = r;
-    html += row('#' + r + ' ' + escapeHtml(p.name),
-                p.score + ' pts · ' + p.correct + ' found · ' + (p.out ? 'out' : hearts(p.lives)));
+   Same two honest limits as the other boards:
+   - playerId lives in localStorage, so this is one slot per BROWSER,
+     not per human. It is a leaderboard, not an auth system.
+   - The proof verifies a score RANGE, not an exact score, because the
+     order treasures were tapped in is replayable but the exact streak
+     timing is bounded rather than pinned.
+   ===================================================================== */
+var LB_GAME = 'tidal-recall';
+var LB_PROOF_V = 1;          // bump whenever board generation or scoring changes
+var PID_KEY = 'tidalDriftPid', NAME_KEY = 'tidalDriftName', BEST_KEY = 'tidalDrift_best_solo';
+
+function lbApi(pth){ return HUB_DB + '/' + pth + '.json'; }
+function playerId(){
+  var id = null;
+  try { id = localStorage.getItem(PID_KEY); } catch(e){}
+  if (!id){
+    id = 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+    try { localStorage.setItem(PID_KEY, id); } catch(e){}
   }
-  html += row('Challenge code', G.code);
+  return id;
+}
+function playerName(){ try { return localStorage.getItem(NAME_KEY) || ''; } catch(e){ return ''; } }
+function getBest(){ try { return parseInt(localStorage.getItem(BEST_KEY), 10) || 0; } catch(e){ return 0; } }
+function setBest(v){ try { localStorage.setItem(BEST_KEY, String(v)); } catch(e){} }
+function updateBest(){
+  var b = getBest();
+  $('bestPanel').style.display = b > 0 ? '' : 'none';
+  $('bestText').innerHTML = b > 0 ? '<b style="color:var(--accent); font-size:20px;">' + b + '</b> pts' : '';
+}
+
+/* Moves are "wave:treasureKey" pairs — compact, and enough to replay the run. */
+function buildProof(){ return G.moves.join(','); }
+
+function lbFetchAll(){
+  return fetch(lbApi('leaderboard/' + LB_GAME))
+    .then(function(r){ return r.ok ? r.json() : {}; })
+    .then(function(d){ return (d && typeof d === 'object' && !d.error) ? d : {}; })
+    .catch(function(){ return {}; });
+}
+function lbRank(all, score){
+  var better = 0, total = 0;
+  for (var k in all){ if (!all[k]) continue; total++; if (Number(all[k].score) > score) better++; }
+  return { rank: better + 1, total: total };
+}
+function lbSubmit(name){
+  var entry = { name:String(name).slice(0,20), score:G.totalScore, rounds:G.totalCorrect,
+                at:Date.now(), v:LB_PROOF_V, seed:G.code, moves:buildProof() };
+  return fetch(lbApi('leaderboard/' + LB_GAME + '/' + playerId()),
+               { method:'PUT', body:JSON.stringify(entry) })
+    .then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+
+/* Run finished → find where it sits, ask for a name the first time, and submit
+   only if it beats this player's own best. Races are never ranked: placement
+   bonuses and opponent count make race scores non-comparable. */
+function handleLeaderboard(){
+  var line = $('lbLine'), share = $('btnShare');
+  share.hidden = true;
+  if (G.mode !== 'solo'){ $('lbPanel').hidden = true; return; }
+  line.textContent = 'Checking the leaderboard…';
+
+  lbFetchAll().then(function(all){
+    var mine = all[playerId()];
+    var prevBest = mine ? (Number(mine.score) || 0) : 0;
+
+    if (G.totalScore <= prevBest){
+      var r = lbRank(all, prevBest);
+      line.innerHTML = 'Your best is still <b>' + prevBest + '</b> — #' + r.rank + ' of ' + r.total + '.';
+      showShare(prevBest, r.rank);
+      return;
+    }
+    var name = playerName();
+    var go = name ? Promise.resolve(name) : askName();
+    go.then(function(entered){
+      if (entered === null){
+        line.textContent = 'Not submitted. Play again to join the board.';
+        showShare(G.totalScore, null);
+        return;
+      }
+      try { localStorage.setItem(NAME_KEY, entered); } catch(e){}
+      line.textContent = 'Submitting…';
+      lbSubmit(entered).then(function(ok){
+        if (!ok){
+          line.textContent = 'Could not reach the leaderboard — your score is safe locally.';
+          showShare(G.totalScore, null);
+          return;
+        }
+        lbFetchAll().then(function(after){
+          var r2 = lbRank(after, G.totalScore);
+          line.innerHTML = prevBest
+            ? 'New personal best — you’re <b>#' + r2.rank + '</b> of ' + r2.total + '.'
+            : 'You’re on the board at <b>#' + r2.rank + '</b> of ' + r2.total + '.';
+          showShare(G.totalScore, r2.rank);
+        });
+      });
+    });
+  });
+}
+
+/* Name prompt — a modal, not window.prompt(), for the §15 reason. */
+function askName(){
+  return new Promise(function(resolve){
+    var bg = $('nameBg'), input = $('inLbName');
+    input.value = playerName();
+    bg.classList.add('show');
+    setTimeout(function(){ input.focus(); }, 50);
+    function done(v){
+      bg.classList.remove('show');
+      $('btnNameOk').onclick = null; $('btnNameSkip').onclick = null; input.onkeydown = null;
+      resolve(v);
+    }
+    function ok(){ var n = input.value.trim(); if (n) done(n); }
+    $('btnNameOk').onclick = ok;
+    $('btnNameSkip').onclick = function(){ done(null); };
+    input.onkeydown = function(e){ if (e.key === 'Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ----------
+   navigator.share and the clipboard BOTH need a secure context, and
+   navigator.share is largely mobile-only, so on desktop and on file:// neither
+   exists. The manual copy sheet is the guaranteed fallback. */
+var SHARE_HOME = 'https://arcade.kenmemorize.com/';
+function shareUrl(){
+  if (location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
+  return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');
+}
+function showShare(score, rank){
+  var b = $('btnShare');
+  b.hidden = false;
+  b.onclick = function(){ shareScore(score, rank); };
+}
+function shareScore(score, rank){
+  var text = 'I scored ' + score + ' on Tidal Drift' +
+             (rank ? ' — #' + rank + ' on the board' : '') + '. ' + shareUrl();
+  if (navigator.share){
+    navigator.share({ title:'Tidal Drift', text:text }).catch(function(e){
+      if (e && e.name === 'AbortError') return;   // dismissed, not a failure
+      manualShare(text);
+    });
+    return;
+  }
+  if (navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ toast('Copied'); },
+                                             function(){ manualShare(text); });
+    return;
+  }
+  manualShare(text);
+}
+function manualShare(text){
+  $('shareText').value = text;
+  $('shareBg').classList.add('show');
+}
+
+/* =====================================================================
+   ONLINE RACE  —  /rooms/{code}
+   ---------------------------------------------------------------------
+   Ported from Cart Recall, which already had this layer debugged. Same
+   database, same /rooms path — that rule already exists, so online play
+   needs no Firebase rules change.
+
+   Fairness comes from a dealt SEED, not dealt tiles: the host writes one
+   seed per wave and every device calls newBoard(RACE_CFG, mulberry32(seed))
+   on it. Each player gets their own private shore, identical in difficulty.
+   The old "shared shore" from Pass & Play was deliberately dropped — one
+   slow or disconnected player would corrupt everyone else's board.
+   ===================================================================== */
+function api(pth){ return HUB_DB + '/' + pth + '.json'; }
+var net = {
+  get:  function(p){ return fetch(api(p)).then(function(r){ return r.json(); }); },
+  put:  function(p,v){ return fetch(api(p), {method:'PUT',   body:JSON.stringify(v)}); },
+  patch:function(p,v){ return fetch(api(p), {method:'PATCH', body:JSON.stringify(v)}); },
+  del:  function(p){ return fetch(api(p), {method:'DELETE'}); }
+};
+
+function subscribe(path, onChange, onError){
+  var mirror = null;
+  var es = new EventSource(api(path));
+  function walk(obj, segs){
+    var o = obj;
+    for (var i=0;i<segs.length-1;i++){ if (!o[segs[i]]) o[segs[i]] = {}; o = o[segs[i]]; }
+    return o;
+  }
+  function applyPut(p, d){
+    if (p === '/'){ mirror = d; return; }
+    var segs = p.split('/').filter(Boolean);
+    if (!mirror) mirror = {};
+    var parent = walk(mirror, segs);
+    var key = segs[segs.length-1];
+    if (d === null) delete parent[key]; else parent[key] = d;
+  }
+  es.addEventListener('put', function(e){
+    var m = JSON.parse(e.data); applyPut(m.path, m.data); onChange(mirror);
+  });
+  es.addEventListener('patch', function(e){
+    var m = JSON.parse(e.data);
+    var base = m.path === '/' ? '' : m.path;
+    for (var k in m.data) applyPut((base + '/' + k).replace('//','/'), m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error', function(){ if (onError) onError(); });
+  return es;
+}
+
+var CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I/O — they read as 1/0 on a phone
+function newCode(){
+  var s = '';
+  for (var i=0;i<4;i++) s += CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+var PLACE_BONUS = [200, 120, 60];
+function P(){ return (M.room && M.room.players) || {}; }
+function meNode(){ return P()[M.pid] || {}; }
+function freshPlayer(name){
+  return { name:name, score:0, bonus:0, lives:SOLO_LIVES, done:false, finishedAt:0, hb:Date.now() };
+}
+function raceErr(msg){ $('roomErr').textContent = msg || ''; }
+
+function createRoom(){
+  var name = $('inName').value.trim();
+  if (!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name = name; M.pid = 'p' + Math.random().toString(36).slice(2,9); M.isHost = true;
+  try { localStorage.setItem(NAME_KEY, name); } catch(e){}
+  var code = newCode();
+  M.code = code;
+  var payload = { host:M.pid, phase:'lobby', createdAt:Date.now(), players:{} };
+  payload.players[M.pid] = freshPlayer(name);
+  net.put('rooms/' + code, payload).then(function(ok){
+    if (!ok || !ok.ok) return raceErr('Could not reach the database. Online play needs a "rooms" rule.');
+    watchRoom();
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function joinRoom(){
+  var name = $('inName').value.trim();
+  var code = $('inCode').value.trim().toUpperCase();
+  if (!name) return raceErr('Type a name first.');
+  if (code.length !== 4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  net.get('rooms/' + code).then(function(room){
+    if (!room) return raceErr('No room with that code.');
+    if (room.phase !== 'lobby') return raceErr('That race has already started.');
+    if (Object.keys(room.players || {}).length >= MAX_PLAYERS) return raceErr('That room is full.');
+    M.name = name; M.pid = 'p' + Math.random().toString(36).slice(2,9); M.isHost = false; M.code = code;
+    try { localStorage.setItem(NAME_KEY, name); } catch(e){}
+    net.put('rooms/' + code + '/players/' + M.pid, freshPlayer(name)).then(watchRoom);
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function watchRoom(){
+  raceErr('');
+  M.joined = true; M.lastKey = ''; M.refereedWave = 0; M.playReported = false;
+  M.es = subscribe('rooms/' + M.code, onRoom, function(){ raceErr('Connection dropped.'); });
+  clearInterval(M.hb);
+  M.hb = setInterval(function(){
+    if (M.joined) net.patch('rooms/' + M.code + '/players/' + M.pid, { hb:Date.now() });
+  }, 5000);
+  show('screen-lobby');
+}
+
+function leaveRoom(){
+  if (M.code && M.pid) net.del('rooms/' + M.code + '/players/' + M.pid);
+  if (M.isHost && M.code) net.del('rooms/' + M.code);
+  if (M.es) M.es.close();
+  clearInterval(M.hb);
+  M.joined = false; M.code = null; M.room = null;
+  if (G) G.mode = 'solo';
+  show('screen-home');
+  updateBest();
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if (!room){ if (M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  M.room = room;
+
+  if (room.phase === 'lobby'){ M.playReported = false; paintLobby(); return; }
+  if (room.phase === 'over'){ paintRaceFinal(); return; }
+  if (room.phase === 'result'){ paintStandings(); if (M.isHost) hostReferee(); return; }
+
+  var key = room.phase + ':' + (room.wave && room.wave.n);
+  if (key !== M.lastKey && room.phase === 'playing' && room.wave){
+    M.lastKey = key;
+    if (!M.playReported){ M.playReported = true; hubReportPlay(); }   // §12 — once per race
+    startRaceWave(room.wave.n, room.wave.seed);
+  }
+  if (G && G.mode === 'race' && !G.over) renderPlayers();
+  if (M.isHost) hostReferee();
+}
+
+function paintLobby(){
+  show('screen-lobby');
+  $('lobbyCode').textContent = M.code;
+  var ids = Object.keys(P());
+  $('lobbyCount').textContent = '(' + ids.length + '/' + MAX_PLAYERS + ')';
+  var html = '';
+  for (var i=0;i<ids.length;i++){
+    var id = ids[i], p = P()[id];
+    html += '<div class="prow"><span>' + escapeHtml(p.name) + '</span>' +
+      (id === M.room.host ? '<span class="badge">Host</span>' : '') +
+      (id === M.pid && id !== M.room.host ? '<span class="badge">You</span>' : '') + '</div>';
+  }
+  $('lobbyList').innerHTML = html;
+  $('btnLaunch').hidden = !M.isHost;
+  $('btnLaunch').disabled = ids.length < 2;
+  $('lobbyWait').textContent = M.isHost
+    ? (ids.length < 2 ? 'Waiting for at least one more player…' : '')
+    : 'Waiting for the host to start…';
+}
+
+function hostDealWave(n){
+  var reset = {}, ids = Object.keys(P());
+  for (var i=0;i<ids.length;i++){
+    var p = P()[ids[i]];
+    reset[ids[i]] = { name:p.name, score:p.score||0, bonus:p.bonus||0,
+                      lives:SOLO_LIVES, done:false, finishedAt:0, hb:Date.now() };
+  }
+  net.patch('rooms/' + M.code, {
+    wave: { n:n, seed:newCode() + Math.random().toString(36).slice(2,8), dealtAt:Date.now() },
+    players: reset,
+    phase: 'playing'
+  });
+}
+
+/* ---- push my state up ---- */
+function pushMe(done){
+  if (!G || G.mode !== 'race' || !M.code) return;
+  net.patch('rooms/' + M.code + '/players/' + M.pid, {
+    score: G.totalScore - (meNode().bonus || 0),
+    lives: Math.max(0, G.lives),
+    done: !!done,
+    finishedAt: done ? Date.now() : (meNode().finishedAt || 0),
+    hb: Date.now()
+  });
+}
+
+/* ---- host referees: placement bonuses, wave end, race end ---- */
+function hostReferee(){
+  var room = M.room;
+  if (room.phase !== 'playing' || !room.wave) return;
+  var now = Date.now(), ids = Object.keys(P()), i;
+
+  /* drop anyone whose device stopped reporting, so one dead client can't
+     stall the whole race */
+  for (i=0;i<ids.length;i++){
+    var pp = P()[ids[i]];
+    if (pp.hb && now - pp.hb > 25000 && !pp.done)
+      net.patch('rooms/' + M.code + '/players/' + ids[i], { done:true });
+  }
+  for (i=0;i<ids.length;i++) if (!P()[ids[i]].done) return;
+  if (M.refereedWave === room.wave.n) return;      // pay placements once per wave
+  M.refereedWave = room.wave.n;
+
+  /* Placement rewards finishing first with the most found — ordered by score
+     for that wave, ties broken by who finished sooner. */
+  var order = ids.slice().sort(function(a,b){
+    var d = (P()[b].score||0) - (P()[a].score||0);
+    return d !== 0 ? d : (P()[a].finishedAt||0) - (P()[b].finishedAt||0);
+  });
+  var patch = {};
+  for (i=0;i<order.length && i<PLACE_BONUS.length;i++)
+    patch[order[i] + '/bonus'] = (P()[order[i]].bonus || 0) + PLACE_BONUS[i];
+  var after = function(){
+    net.patch('rooms/' + M.code, { phase: room.wave.n >= RACE_WAVES ? 'over' : 'result' });
+  };
+  if (Object.keys(patch).length) net.patch('rooms/' + M.code + '/players', patch).then(after);
+  else after();
+}
+
+function standings(){
+  var ids = Object.keys(P()), rows = [];
+  for (var i=0;i<ids.length;i++){
+    var p = P()[ids[i]];
+    rows.push({ id:ids[i], name:p.name, total:(p.score||0) + (p.bonus||0) });
+  }
+  rows.sort(function(a,b){ return b.total - a.total; });
+  return rows;
+}
+
+function paintStandings(){
+  show('screen-standings');
+  var rows = standings(), html = '';
+  $('standTitle').textContent = 'Wave ' + ((M.room && M.room.wave && M.room.wave.n) || 1) + ' of ' + RACE_WAVES;
+  for (var i=0;i<rows.length;i++)
+    html += '<div class="stat-line"><span><span class="rk">' + (i+1) + '</span>' +
+            escapeHtml(rows[i].name) + (rows[i].id === M.pid ? ' (you)' : '') +
+            '</span><b>' + rows[i].total + '</b></div>';
+  $('standList').innerHTML = html;
+  $('btnNextWave').hidden = !M.isHost;
+  $('standWait').textContent = M.isHost ? '' : 'Waiting for the host…';
+}
+
+function paintRaceFinal(){
+  var rows = standings(), me = null, i;
+  for (i=0;i<rows.length;i++) if (rows[i].id === M.pid) me = rows[i];
+  var place = rows.indexOf(me);
+  $('lbPanel').hidden = true;                    // races are never ranked
+  $('finalBanner').textContent = place === 0 ? 'You won the shore!' : 'Race over';
+  $('finalScoreLabel').textContent = 'Final score';
+  $('finalScore').textContent = me ? me.total : 0;
+  var html = '';
+  for (i=0;i<rows.length;i++)
+    html += row('#' + (i+1) + ' ' + escapeHtml(rows[i].name), rows[i].total + ' pts');
   $('finalRows').innerHTML = html;
-  addScore('pvp', {score:win.score, name:win.name, correct:win.correct, date:Date.now(), code:G.code});
+  $('playAgainBtn').textContent = 'BACK TO MENU';
   show('screen-final');
 }
 
-/* ---------- Leaderboard ---------- */
-var lbMode = 'classic';
-function renderLB(){
-  var list = loadLB()[lbMode] || [];
-  if (!list.length){ $('lbBody').innerHTML = '<div class="empty">No runs yet. Go find some treasure.</div>'; return; }
-  var rows = rankRows(list);
-  var html = '<table class="lb"><tr><th>#</th><th>' +
-    (lbMode === 'pvp' ? 'Winner' : 'Date') + '</th><th>Found</th><th>Score</th></tr>';
-  for (var i=0;i<rows.length;i++){
-    var e = rows[i].e;
-    var label = lbMode === 'pvp' ? escapeHtml(e.name || '—') : new Date(e.date).toLocaleDateString();
-    html += '<tr><td>'+rows[i].rank+'</td><td>'+label+'</td><td>'+(e.correct||0)+'</td><td>'+e.score+'</td></tr>';
-  }
-  $('lbBody').innerHTML = html + '</table>';
-}
+/* The old per-device leaderboard screen was removed — the global board on the
+   hub replaces it. loadLB/saveLB/addScore/rankRows are gone with it; any
+   leftover `tidalrecall_lb_v2` key in a browser is simply never read. */
 
 /* ---------- Modal ---------- */
 var modalAction = null;
@@ -1055,13 +1411,8 @@ function openModal(title, text, okLabel, fn){
 }
 function closeModal(){ $('modalBg').classList.remove('show'); modalAction = null; }
 
-/* ---------- Wiring ---------- */
-function applyModeUI(){
-  $('playersField').style.display = S.mode === 'pvp' ? '' : 'none';
-  $('poolField').style.display    = S.mode === 'pvp' ? '' : 'none';
-  $('livesField').style.display   = S.mode === 'zen' ? 'none' : '';
-  $('modeHint').textContent = MODE_HINTS[S.mode];
-}
+/* applyModeUI() went with the mode/settings pickers — there is nothing left on
+   the menu to show or hide. */
 
 /* ---------- Theme (STYLE_GUIDE.md §2) ---------- */
 function applyTheme(theme){
@@ -1083,67 +1434,140 @@ document.addEventListener('DOMContentLoaded', function(){
     try { localStorage.setItem(THEME_KEY, next); } catch(e){}
   });
 
-  bindPills('modePills','data-mode', function(v){ S.mode = v; applyModeUI(); });
-  bindPills('livesPills','data-lives', function(v){ S.lives = +v; });
-  bindPills('scorePills','data-scoring', function(v){ S.scoring = v; });
-  bindPills('poolPills','data-pool', function(v){
-    S.pool = v;
-    $('poolHint').textContent = v === 'shared'
-      ? 'Shared: one shore keeps growing between you, so you must remember what your opponents saw too.'
-      : 'Own shore: each player gets a private, identical shore. Fairer, but less devious.';
+  /* ---- menu ---- */
+  $('btnSolo').addEventListener('click', startSolo);
+  $('btnOnline').addEventListener('click', function(){
+    $('inName').value = playerName();
+    raceErr(''); show('screen-rooms');
   });
-  bindPills('playerCountPills','data-pc', function(v){ S.playerCount = +v; buildPlayerInputs(); });
-  buildPlayerInputs();
-  applyModeUI();
+  updateBest();
 
-  $('startBtn').addEventListener('click', startGame);
+  /* ---- play ---- */
   $('board').addEventListener('click', onBoardClick);
-  $('nextBeachBtn').addEventListener('click', nextBeach);
-  $('playAgainBtn').addEventListener('click', function(){ $('seedInput').value=''; startGame(); });
-  $('homeBtn').addEventListener('click', function(){ show('screen-home'); });
-  $('shareBtn').addEventListener('click', function(){
-    var txt = G ? G.code : '';
-    if (navigator.clipboard && txt)
-      navigator.clipboard.writeText(txt).then(function(){ toast('Code ' + txt + ' copied'); },
-                                             function(){ toast('Code: ' + txt); });
-    else toast('Code: ' + txt);
+
+  /* One handler that dispatches on mode. The final screen is shared by solo
+     and race, so rebinding .onclick here would leave both wired at once. */
+  $('playAgainBtn').addEventListener('click', function(){
+    if (G && G.mode === 'race') leaveRoom(); else startSolo();
+  });
+  $('homeBtn').addEventListener('click', function(){
+    if (G && G.mode === 'race') leaveRoom();
+    else { show('screen-home'); updateBest(); }
   });
 
+  /* ---- online ---- */
+  $('btnCreate').addEventListener('click', createRoom);
+  $('btnJoin').addEventListener('click', joinRoom);
+  $('btnLeave').addEventListener('click', leaveRoom);
+  $('btnRoomsBack').addEventListener('click', function(){ show('screen-home'); });
+  $('btnLaunch').addEventListener('click', function(){
+    if (Object.keys(P()).length >= 2) hostDealWave(1);
+  });
+  $('btnNextWave').addEventListener('click', function(){
+    if (M.isHost && M.room && M.room.wave) hostDealWave(M.room.wave.n + 1);
+  });
+  $('inCode').addEventListener('input', function(e){ e.target.value = e.target.value.toUpperCase(); });
+
+  /* ---- share sheet ---- */
+  $('btnShareClose').addEventListener('click', function(){ $('shareBg').classList.remove('show'); });
+  $('shareBg').addEventListener('click', function(e){
+    if (e.target === $('shareBg')) $('shareBg').classList.remove('show');
+  });
+
+  /* ---- exit, §15 ---- */
   $('exitBtn').addEventListener('click', function(){
     stopTurnTimer();
-    openModal('Leave the shore?', G.mode === 'zen'
-      ? 'Your session will end and your score will be recorded.'
-      : 'This run will be abandoned and nothing will be saved.', 'Leave', function(){
-        if (G.mode === 'zen') finishRun('Session ended early');
-        else { G.over = true; show('screen-home'); }
+    var racing = G && G.mode === 'race';
+    openModal(racing ? 'Leave the race?' : 'Quit this run?',
+      racing ? 'You will drop out of this race.'
+             : 'Your score for this run will be lost.',
+      racing ? 'Leave' : 'Quit', function(){
+        if (racing) leaveRoom();
+        else { G.over = true; show('screen-home'); updateBest(); }
       });
   });
+  /* Cancelling resumes the exact prior state, including the paused turn
+     timer — a race wave must not lose time to the dialog. */
   $('modalCancel').addEventListener('click', function(){
     closeModal();
-    if (G && !G.over && G.mode === 'pvp') startTurnTimer();
+    if (G && !G.over && G.mode === 'race') startTurnTimer();
   });
   $('modalOk').addEventListener('click', function(){ var f = modalAction; closeModal(); if (f) f(); });
-  $('modalBg').addEventListener('click', function(e){ if (e.target === $('modalBg')) $('modalCancel').click(); });
-
-  $('lbBtn').addEventListener('click', function(){ renderLB(); show('screen-lb'); });
-  $('lbBackBtn').addEventListener('click', function(){ show('screen-home'); });
-  $('lbClearBtn').addEventListener('click', function(){
-    openModal('Clear leaderboard?', 'All saved scores on this device will be deleted.', 'Clear', function(){
-      saveLB({classic:[],zen:[],pvp:[]}); renderLB(); toast('Leaderboard cleared');
-    });
+  $('modalBg').addEventListener('click', function(e){
+    if (e.target === $('modalBg')) $('modalCancel').click();
   });
-  bindPills('lbPills','data-lb', function(v){ lbMode = v; renderLB(); });
 });
 
-/* ---------- Test surface ---------- */
-window.TidalRecall = {
+/* =====================================================================
+   REPLAY-PROOF EXPORT — admin.html's verifier loads this file in a hidden
+   iframe and calls window.TidalDrift, so verification always runs the
+   game's REAL logic rather than a copy that can drift. Do not delete this.
+   ===================================================================== */
+window.TidalDrift = {
+  PROOF_V: LB_PROOF_V,
   mulberry32:mulberry32, hashSeed:hashSeed, shuffle:shuffle, range:range,
   buildPool:buildPool, iconMarkup:iconMarkup, ICONS:ICONS, BASE_KEYS:BASE_KEYS,
   newBoard:newBoard, nextWave:nextWave, pickTile:pickTile, passWave:passWave,
   boardComplete:boardComplete, boardFits:boardFits, markAllSeen:markAllSeen,
-  BEACHES:BEACHES, ZEN_CFG:ZEN_CFG, PVP_CFG:PVP_CFG, TURN_SECONDS:TURN_SECONDS,
-  rankRows:rankRows, VARIANTS:VARIANTS,
-  _state:function(){ return G; }, _settings:function(){ return S; }
+  SOLO_CFG:SOLO_CFG, RACE_CFG:RACE_CFG, SOLO_LIVES:SOLO_LIVES,
+  RACE_WAVES:RACE_WAVES, TURN_SECONDS:TURN_SECONDS, VARIANTS:VARIANTS,
+  findPoints:findPoints,
+  _state:function(){ return G; },
+
+  /* Replay a submitted proof and report whether the claimed score is possible.
+
+     This rebuilds the shore from the recorded seed using ONE continuous rng
+     stream — exactly as startSolo does — and resolves each tap through the
+     game's real pickTile(), so scoring can never drift from the live rules.
+
+     Unlike Cart Recall's and MemoMath's proofs, this one pins an EXACT score
+     rather than a range: Tidal Drift has no speed bonus, so nothing about the
+     score depends on unrecorded timing. Returns { ok, reason, found, missed,
+     score, waves }. */
+  verify: function(seed, movesStr, claimedScore){
+    var moves = String(movesStr || '').split(',').filter(Boolean);
+    if (!moves.length) return { ok:false, reason:'No moves recorded', found:0, missed:0, score:0, waves:0 };
+
+    var rng = mulberry32(hashSeed(String(seed)));   // one stream, same as the run
+    var b = newBoard(SOLO_CFG, rng);
+    var lives = SOLO_LIVES, score = 0, found = 0, missed = 0;
+
+    for (var i=0;i<moves.length;i++){
+      var cut  = moves[i].indexOf(':');
+      var wave = parseInt(moves[i].slice(0, cut), 10);
+      var key  = moves[i].slice(cut + 1);
+
+      if (lives <= 0)
+        return { ok:false, reason:'Run continued after three lives were lost',
+                 found:found, missed:missed, score:score, waves:b.wave };
+      if (wave !== b.wave)
+        return { ok:false, reason:'Move ' + (i+1) + ' claims wave ' + wave + ' but the replay is on wave ' + b.wave,
+                 found:found, missed:missed, score:score, waves:b.wave };
+
+      /* The tapped treasure must actually have been on that shore. */
+      var tid = null;
+      for (var j=0;j<b.display.length;j++) if (b.display[j].key === key){ tid = b.display[j].id; break; }
+      if (tid === null)
+        return { ok:false, reason:'Wave ' + wave + ': tapped a treasure that was not on that shore',
+                 found:found, missed:missed, score:score, waves:b.wave };
+
+      var res = pickTile(b, tid);     // the game's own logic, not a copy
+      if (!res)
+        return { ok:false, reason:'Wave ' + wave + ': move could not be resolved',
+                 found:found, missed:missed, score:score, waves:b.wave };
+      if (res.ok){ score += res.gain; found++; }
+      else { lives--; missed++; }
+
+      if (lives > 0 && !boardComplete(b)) nextWave(b, rng);
+    }
+
+    var ok = Number(claimedScore) === score;
+    return {
+      ok: ok, found: found, missed: missed, score: score, waves: b.wave,
+      reason: ok ? 'Replay reproduces the claimed score exactly'
+                 : 'Claimed ' + claimedScore + ', but this run replays to ' + score
+    };
+  }
 };
 })();
 

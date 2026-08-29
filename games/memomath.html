@@ -68,7 +68,8 @@ h1 .m2{color:var(--accent);}
 .howto-box p{font-size:13px; color:var(--muted); line-height:1.6; margin:0 0 8px;}
 .howto-box p:last-of-type{margin-bottom:0;}
 .howto-box strong{color:var(--text);}
-.howto-box .full-rules{margin-top:12px; width:100%; font-size:13px; min-height:42px; padding:9px 14px;}
+/* 44px, not 42 — the Apple HIG / WCAG 2.5.5 touch floor (audited 2026-08-27). */
+.howto-box .full-rules{margin-top:12px; width:100%; font-size:13px; min-height:44px; padding:9px 14px;}
 
 .panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:18px 18px; box-shadow:0 10px 30px var(--shadow);}
 .panel + .panel{margin-top:12px;}
@@ -511,7 +512,9 @@ h1 .m2{color:var(--accent);}
   <div class="modal">
     <h3>Share your score</h3>
     <p>Copy this and paste it anywhere.</p>
-    <textarea id="shareText" class="txt" rows="4" readonly style="text-align:left; font-size:13px; resize:none;"></textarea>
+    <!-- 16px, not 13: iOS Safari zooms the page when a focused field is under
+         16px, and the user taps in here to select the text. -->
+    <textarea id="shareText" class="txt" rows="4" readonly style="text-align:left; font-size:16px; resize:none;"></textarea>
     <div class="modal-btns" style="margin-top:18px;">
       <button class="ghost-btn" id="btnShareClose">Close</button>
     </div>
@@ -1232,7 +1235,9 @@ function askName(){
    navigator.share and the clipboard BOTH need a secure context, and
    navigator.share is largely mobile-only, so on desktop and on file:// neither
    exists. The manual copy sheet is the guaranteed fallback. */
-const SHARE_HOME = 'https://kenmemorize.com/';   // adjust once the real domain is live
+/* The live arcade. Only ever used as the file:// fallback — served over http(s)
+   shareUrl() derives the real origin instead. Verified live 2026-08-27. */
+const SHARE_HOME = 'https://arcade.kenmemorize.com/';
 function shareUrl(){
   if(location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
   return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');

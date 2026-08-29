@@ -228,7 +228,9 @@ input.code{text-align:center; letter-spacing:10px; font-size:26px; font-weight:8
 .big-score{font-size:50px; font-weight:800; letter-spacing:2px; margin:4px 0 2px; font-variant-numeric:tabular-nums;
   font-family:'Consolas','Courier New',monospace; color:var(--accent);}
 .err{color:var(--wrong); font-size:13.5px; min-height:18px; margin-top:8px;}
-.link{background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:10px;}
+/* min-height 44px: the Apple HIG / WCAG 2.5.5 touch floor. Audited 2026-08-27 —
+   these were rendering 35px tall on a 375px phone. */
+.link{background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:10px; min-height:44px;}
 
 /* ── MOBILE — §9 ── */
 @media (max-width:520px){
@@ -928,7 +930,9 @@ function showShare(score, rank){
 /* Build the link to the arcade. On file:// there is no origin (it reads as the
    literal string "null"), so fall back to the public site rather than emitting
    a broken URL. */
-const SHARE_HOME = 'https://kenmemorize.com/';        // adjust once the real domain is live
+/* The live arcade. Only ever used as the file:// fallback — served over http(s)
+   shareUrl() derives the real origin instead. Verified live 2026-08-27. */
+const SHARE_HOME = 'https://arcade.kenmemorize.com/';
 function shareUrl(){
   if(location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
   return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');
