@@ -252,6 +252,12 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
 @keyframes floatUp{from{opacity:1; transform:translateY(0);} to{opacity:0; transform:translateY(-34px);}}
 
 .icon-line{stroke:var(--icon-stroke); fill:none; stroke-width:5; stroke-linecap:round;}
+/* Accent-coloured stroke, for icons drawn ENTIRELY in line work. Measured
+   2026-08-30: anchor and weed had 0% accent-coloured area, so hue-rotating them
+   turned a near-black stroke into another near-black stroke — mean deltaE 22
+   against 59-82 for every other icon, i.e. their three variants looked the same.
+   Any new line-only icon must use this class, not .icon-line. */
+.icon-line-a{stroke:var(--accent); fill:none; stroke-width:5; stroke-linecap:round;}
 .icon-a{fill:var(--accent);} .icon-b{fill:var(--accent2);} .icon-o{fill:var(--icon-stroke);}
 
 /* ── MOBILE — STYLE_GUIDE.md §9 ── */
@@ -299,7 +305,7 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
     <p>The tide drops <b>two treasures</b> on the grid. Tap either one to begin.</p>
     <p>The shore washes blank and everything reappears <b>in new positions</b> — plus <b>one treasure you have never seen</b>. Tap that new one. Position tells you nothing, so you have to remember the treasures themselves.</p>
     <p>Tap something you have already seen and it costs a life. <b>Three lives and the run is over.</b></p>
-    <p>The pile grows every wave and the shore mixes in <b>mirrored and re-tinted lookalikes</b>, so it gets harder the longer you last.</p>
+    <p>The pile grows every wave. Once the shore runs out of new treasures it starts washing up <b>re-tinted copies</b> of ones you've seen, so it gets harder the longer you last.</p>
   </div>
 
   <div class="panel">
@@ -520,27 +526,62 @@ var ICONS = {
   cone:'<path class="icon-a" d="M22 14 82 46 30 84z"/><g class="icon-line"><path d="M30 26 66 46"/><path d="M28 44 58 60"/></g>',
   octopus:'<circle class="icon-a" cx="50" cy="40" r="24"/><g class="icon-line"><path d="M28 52c-8 6-14 8-18 18"/><path d="M38 62c-4 10-8 14-10 24"/><path d="M50 64v26"/><path d="M62 62c4 10 8 14 10 24"/><path d="M72 52c8 6 14 8 18 18"/></g><circle class="icon-o" cx="41" cy="36" r="5"/><circle class="icon-o" cx="60" cy="36" r="5"/>',
   shield:'<path class="icon-a" d="M50 8 84 20v34c0 20-16 32-34 38C32 86 16 74 16 54V20z"/><path class="icon-b" d="M50 8 84 20v34c0 20-16 32-34 38z" opacity=".45"/>',
-  anchor:'<circle class="icon-line" cx="50" cy="18" r="9"/><g class="icon-line"><path d="M50 28v58"/><path d="M28 40h44"/><path d="M18 56c0 18 14 30 32 30s32-12 32-30"/></g>',
+  anchor:'<circle class="icon-line-a" cx="50" cy="18" r="9"/><g class="icon-line-a"><path d="M50 28v58"/><path d="M28 40h44"/><path d="M18 56c0 18 14 30 32 30s32-12 32-30"/></g>',
   lighthouse:'<path class="icon-a" d="M36 34h28l8 52H28z"/><path class="icon-b" d="M40 14h20v20H40z"/><g class="icon-line"><path d="M32 52h36"/><path d="M30 68h40"/></g><path class="icon-b" d="M30 88h40v6H30z"/>',
   boat:'<path class="icon-a" d="M48 10 48 62 16 62z"/><path class="icon-b" d="M56 22v40h26z"/><path class="icon-a" d="M10 70h80l-12 18H22z"/>',
   turret:'<path class="icon-a" d="M60 10 44 26l14 6-18 12 16 8-22 12 18 8-24 12 6 8 44-30z"/><g class="icon-line"><path d="M50 32 42 40"/><path d="M46 52 36 60"/></g>',
   pail:'<path class="icon-a" d="M24 38h52l-7 46H31z"/><path class="icon-line" d="M28 38c0-14 10-22 22-22s22 8 22 22"/><path class="icon-b" d="M22 32h56v10H22z"/>',
   planks:'<g class="icon-a"><rect x="8" y="26" width="84" height="14" rx="4"/><rect x="8" y="46" width="84" height="14" rx="4"/><rect x="8" y="66" width="84" height="14" rx="4"/></g><g class="icon-line"><path d="M34 26v14"/><path d="M62 46v14"/><path d="M44 66v14"/></g>',
-  weed:'<g class="icon-line" stroke-width="7"><path d="M32 92c0-24-14-28-14-44S32 26 32 8"/><path d="M62 92c0-20 14-24 14-40S60 30 60 12"/></g>',
+  weed:'<g class="icon-line-a" stroke-width="7"><path d="M32 92c0-24-14-28-14-44S32 26 32 8"/><path d="M62 92c0-20 14-24 14-40S60 30 60 12"/></g>',
   star:'<path class="icon-a" d="m50 8 12 26 28 3-21 20 6 28-25-14-25 14 6-28L10 37l28-3z"/><g class="icon-o"><circle cx="50" cy="44" r="4"/><circle cx="40" cy="60" r="3"/><circle cx="60" cy="60" r="3"/></g>',
   crab:'<ellipse class="icon-a" cx="50" cy="52" rx="28" ry="20"/><g class="icon-line"><path d="M26 66 14 80"/><path d="M74 66 86 80"/><path d="M32 40 18 28"/><path d="M68 40 82 28"/></g><circle class="icon-o" cx="40" cy="46" r="4"/><circle class="icon-o" cx="60" cy="46" r="4"/><path class="icon-b" d="M12 20a8 8 0 1 1 12 10zM88 20a8 8 0 1 0-12 10z"/>'
 };
 var BASE_KEYS = Object.keys(ICONS);
 
-/* Lookalike variants: mirrored and subtly re-tinted copies */
-var VARIANTS = [ {m:0,h:0}, {m:1,h:0}, {m:0,h:-28}, {m:1,h:-28}, {m:0,h:30}, {m:1,h:30} ];
-function variantsForTier(tier){ return tier===1?1 : tier===2?2 : 6; }
+/* Lookalike variants — REWORKED 2026-08-30 after a playability report.
+   Measured, not guessed:
+
+   1. MIRRORING WAS REMOVED. Every icon is drawn in a single accent colour, so a
+      mirrored copy differs only in shape — and rasterising all 16 at 64px showed
+      SIX of them (shell, anchor, lighthouse, pail, star, crab) are 0.0%
+      different when flipped, i.e. pixel-identical, with four more under 20%
+      (octopus 4.8, urchin 10.5, jelly 11.7, planks 17.6). For those the game was
+      asking players to tell apart two identical tiles. Only shield/weed/turret/
+      cone/boat/duck read as mirrored at all, so the axis was unfair by luck of
+      the draw.
+   2. HUES WIDENED from +/-28-30 to a full 120 apart. The old trio rendered as
+      rgb(63,224,208) teal, rgb(86,226,164) green and rgb(106,217,243) light
+      blue — min CIE76 deltaE of 24.7, all light high-luminance cyans. That is
+      exactly the "lighter shade of blue and green" that was hard to separate.
+      At 120 apart the minimum deltaE is 76.1 and every pair is a different
+      colour family.
+
+   The memory challenge is unchanged: position still tells you nothing, and you
+   still have to remember which treasures you have already seen. What is gone is
+   a perception test the art could not support. */
+var VARIANTS = [ {m:0,h:0}, {m:0,h:120}, {m:0,h:240} ];
+function variantsForTier(tier){ return tier===1?1 : tier===2?2 : 3; }
 function buildPool(tier){
   var n = variantsForTier(tier), out = [];
   for (var i=0;i<BASE_KEYS.length;i++)
     for (var v=0;v<n;v++) out.push(BASE_KEYS[i]+':'+v);
   return out;
 }
+
+/* WITHDRAWN 2026-08-30 — do not reintroduce an ordered pool.
+
+   An earlier version dealt every untinted shape before any tinted copy, as a
+   difficulty ramp. It backfired badly: once the plain shapes ran out, every
+   treasure already on the shore was teal and every NEW one was tinted, so
+   "which is new" collapsed to "which one isn't teal". Waves ~16-20 became
+   trivial — the exact opposite of a ramp.
+
+   The pool is fully shuffled again. The ramp comes from the growing pile (one
+   more treasure to remember every wave), which is the game's real difficulty
+   curve; it never needed a second one. The reason the ramp seemed necessary —
+   lookalikes being indistinguishable — was fixed properly by widening the hue
+   separation to 120 degrees, so an early tinted copy is now clearly a different
+   colour rather than a near-identical one. */
 function iconMarkup(key){
   var p = key.split(':'), v = VARIANTS[+p[1]] || VARIANTS[0];
   var tr = v.m ? 'transform:scaleX(-1);' : '';
@@ -562,7 +603,7 @@ function iconMarkup(key){
    plus the new one = 49 cells), not a finish line — three lives end the run
    long before that. By wave 20 there are 21 treasures on screen and exactly
    one of them is new. */
-var SOLO_CFG   = {name:'Open Shore',      tier:3, target:48, grid:7};
+var SOLO_CFG   = {name:'Open Shore',      tier:3, target:47, grid:7};
 var RACE_CFG   = {name:'Contested Shore', tier:3, target:5,  grid:5};
 var SOLO_LIVES = 3;
 var RACE_WAVES = 5;
@@ -995,7 +1036,10 @@ function finishRaceWave(){
      timing is bounded rather than pinned.
    ===================================================================== */
 var LB_GAME = 'tidal-recall';
-var LB_PROOF_V = 1;          // bump whenever board generation or scoring changes
+/* v2 (2026-08-30): VARIANTS and the pool draw order both changed, so a board
+   built from a given seed is no longer the board a v1 proof was recorded
+   against. Older proofs can't be replayed and the verifier reports "stale v1". */
+var LB_PROOF_V = 2;
 var PID_KEY = 'tidalDriftPid', NAME_KEY = 'tidalDriftName', BEST_KEY = 'tidalDrift_best_solo';
 
 function lbApi(pth){ return HUB_DB + '/' + pth + '.json'; }
