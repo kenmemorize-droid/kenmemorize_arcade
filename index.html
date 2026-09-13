@@ -296,6 +296,11 @@ const CATEGORIES = [
    so every url is "games/<file>.html". No "../" anywhere.
    ========================================================= */
 const BUILTIN_GAMES = [
+  /* Blind Snap, added 2026-09-13. Reworked from an unshipped prototype called
+     Ghost Trail; because it had never shipped, the id, filename and every
+     localStorage key could be named for the new title from day one — the
+     opposite of Tidal Drift's situation immediately below. */
+  { id:"blind-snap",       name:"Blind Snap",         skill:"spatial",  blurb:"Read the defence before the snap, then thread a lane from the QB to the receiver from memory — a ranked solo run, or a 5-down online race",  url:"games/blind_snap.html",         icon:"🏈" },
   /* Renamed to Tidal Drift 2026-08-27. The id stays "tidal-recall" on purpose —
      it is the Firebase key for the play count and the /games overlay, and
      changing it would orphan both. The id is never shown to players. */
@@ -413,7 +418,7 @@ const FEATURED = "cart-recall";     // the default selection, not the only board
 const LB_TOP = 10;
 
 /* Every game that writes to /leaderboard/{id}. Order here = chip order. */
-const RANKED = ["cart-recall", "memomath", "tidal-recall"];
+const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap"];
 
 /* Each game keeps its own player id under its own localStorage key. Same
    origin, so the hub can read it and highlight the visitor's own row —
@@ -421,7 +426,8 @@ const RANKED = ["cart-recall", "memomath", "tidal-recall"];
 const PID_KEYS = {
   "cart-recall":  "cartRecallPid",
   "memomath":     "memomathPid",
-  "tidal-recall": "tidalDriftPid"   // key follows the NEW name; the id does not
+  "tidal-recall": "tidalDriftPid",  // key follows the NEW name; the id does not
+  "blind-snap":   "blindSnapPid"
 };
 
 let SELECTED = FEATURED;

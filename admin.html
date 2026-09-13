@@ -505,7 +505,8 @@ const LB_GAMES = {
   'cart-recall':  { label:'Cart Recall',  file:'games/cart_recall_pvp.html', ns:'CartRecall' },
   'memomath':     { label:'MemoMath',     file:'games/memomath.html',        ns:'MemoMath'   },
   /* id stays 'tidal-recall' (the Firebase key); the game is now Tidal Drift */
-  'tidal-recall': { label:'Tidal Drift',  file:'games/tidal_recall.html',    ns:'TidalDrift' }
+  'tidal-recall': { label:'Tidal Drift',  file:'games/tidal_recall.html',    ns:'TidalDrift' },
+  'blind-snap':   { label:'Blind Snap',   file:'games/blind_snap.html',      ns:'BlindSnap'  }
 };
 let LB_GAME = 'cart-recall';
 let board = {};
@@ -705,7 +706,27 @@ function gameSandbox(){
 function replayEntry(w, entry){
   if(LB_GAME === 'memomath')     return replayMemoMath(w.MemoMath, entry);
   if(LB_GAME === 'tidal-recall') return replayTidalDrift(w.TidalDrift, entry);
+  if(LB_GAME === 'blind-snap')   return replayBlindSnap(w.BlindSnap, entry);
   return replay(w.CartRecall, entry);
+}
+
+/* Blind Snap, like Tidal Drift, pins an EXACT score — it has no speed bonus
+   either, so a replay reproduces the score to the point and an inflation of
+   one point is rejected. Its proof also proves the drive ENDED: the log must
+   close on a third sack, so a run cannot be cut short at a flattering total. */
+function replayBlindSnap(BS, entry){
+  if(entry.v !== BS.PROOF_V)
+    return { ok:false, label:'stale v' + entry.v, detail:
+      `Proof format v${entry.v}, game is v${BS.PROOF_V}. Board generation or scoring changed since this run, so it can no longer be replayed.` };
+
+  const r = BS.verify(entry.seed, entry.moves, Number(entry.score) || 0);
+  return {
+    ok: r.ok,
+    label: r.ok ? 'consistent' : 'failed',
+    detail: r.ok
+      ? `${r.downs} down(s) converted, ${r.sacks} sack(s). Score ${r.score} reproduced exactly.`
+      : r.reason
+  };
 }
 
 /* Tidal Drift's proof is the strongest of the three: it pins an EXACT score,
