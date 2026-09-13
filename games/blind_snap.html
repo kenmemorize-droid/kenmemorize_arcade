@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Blind Snap</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<style>
+/* ---------- THEME TOKENS ---------- */
+:root{
+  --bg-a:#0c1226; --bg-b:#0a0f1f; --field:#0e1730;
+  --tile:#1a2340; --tile-edge:#26325a; --tile-hi:#212c52;
+  --ink:#eaf0ff; --muted:#8f9bc4; --faint:#5b6690;
+  --start:#3fe0c5; --goal:#ffbe4d; --trail:#4fe3cf; --trail-glow:rgba(79,227,207,.55);
+  --hazard:#ff5d6c; --hazard-soft:rgba(255,93,108,.16);
+  --panel:#141d38; --panel-edge:#243056; --line:#20294a;
+  --btn:#182449; --btn-edge:#2b3a68;
+  --ok:#3ad07a;
+}
+html[data-theme="light"]{
+  --bg-a:#eef2fa; --bg-b:#e4e9f4; --field:#f3f6fc;
+  --tile:#ffffff; --tile-edge:#d5deee; --tile-hi:#eef3fb;
+  --ink:#16203a; --muted:#5a678c; --faint:#97a2c0;
+  --start:#12b39a; --goal:#e39400; --trail:#12b39a; --trail-glow:rgba(18,179,154,.4);
+  --hazard:#e5384a; --hazard-soft:rgba(229,56,74,.14);
+  --panel:#ffffff; --panel-edge:#dde5f2; --line:#e5ebf6;
+  --btn:#f2f5fc; --btn-edge:#d5deee;
+  --ok:#1fae63;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:'Segoe UI',system-ui,-apple-system,Roboto,Arial,sans-serif;
+  color:var(--ink); background:linear-gradient(180deg,var(--bg-a),var(--bg-b));
+  display:flex; justify-content:center; overflow-x:hidden;
+  transition:background .4s ease,color .3s ease;
+}
+.app{width:100%; max-width:480px; min-height:100vh; display:flex; flex-direction:column; padding:14px 16px 22px;}
+
+/* field texture backdrop */
+.field-lines{position:fixed; inset:0; z-index:-1; opacity:.5; pointer-events:none;
+  background:
+    radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--field) 60%, transparent), transparent 60%);
+}
+
+/* ---------- TOP BAR ---------- */
+.topbar{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+.icon-btn{
+  width:44px; height:44px; flex:0 0 44px; border-radius:50%; border:1px solid var(--panel-edge);
+  background:var(--panel); color:var(--ink); font-size:18px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:.15s; padding:0;
+}
+.icon-btn:active{transform:scale(.94);}
+.status-pill{
+  flex:1; height:44px; border-radius:22px; background:var(--panel); border:1px solid var(--panel-edge);
+  display:flex; align-items:center; justify-content:space-between; padding:0 20px; font-weight:800;
+}
+.status-pill .mid{font-size:14px; letter-spacing:.3px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+.status-pill .tier-tag{color:var(--ink); font-weight:800;}
+.status-pill .lives{display:flex; gap:3px; align-items:center;}
+.status-pill .lives .heart{width:15px; height:15px; display:inline-block;}
+.status-pill .lives .heart path{fill:var(--hazard);}
+.status-pill .lives .heart.lost path{fill:var(--tile-edge);}
+.status-pill .score{font-size:19px; color:var(--goal); font-variant-numeric:tabular-nums;}
+
+/* fixed theme toggle top-right */
+.theme-toggle{
+  position:fixed; top:14px; right:14px; z-index:40; display:flex; align-items:center; gap:7px;
+  height:38px; padding:0 14px; border-radius:19px; border:1px solid var(--panel-edge); background:var(--panel);
+  color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; transition:.15s;
+}
+.theme-toggle:active{transform:scale(.96);}
+.theme-toggle .tg-icon{font-size:15px;}
+
+/* ---------- SCREENS ---------- */
+.screen{display:none; flex:1; flex-direction:column;}
+.screen.active{display:flex; animation:fade .3s ease;}
+@keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+
+/* ---------- MENU ---------- */
+.brand{margin:26px 0 6px; text-align:center;}
+.brand .mark{
+  width:76px; height:76px; margin:0 auto 14px; position:relative; border-radius:20px;
+  background:radial-gradient(circle at 32% 30%, var(--tile-hi), var(--tile)); border:1px solid var(--tile-edge);
+  box-shadow:0 12px 30px rgba(0,0,0,.3);
+}
+.brand .mark svg{position:absolute; inset:0;}
+h1{font-size:34px; margin:0; letter-spacing:.5px; font-weight:800; text-align:center;}
+.tagline{text-align:center; color:var(--muted); margin:8px 0 24px; font-size:14.5px; line-height:1.5;}
+
+.card{background:var(--panel); border:1px solid var(--panel-edge); border-radius:18px; padding:18px 18px; margin-bottom:14px;}
+.card h2{margin:0 0 14px; font-size:15px; color:var(--muted); font-weight:700;}
+
+.howto{list-style:none; margin:0; padding:0; counter-reset:step;}
+.howto li{position:relative; padding:0 0 14px 40px; counter-increment:step; font-size:14.5px; line-height:1.45; color:var(--ink);}
+.howto li:last-child{padding-bottom:0;}
+.howto li::before{
+  content:counter(step); position:absolute; left:0; top:-2px; width:28px; height:28px; border-radius:9px;
+  background:var(--tile); border:1px solid var(--tile-edge); color:var(--trail); font-weight:800; font-size:14px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+.pvp-note{margin-top:12px; font-size:13px; line-height:1.5; color:var(--muted); background:var(--tile); border:1px solid var(--tile-edge); border-radius:12px; padding:12px 14px;}
+
+.best-line{display:flex; justify-content:space-between; align-items:center; font-size:14px; color:var(--muted); margin-top:4px;}
+.best-line b{color:var(--goal); font-size:17px; font-variant-numeric:tabular-nums;}
+
+.primary-btn{
+  width:100%; padding:16px; border-radius:15px; border:none; cursor:pointer; margin-top:2px;
+  background:linear-gradient(135deg,var(--start),var(--trail)); color:#06231f; font-size:17px; font-weight:800;
+  letter-spacing:.4px; box-shadow:0 10px 24px var(--trail-glow); transition:.15s;
+}
+.primary-btn:active{transform:translateY(1px);}
+html[data-theme="light"] .primary-btn{color:#04302a;}
+
+/* ---------- BOARD ---------- */
+.play-body{flex:1; display:flex; flex-direction:column; justify-content:center; gap:16px;}
+.phase-label{text-align:center; font-size:14px; color:var(--muted); font-weight:700; min-height:20px; letter-spacing:.4px;}
+.phase-label b{color:var(--hazard);}
+.phase-label .go{color:var(--trail);}
+
+.board-wrap{display:flex; justify-content:center;}
+.board{position:relative; display:grid; gap:6px; touch-action:none;
+  background:var(--field); padding:10px; border-radius:18px; border:1px solid var(--line);}
+.cell{
+  position:relative; aspect-ratio:1; border-radius:11px; background:var(--tile); border:1px solid var(--tile-edge);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .15s,border-color .15s,transform .1s;
+}
+.cell .dot{width:8px; height:8px; border-radius:50%; background:var(--faint); opacity:.5;}
+.cell.trace-on:not(.beacon):not(.on-trail):active{transform:scale(.93);}
+
+/* beacons */
+.cell.beacon .dot{display:none;}
+.cell.beacon .beacon-core{width:58%; height:58%; border-radius:50%; position:relative;}
+.cell.start .beacon-core{background:radial-gradient(circle at 40% 35%, #ffffff, var(--start)); box-shadow:0 0 16px var(--start);}
+.cell.goal  .beacon-core{background:radial-gradient(circle at 40% 35%, #fff7e6, var(--goal)); box-shadow:0 0 16px var(--goal);}
+.cell.beacon .beacon-core::after{content:attr(data-lab); position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:15px; font-weight:900; color:#0a1b18;}
+
+/* hazard reveal (memorize + fail) */
+.cell.hazard-shown{background:var(--hazard-soft); border-color:var(--hazard);}
+.cell.hazard-shown .dot{display:none;}
+.cell.hazard-shown .haz{width:52%; height:52%; opacity:.95;}
+.cell.hazard-shown .haz path{stroke:var(--hazard);}
+
+/* trail cells */
+.cell.on-trail{background:var(--tile-hi); border-color:var(--trail);}
+.cell.on-trail .dot{background:var(--trail); opacity:1;}
+.cell.trail-head{box-shadow:0 0 0 2px var(--trail), 0 0 16px var(--trail-glow);}
+.cell.hit-wrong{background:var(--hazard-soft)!important; border-color:var(--hazard)!important; animation:shake .3s;}
+@keyframes shake{0%,100%{transform:none;}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+
+.trail-svg{position:absolute; inset:10px; width:calc(100% - 20px); height:calc(100% - 20px); pointer-events:none; overflow:visible;}
+.trail-svg polyline{fill:none; stroke:var(--trail); stroke-width:7; stroke-linecap:round; stroke-linejoin:round;
+  filter:drop-shadow(0 0 6px var(--trail-glow));}
+
+/* memorize timer bar */
+.mem-bar{height:6px; border-radius:4px; background:var(--tile); overflow:hidden; width:70%; margin:0 auto;}
+.mem-bar i{display:block; height:100%; background:var(--hazard); width:100%; transform-origin:left;}
+
+.actions{display:flex; gap:10px; justify-content:center;}
+.act-btn{
+  flex:1; max-width:160px; padding:13px; border-radius:14px; border:1px solid var(--btn-edge); background:var(--btn);
+  color:var(--ink); font-size:15px; font-weight:700; cursor:pointer; transition:.15s;
+}
+.act-btn:active{transform:translateY(1px);}
+.act-btn.skip{border-color:var(--goal); color:var(--goal);}
+.act-btn:disabled{opacity:.35; cursor:default;}
+
+/* ---------- COUNTDOWN ---------- */
+#screen-count{align-items:center; justify-content:center;}
+.count-num{font-size:120px; font-weight:900; color:var(--trail); text-shadow:0 0 40px var(--trail-glow); animation:pop .5s ease;}
+@keyframes pop{0%{transform:scale(.4); opacity:0;}50%{transform:scale(1.1);}100%{transform:scale(1); opacity:1;}}
+
+/* ---------- RESULT ---------- */
+#screen-result{align-items:center; justify-content:center; text-align:center;}
+.result-badge{width:96px; height:96px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:18px;}
+.result-badge.win{background:radial-gradient(circle at 40% 35%, #7bffe0, var(--start)); box-shadow:0 0 40px var(--trail-glow);}
+.result-badge.lose{background:radial-gradient(circle at 40% 35%, #ff9aa4, var(--hazard)); box-shadow:0 0 40px var(--hazard-soft);}
+.result-badge svg{width:52px; height:52px;}
+.result-title{font-size:28px; font-weight:800; margin:0 0 6px;}
+.result-sub{color:var(--muted); font-size:15px; margin:0 0 22px;}
+.score-block{background:var(--panel); border:1px solid var(--panel-edge); border-radius:18px; padding:20px 30px; margin-bottom:22px; min-width:200px;}
+.score-block .big{font-size:44px; font-weight:900; color:var(--goal); font-variant-numeric:tabular-nums; line-height:1;}
+.score-block .lbl{font-size:12px; color:var(--muted); margin-top:6px; letter-spacing:1px;}
+.score-block .newbest{margin-top:10px; font-size:13px; font-weight:800; color:var(--start);}
+.result-actions{display:flex; flex-direction:column; gap:10px; width:100%; max-width:280px;}
+
+/* ---------- MODAL ---------- */
+.modal-back{position:fixed; inset:0; background:rgba(4,7,18,.66); display:none; align-items:center; justify-content:center; z-index:50; padding:24px;}
+.modal-back.show{display:flex; animation:fade .2s ease;}
+.modal{background:var(--panel); border:1px solid var(--panel-edge); border-radius:18px; padding:24px; max-width:320px; width:100%; text-align:center;}
+.modal p{margin:0 0 20px; font-size:16px; line-height:1.5;}
+.modal-row{display:flex; gap:10px;}
+.modal-row button{flex:1; padding:13px; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; border:1px solid var(--btn-edge); background:var(--btn); color:var(--ink);}
+.modal-row .confirm{background:var(--hazard); border-color:var(--hazard); color:#fff;}
+
+.hint-toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); opacity:0;
+  background:var(--panel); border:1px solid var(--panel-edge); color:var(--ink); padding:11px 18px; border-radius:12px;
+  font-size:14px; font-weight:600; pointer-events:none; transition:.25s; z-index:60; box-shadow:0 8px 20px rgba(0,0,0,.3);}
+.hint-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BLIND SNAP ADDITIONS — leaderboard, online race, share, §9b sizing
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ---------- the field: yard lines behind everything (§ light reskin) ----
+   The backdrop was a bare radial gradient. Adding evenly spaced chalk lines
+   makes the football read without touching the board's own palette. */
+.field-lines{
+  background:
+    radial-gradient(120% 60% at 50% -10%, color-mix(in srgb, var(--field) 60%, transparent), transparent 60%),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0 78px,
+      color-mix(in srgb, var(--ink) 7%, transparent) 78px 80px
+    );
+}
+
+/* ---------- §9b rule 2 — every control ≥46px ---------- */
+.theme-toggle{height:46px; border-radius:23px;}
+.icon-btn{width:46px; height:46px; flex:0 0 46px;}
+.act-btn{min-height:46px;}
+.modal-row button{min-height:46px;}
+.link-btn{
+  background:none; border:none; color:var(--muted); font-size:14px; font-weight:700;
+  cursor:pointer; text-decoration:underline; min-height:46px; padding:0 10px;
+}
+.link-btn:active{opacity:.7;}
+
+/* ---------- §9b rule 3 — 16px inputs, or iOS zooms on focus ---------- */
+.tin{
+  width:100%; min-height:46px; padding:12px 14px; border-radius:12px;
+  border:1px solid var(--btn-edge); background:var(--btn); color:var(--ink);
+  font-size:16px; font-weight:600; font-family:inherit; outline:none;
+}
+.tin:focus{border-color:var(--trail);}
+.tin::placeholder{color:var(--faint);}
+.tin.code{text-transform:uppercase; letter-spacing:4px; text-align:center; font-weight:800;}
+
+/* ---------- home: global-board line ---------- */
+.lb-panel{
+  margin-top:12px; padding:13px 15px; border-radius:13px;
+  background:var(--panel); border:1px solid var(--panel-edge);
+  font-size:14px; color:var(--muted); line-height:1.5;
+}
+.lb-panel b{color:var(--ink);}
+.lb-panel .lb-hi{color:var(--trail);}
+
+/* ---------- rooms / lobby / standings ---------- */
+.form-row{display:flex; flex-direction:column; gap:10px; margin-top:4px;}
+.btn-row{display:flex; gap:10px; margin-top:10px;}
+.btn-row .act-btn{max-width:none;}
+.err-line{color:var(--hazard); font-size:13px; font-weight:600; min-height:18px; margin-top:8px;}
+.wait-line{color:var(--muted); font-size:13px; text-align:center; margin-top:12px;}
+
+.code-display{
+  text-align:center; margin:6px 0 14px;
+}
+.code-display .lbl{font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase;}
+.code-display .val{
+  font-size:42px; font-weight:900; letter-spacing:10px; color:var(--trail);
+  text-indent:10px; line-height:1.2;
+}
+
+.prow{
+  display:flex; align-items:center; gap:8px; padding:11px 13px; border-radius:11px;
+  background:var(--btn); border:1px solid var(--btn-edge); margin-bottom:7px; font-size:15px; font-weight:700;
+}
+.prow .badge{
+  margin-left:auto; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase;
+  padding:4px 8px; border-radius:7px; background:var(--trail); color:#06231f;
+}
+.stat-line{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:11px 13px; border-radius:11px; background:var(--btn); border:1px solid var(--btn-edge);
+  margin-bottom:7px; font-size:15px;
+}
+.stat-line .rk{
+  display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+  border-radius:50%; background:var(--panel-edge); color:var(--ink);
+  font-size:11px; font-weight:800; margin-right:9px;
+}
+.stat-line b{color:var(--trail); font-weight:800;}
+
+/* live opponent bar during a race */
+.players-bar{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:10px;}
+.pchip{
+  display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
+  background:var(--panel); border:1px solid var(--panel-edge); font-size:12px; font-weight:700; color:var(--muted);
+}
+.pchip.me{border-color:var(--trail); color:var(--ink);}
+.pchip.done{opacity:.5;}
+.pchip b{color:var(--ink);}
+
+/* ---------- modals: name entry + share sheet ---------- */
+.modal h3{margin:0 0 8px; font-size:18px; font-weight:800; color:var(--ink);}
+.modal .sub{margin:0 0 13px; font-size:13px; color:var(--muted); line-height:1.5;}
+.modal textarea{
+  width:100%; min-height:90px; padding:12px 14px; border-radius:12px; resize:vertical;
+  border:1px solid var(--btn-edge); background:var(--btn); color:var(--ink);
+  font-size:16px; font-family:inherit; line-height:1.5; outline:none;
+}
+
+/* ---------- results extras ---------- */
+.result-rows{margin:14px 0 4px;}
+.newbest{color:var(--ok); font-size:13px; font-weight:800; margin-top:8px;}
+
+/* No hand-placed <ins> slot: STYLE_GUIDE §4 says the loader tag in <head> is
+   the whole integration and auto-ads inject their own units. */
+
+/* ---------- narrow-phone tier (§9 / §9b rule 1 — 320px is the floor) ---- */
+@media (max-width:380px){
+  .app{padding:12px 12px 18px;}
+  .brand h1{font-size:26px;}
+  .code-display .val{font-size:34px; letter-spacing:7px; text-indent:7px;}
+  .theme-toggle .tg-label{display:none;}
+  .theme-toggle{padding:0 12px;}
+}
+</style>
+</head>
+<body>
+<div class="field-lines"></div>
+
+<!-- FIXED THEME TOGGLE (top-right, menu screens) -->
+<button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+  <span class="tg-icon" id="tgIcon">☾</span><span class="tg-label" id="tgLabel">Dark</span>
+</button>
+
+<div class="app">
+
+  <!-- TOP BAR (play only) -->
+  <div class="topbar" id="topbar" style="display:none;">
+    <button class="icon-btn" id="btnExit" aria-label="Exit">&#10005;</button>
+    <div class="status-pill" id="statusPill">
+      <span class="lives" id="lives"></span>
+      <span class="mid"><span class="tier-tag" id="tierTag">Preseason</span> · D<span id="roundNow">1</span></span>
+      <span class="score" id="scoreNow">0</span>
+    </div>
+    <button class="icon-btn" id="btnThemeTop" aria-label="Theme">☾</button>
+    <button class="icon-btn" id="btnHelpPlay" aria-label="Help">?</button>
+  </div>
+
+  <!-- ══════════ HOME ══════════ -->
+  <div class="screen active" id="screen-menu">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 76 76" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="20" cy="56" rx="9" ry="6" fill="var(--start)" transform="rotate(-35 20 56)"/>
+          <path d="M15 59 L25 53 M18 55.5 L20 58.5 M21.5 53.5 L23.5 56.5" stroke="var(--bg-a)" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="56" cy="20" r="7" fill="var(--goal)"/>
+          <path d="M20 56 L20 38 L38 38 L38 20 L56 20" fill="none" stroke="var(--trail)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4 6" opacity=".9"/>
+        </svg>
+      </div>
+      <h1>Blind Snap</h1>
+    </div>
+    <p class="tagline">Read the defence before the snap. It disappears the moment the ball moves — thread the lane from your QB to the receiver from memory alone.</p>
+
+    <div class="card">
+      <h2>How to play</h2>
+      <ol class="howto">
+        <li>Before the snap, the defenders light up for a few seconds, then vanish.</li>
+        <li>From memory, drag your finger (or tap cell by cell) to thread a lane from the <b>QB</b> to the <b>receiver</b>.</li>
+        <li>Move up, down, left or right only. No diagonals, no crossing your own lane.</li>
+        <li>Run into a defender and you're <b>sacked</b> — three sacks ends the drive. Clear downs to climb from Preseason to the Super Bowl.</li>
+        <li>Shorter lanes score more, and clean downs build a streak bonus.</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>Scoring</h2>
+      <div class="stat-line"><span>Each down converted</span><b>100–340 by tier</b></div>
+      <div class="stat-line"><span>Shortest possible lane</span><b>+80–150</b></div>
+      <div class="stat-line"><span>Clean downs in a row</span><b>up to +100–180</b></div>
+      <div class="stat-line"><span>Race placement (1st/2nd/3rd)</span><b>200 / 120 / 60</b></div>
+      <div class="stat-line"><span>Running into a defender</span><b>a sack — costs a life</b></div>
+    </div>
+
+    <button class="primary-btn" id="btnSolo">Solo run</button>
+    <button class="act-btn" id="btnOnline" style="width:100%; max-width:none; margin-top:10px;">Online &middot; up to 4 players</button>
+
+    <div class="lb-panel" id="lbHome" style="display:none; margin-top:18px;"></div>
+  </div>
+
+  <!-- ══════════ ROOMS ══════════ -->
+  <div class="screen" id="screen-rooms">
+    <div class="brand"><h1 style="font-size:26px;">Online</h1></div>
+    <p class="tagline">Up to 4 players, 5 downs. Everyone gets the same defensive looks, so it's a fair race.</p>
+
+    <div class="card">
+      <h2>Your name</h2>
+      <div class="form-row">
+        <input class="tin" id="inName" maxlength="20" placeholder="Name" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button class="primary-btn" id="btnCreate" style="margin-top:0;">Create a room</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Join a room</h2>
+      <div class="form-row">
+        <input class="tin code" id="inCode" maxlength="4" placeholder="CODE" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button class="act-btn" id="btnJoin">Join</button>
+      </div>
+      <div class="err-line" id="roomErr"></div>
+    </div>
+
+    <div class="btn-row"><button class="act-btn" id="btnRoomsBack">Back</button></div>
+  </div>
+
+  <!-- ══════════ LOBBY ══════════ -->
+  <div class="screen" id="screen-lobby">
+    <div class="code-display">
+      <div class="lbl">Room code</div>
+      <div class="val" id="lobbyCode">----</div>
+    </div>
+    <div class="card">
+      <h2>Huddle <span id="lobbyCount" style="color:var(--muted); font-weight:600;">(1/4)</span></h2>
+      <div id="lobbyList"></div>
+      <div class="wait-line" id="lobbyWait"></div>
+    </div>
+    <button class="primary-btn" id="btnLaunch">Start the drive</button>
+    <div class="btn-row"><button class="act-btn" id="btnLeave">Leave room</button></div>
+  </div>
+
+  <!-- ══════════ STANDINGS (between downs) ══════════ -->
+  <div class="screen" id="screen-standings">
+    <div class="brand"><h1 style="font-size:26px;" id="standTitle">Down 1 of 5</h1></div>
+    <div class="card">
+      <h2>Standings</h2>
+      <div id="standList"></div>
+      <div class="wait-line" id="standWait"></div>
+    </div>
+    <button class="primary-btn" id="btnNextWave">Next down</button>
+  </div>
+
+  <!-- ══════════ COUNTDOWN ══════════ -->
+  <div class="screen" id="screen-count">
+    <div class="count-num" id="countNum">3</div>
+  </div>
+
+  <!-- ══════════ PLAY ══════════ -->
+  <div class="screen" id="screen-play">
+    <div class="play-body">
+      <div class="players-bar" id="playersBar" style="display:none;"></div>
+      <div class="phase-label" id="phaseLabel">Read the defence</div>
+      <div class="mem-bar" id="memBar"><i id="memFill"></i></div>
+      <div class="board-wrap">
+        <div class="board" id="board"></div>
+      </div>
+      <div class="actions" id="actions"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ RESULT ══════════ -->
+  <div class="screen" id="screen-result">
+    <div class="result-badge" id="resultBadge"></div>
+    <h2 class="result-title" id="resultTitle">Drive over</h2>
+    <p class="result-sub" id="resultSub"></p>
+    <div class="score-block">
+      <div class="big" id="resultScore">0</div>
+      <div class="lbl">SCORE</div>
+      <div class="newbest" id="resultNewBest" style="display:none;">New personal best!</div>
+    </div>
+    <div id="resultRows" class="result-rows"></div>
+    <div class="lb-panel" id="lbPanel">
+      <span id="lbLine">Checking the leaderboard…</span>
+    </div>
+    <div class="result-actions">
+      <button class="primary-btn" id="btnAgain">Play again</button>
+      <button class="act-btn" id="btnShare" hidden style="max-width:none;">Share</button>
+      <button class="act-btn" id="btnMenu" style="max-width:none;">Main menu</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════ CONFIRM MODAL (§15 — never native confirm()) ══════════ -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h3 id="modalTitle">Leave the drive?</h3>
+    <p id="modalText">Exit this drive? Your score won't be saved.</p>
+    <div class="modal-row">
+      <button id="modalCancel">Stay</button>
+      <button class="confirm" id="modalConfirm">Exit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ NAME MODAL (§15 — never native prompt()) ══════════ -->
+<div class="modal-back" id="nameBg">
+  <div class="modal">
+    <h3>Name for the board</h3>
+    <p class="sub">Shown on the global leaderboard. Up to 20 characters.</p>
+    <input class="tin" id="inLbName" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="modal-row" style="margin-top:13px;">
+      <button id="btnNameSkip">Skip</button>
+      <button class="confirm" id="btnNameOk" style="background:var(--trail); border-color:var(--trail); color:#06231f;">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ SHARE SHEET (tier 3 — always works) ══════════ -->
+<div class="modal-back" id="shareBg">
+  <div class="modal">
+    <h3>Copy your result</h3>
+    <p class="sub">Sharing isn't available here, so select the text below and copy it.</p>
+    <textarea id="shareText" readonly></textarea>
+    <div class="modal-row" style="margin-top:13px;">
+      <button id="btnShareClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="hint-toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Portable: copy verbatim into another game and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'blind-snap';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ================= PRNG ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ================= TIERS & LADDER =================
+   Tier names are the football ladder; the numbers are unchanged from the
+   original build. `streakMax` replaces the old `timeMax`: it is the same
+   per-tier magnitude, but earned by consecutive clean downs instead of by
+   finishing fast. That swap is what lets the replay proof pin an EXACT
+   score — nothing in the scoring now depends on unrecorded timing. */
+const START_LIVES=3;
+const STREAK_CAP=6;          // clean downs needed for the full tier bonus
+const TIERS={
+  easy:  {name:'Preseason', N:5, blocked:6,  minDist:4, minDetour:2, minTurns:3, mem:5000, base:100, streakMax:100, effMax:80},
+  medium:{name:'Regular',   N:6, blocked:9,  minDist:5, minDetour:3, minTurns:4, mem:6500, base:160, streakMax:120, effMax:100},
+  hard:  {name:'Playoff',   N:7, blocked:13, minDist:6, minDetour:4, minTurns:5, mem:7500, base:240, streakMax:150, effMax:120},
+  expert:{name:'Super Bowl',N:8, blocked:16, minDist:7, minDetour:4, minTurns:5, mem:8000, base:340, streakMax:180, effMax:150},
+};
+const TIER_ORDER=['easy','medium','hard','expert'];
+// endless climb: which tier for a given 1-based down (2 downs per step, then Super Bowl forever)
+function tierForRound(r){ const idx=Math.min(TIER_ORDER.length-1, Math.floor((r-1)/2)); return TIER_ORDER[idx]; }
+
+/* ============== BOARD GENERATION (validated constructive method) ==============
+   Unchanged from the original build and deliberately so: it is proven
+   deterministic (600 seeds regenerated three times each, zero mismatches),
+   which is the property the exact-score proof rests on. Do not introduce
+   Math.random() anywhere below this line. */
+const NB=[[-1,0],[1,0],[0,-1],[0,1]];
+const inb=(N,r,c)=>r>=0&&r<N&&c>=0&&c<N;
+const idx=(N,r,c)=>r*N+c;
+const rc=(N,i)=>[(i/N)|0,i%N];
+
+function bfsPath(N,a,b,block){
+  const prev=new Map([[a,-1]]); const q=[a]; let h=0;
+  while(h<q.length){
+    const cur=q[h++];
+    if(cur===b)break;
+    const r=(cur/N)|0,c=cur%N;
+    for(const[dr,dc]of NB){const nr=r+dr,nc=c+dc;if(!inb(N,nr,nc))continue;const ni=idx(N,nr,nc);if(block.has(ni)||prev.has(ni))continue;prev.set(ni,cur);q.push(ni);}
+  }
+  if(!prev.has(b))return null;
+  const out=[];let cur=b;while(cur!==-1){out.push(cur);cur=prev.get(cur);}return out.reverse();
+}
+function bfsLen(N,block,a,b){const p=bfsPath(N,a,b,block);return p?p.length-1:-1;}
+function witnessMonotone(N,block,a,b){
+  const[ar,ac]=rc(N,a),[br,bc]=rc(N,b);const sR=br>=ar?1:-1,sC=bc>=ac?1:-1;
+  const reach=new Map();reach.set(a,null);
+  const rows=[];for(let r=ar;;r+=sR){rows.push(r);if(r===br)break;}
+  const cols=[];for(let c=ac;;c+=sC){cols.push(c);if(c===bc)break;}
+  for(const r of rows)for(const c of cols){
+    const i=idx(N,r,c);if(i===a)continue;if(block.has(i))continue;
+    const prR=idx(N,r-sR,c),prC=idx(N,r,c-sC);
+    let from=null;
+    if(rows.includes(r-sR)&&reach.has(prR))from=prR;
+    else if(cols.includes(c-sC)&&reach.has(prC))from=prC;
+    if(from!==null)reach.set(i,from);
+  }
+  if(!reach.has(b))return null;
+  const cells=[];let cur=b;while(cur!==null){cells.push(cur);cur=reach.get(cur);}return cells;
+}
+function pathTurns(N,path){if(path.length<3)return 0;let t=0;for(let i=2;i<path.length;i++){const[r0,c0]=rc(N,path[i-2]),[r1,c1]=rc(N,path[i-1]),[r2,c2]=rc(N,path[i]);if((r1-r0)!==(r2-r1)||(c1-c0)!==(c2-c1))t++;}return t;}
+function minTurnsPath(N,block,a,b){
+  const INF=1e9;const dist=new Array(N*N*4).fill(INF);const par=new Array(N*N*4).fill(-1);
+  const pq=[];const[ar,ac]=rc(N,a);
+  for(let d=0;d<4;d++){const st=a*4+d;dist[st]=0;pq.push([0,st]);}
+  let bestCost=INF,bestState=-1;
+  while(pq.length){pq.sort((x,y)=>x[0]-y[0]);const[cost,st]=pq.shift();if(cost>dist[st])continue;const cell=(st/4)|0,dir=st%4;
+    if(cell===b&&cost<bestCost){bestCost=cost;bestState=st;}
+    const r=(cell/N)|0,c=cell%N;
+    for(let nd=0;nd<4;nd++){const[dr,dc]=NB[nd];const nr=r+dr,nc=c+dc;if(!inb(N,nr,nc))continue;const ni=idx(N,nr,nc);if(block.has(ni))continue;
+      const nst=ni*4+nd;const ncost=cost+(nd===dir?0:1);if(ncost<dist[nst]){dist[nst]=ncost;par[nst]=st;pq.push([ncost,nst]);}}}
+  if(bestState<0)return null;
+  const cells=[];let st=bestState;const seen=new Set();
+  while(st!==-1){const cell=(st/4)|0;if(!seen.has(cell)){seen.add(cell);cells.push(cell);}st=par[st];}
+  return {turns:bestCost,cells:cells.reverse()};
+}
+function carveWindy(N,a,b,rng,man,minDetour,minTurns){
+  const total=N*N;
+  const interior=[];for(let i=0;i<total;i++){if(i===a||i===b)continue;const[r,c]=rc(N,i);if(r>0&&c>0&&r<N-1&&c<N-1)interior.push(i);}
+  const anyCell=[];for(let i=0;i<total;i++)if(i!==a&&i!==b)anyCell.push(i);
+  const pool=interior.length>=2?interior:anyCell;
+  const baseW=Math.max(1,Math.min(3,minTurns-2));
+  for(let tries=0;tries<220;tries++){
+    const nW=baseW+(rng()<0.5?1:0);
+    const ws=[];for(let k=0;k<nW;k++)ws.push(pool[(rng()*pool.length)|0]);
+    const stops=[a,...ws,b];let path=[a];const used=new Set([a]);let okc=true;
+    for(let s=0;s<stops.length-1;s++){
+      const seg=bfsPath(N,stops[s],stops[s+1],new Set([...used].filter(x=>x!==stops[s])));
+      if(!seg){okc=false;break;}
+      for(let k=1;k<seg.length;k++){if(used.has(seg[k])){okc=false;break;}path.push(seg[k]);used.add(seg[k]);}
+      if(!okc)break;
+    }
+    if(!okc)continue;
+    if(path[path.length-1]!==b)continue;
+    if(path.length-1<man+minDetour)continue;
+    if(pathTurns(N,path)<minTurns)continue;
+    return path;
+  }
+  return null;
+}
+function genBoard(cfg,seed){
+  const{N,blocked,minDist,minDetour,minTurns}=cfg;const rng=mulberry32(seed>>>0);const total=N*N;
+  for(let attempt=0;attempt<200;attempt++){
+    let a,b,man;
+    for(let t=0;t<200;t++){a=(rng()*total)|0;b=(rng()*total)|0;const[ar,ac]=rc(N,a),[br,bc]=rc(N,b);man=Math.abs(ar-br)+Math.abs(ac-bc);if(a!==b&&man>=minDist)break;}
+    const path=carveWindy(N,a,b,rng,man,minDetour,minTurns);if(!path)continue;
+    const pathSet=new Set(path);
+    const off=[];for(let i=0;i<total;i++)if(!pathSet.has(i))off.push(i);
+    for(let i=off.length-1;i>0;i--){const j=(rng()*(i+1))|0;[off[i],off[j]]=[off[j],off[i]];}
+    const block=new Set();for(const c of off){if(block.size>=blocked)break;block.add(c);}
+    if(block.size<blocked)continue;
+    // fixer 1: remove monotone (staircase) shortcuts
+    let fixes=0,bad=false;
+    while(fixes<200){
+      const wit=witnessMonotone(N,block,a,b);if(!wit)break;
+      const targets=wit.filter(x=>!pathSet.has(x)&&x!==a&&x!==b&&!block.has(x));
+      if(targets.length===0){bad=true;break;}
+      const pick=targets[(rng()*targets.length)|0];
+      if(block.size>=blocked){const arr=[...block].filter(x=>!wit.includes(x));const src=arr.length?arr:[...block];block.delete(src[(rng()*src.length)|0]);}
+      block.add(pick);fixes++;
+    }
+    if(bad)continue;
+    // fixer 2: drive minimum-turns up to target (kills border/L-shape routes)
+    let bad2=false,mtFix=0;
+    while(mtFix<200){
+      const mt=minTurnsPath(N,block,a,b);if(!mt){bad2=true;break;}
+      if(mt.turns>=minTurns)break;
+      const targets=mt.cells.filter(x=>!pathSet.has(x)&&x!==a&&x!==b&&!block.has(x));
+      if(targets.length===0){bad2=true;break;}
+      const pick=targets[(rng()*targets.length)|0];
+      if(block.size>=blocked){const arr=[...block].filter(x=>!mt.cells.includes(x));const src=arr.length?arr:[...block];block.delete(src[(rng()*src.length)|0]);}
+      block.add(pick);mtFix++;
+    }
+    if(bad2)continue;
+    const optimal=bfsLen(N,block,a,b);if(optimal<0)continue;
+    if(witnessMonotone(N,block,a,b))continue;
+    const mtFinal=minTurnsPath(N,block,a,b);if(!mtFinal||mtFinal.turns<minTurns)continue;
+    return {N,a,b,block:[...block],optimal,minTurns:mtFinal.turns};
+  }
+  // rare fallback
+  const a=0,b=total-1;return {N,a,b,block:[],optimal:bfsLen(N,new Set(),a,b),minTurns:0};
+}
+
+/* ============== DOWN SEEDING ==============
+   One run seed; each down derives its own board seed from it. Recorded in the
+   proof as a plain NUMBER — note the Firebase rules accept a numeric OR a
+   short string seed, but a number is the cheaper path (see CLAUDE.md). */
+function downSeed(runSeed, round){ return (runSeed + round*2654435761)>>>0; }
+function boardForRound(runSeed, round){
+  return genBoard(TIERS[tierForRound(round)], downSeed(runSeed, round));
+}
+
+/* ============== PURE MOVE LOGIC ==============
+   THE single source of truth for what a tap does. Live play and the replay
+   verifier both call applyMove(), so scoring can never drift between them —
+   the shape CLAUDE.md recommends (MemoMath / Tidal Drift), not Cart Recall's
+   reimplementation-in-admin.
+
+   `st` is { board, trail, lives, hits }. Mutates st and returns what happened. */
+function adjacentOn(N,i,j){const[ri,ci]=rc(N,i),[rj,cj]=rc(N,j);return Math.abs(ri-rj)+Math.abs(ci-cj)===1;}
+
+function applyMove(st, i){
+  const b=st.board, trail=st.trail;
+  const head=trail[trail.length-1];
+  if(i===head) return {type:'none'};
+  // stepping back onto the previous cell erases
+  if(trail.length>=2 && i===trail[trail.length-2]){ trail.pop(); return {type:'undo'}; }
+  if(trail.indexOf(i)>=0) return {type:'none'};            // no revisit / no crossing
+  if(!adjacentOn(b.N,i,head)) return {type:'none'};
+  if(b.block.indexOf(i)>=0){                               // a defender
+    st.lives--; st.hits++;
+    return {type:'sack', lives:st.lives, cell:i};
+  }
+  trail.push(i);
+  return (i===b.b) ? {type:'goal'} : {type:'move'};
+}
+function applyClear(st){ st.trail = [st.board.a]; return {type:'clear'}; }
+
+/* ============== SCORING (no timing term — see TIERS above) ==============
+   base            flat per tier
+   + efficiency    effMax x (shortest legal lane / the lane you actually ran)
+   + streak bonus  only on a clean down, scaling to the full tier value after
+                   STREAK_CAP consecutive clean downs; any sack resets it.
+   Every input is recoverable from the seed and the recorded taps, so a replay
+   reproduces the score to the point. */
+function scoreDown(cfg, optimal, actualLen, hits, streakAfter){
+  const eff = Math.round(cfg.effMax * (optimal / actualLen));
+  const bonus = hits===0 ? Math.round(cfg.streakMax * Math.min(streakAfter, STREAK_CAP) / STREAK_CAP) : 0;
+  return Math.max(0, cfg.base + eff + bonus);
+}
+
+/* ================= STATE ================= */
+var S={mode:'solo', runSeed:0, round:0, total:0, lives:START_LIVES, streak:0,
+       board:null, trail:[], hits:0, cells:[],
+       phase:'idle', memTimer:null, countTimer:null,
+       moveLog:[], downMoves:[], over:false, raceDone:false};
+
+/* ================= DOM ================= */
+const $=id=>document.getElementById(id);
+const SCREEN_IDS=['screen-menu','screen-rooms','screen-lobby','screen-standings','screen-count','screen-play','screen-result'];
+function show(name){
+  const full = name.indexOf('screen-')===0 ? name : ('screen-'+name);
+  SCREEN_IDS.forEach(id=>{const el=$(id); if(el) el.classList.toggle('active', id===full);});
+  const inPlay=(full==='screen-play'||full==='screen-count');
+  $('topbar').style.display=inPlay?'flex':'none';
+  $('themeToggle').style.display=inPlay?'none':'flex';
+}
+
+/* ================= THEME (§2) ================= */
+const THEME_KEY='blindsnap_theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t);store.set(THEME_KEY,t);
+  const dark=t==='dark';$('tgIcon').textContent=dark?'☾':'☀';$('tgLabel').textContent=dark?'Dark':'Light';
+  const bt=$('btnThemeTop');if(bt)bt.textContent=dark?'☾':'☀';
+}
+(function initTheme(){applyTheme(store.get(THEME_KEY,'dark'));})();
+function toggleTheme(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');}
+
+/* ================= MODE ENTRY =================
+   Two stacked buttons, not a picker: matches MemoMath and Tidal Drift, which
+   both go `big primary = Solo run` then `ghost = Online - up to 4 players`.
+   There is no mode to "select" on the menu any more; the button you press is
+   the mode you get. */
+
+/* ================= LIVES UI ================= */
+const HEART='<svg class="heart%CLS%" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.9-10-9.3C.4 8.5 1.9 5 5.2 5c2 0 3.2 1.1 3.8 2 .6-.9 1.8-2 3.8-2 3.3 0 4.8 3.5 3.2 6.7C19.5 16.1 12 21 12 21z"/></svg>';
+function renderLives(){
+  let h='';for(let i=0;i<START_LIVES;i++){h+=HEART.replace('%CLS%', i<S.lives?'':' lost');}
+  $('lives').innerHTML=h;
+}
+
+/* ================= RUN FLOW ================= */
+function startSolo(){
+  S.mode='solo';
+  /* a previous race leaves its opponent chips on screen otherwise */
+  $('playersBar').style.display='none';
+  $('playersBar').innerHTML='';
+  S.runSeed=(Math.random()*1e9)>>>0;
+  S.round=0;S.total=0;S.lives=START_LIVES;S.streak=0;S.over=false;
+  S.moveLog=[];
+  hubReportPlay();                       // §12 — once per run
+  nextDown();
+}
+function nextDown(){
+  S.round++;
+  const tier=tierForRound(S.round);
+  const cfg=TIERS[tier];
+  $('roundNow').textContent=S.round;
+  $('tierTag').textContent=cfg.name;
+  $('scoreNow').textContent=S.total;
+  renderLives();
+  S.board=boardForRound(S.runSeed,S.round);
+  S.trail=[S.board.a];S.hits=0;S.downMoves=[];
+  countdown(()=>memorizePhase());
+}
+
+/* ---------- countdown (§14) ---------- */
+function countdown(done){
+  show('count');
+  let n=3;const el=$('countNum');el.textContent=n;
+  el.style.animation='none';void el.offsetWidth;el.style.animation='';
+  clearInterval(S.countTimer);
+  S.countTimer=setInterval(()=>{
+    n--;
+    if(n<=0){clearInterval(S.countTimer);el.textContent='GO';el.style.animation='none';void el.offsetWidth;el.style.animation='';
+      setTimeout(()=>{done();},520);return;}
+    el.textContent=n;el.style.animation='none';void el.offsetWidth;el.style.animation='';
+  },700);
+}
+
+/* ---------- board build ---------- */
+function currentCfg(){ return TIERS[tierForRound(S.round)]; }
+/* Measure the container rather than assuming the page padding: an 8x8 Super
+   Bowl board on a 320px phone is tight enough that a hardcoded inset costs
+   real millimetres per cell. Never vary the GRID SIZE by screen width —
+   ranked boards must be identical on every device. */
+function boardWidth(){
+  const wrap=$('board').parentElement;
+  const avail=wrap&&wrap.clientWidth ? wrap.clientWidth : (window.innerWidth-32);
+  return Math.min(avail, 460);
+}
+function buildBoardDom(){
+  const N=S.board.N;const b=S.board;
+  const board=$('board');
+  board.style.gridTemplateColumns=`repeat(${N},1fr)`;
+  board.style.width=boardWidth()+'px';
+  board.innerHTML='';
+  S.cells=[];
+  for(let i=0;i<N*N;i++){
+    const cell=document.createElement('div');cell.className='cell';cell.dataset.i=i;
+    const dot=document.createElement('span');dot.className='dot';cell.appendChild(dot);
+    if(i===b.a){cell.classList.add('beacon','start');const core=document.createElement('div');core.className='beacon-core';core.dataset.lab='QB';cell.appendChild(core);}
+    if(i===b.b){cell.classList.add('beacon','goal');const core=document.createElement('div');core.className='beacon-core';core.dataset.lab='WR';cell.appendChild(core);}
+    board.appendChild(cell);S.cells.push(cell);
+  }
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','trail-svg');svg.setAttribute('id','trailSvg');
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');poly.setAttribute('id','trailPoly');
+  svg.appendChild(poly);board.appendChild(svg);
+  board.onpointerdown=onPointerDown;
+  board.onpointermove=onPointerMove;
+}
+
+/* ---------- pointer input (tap + slide) ---------- */
+let dragging=false, lastGestureCell=-1;
+function cellFromEvent(e){
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(!el)return -1;const c=el.closest('.cell');if(!c||!c.dataset)return -1;
+  const i=parseInt(c.dataset.i,10);return isNaN(i)?-1:i;
+}
+function onPointerDown(e){
+  if(S.phase!=='trace')return;
+  const i=cellFromEvent(e);if(i<0)return;
+  dragging=true;lastGestureCell=i;
+  try{e.target.setPointerCapture&&e.target.setPointerCapture(e.pointerId);}catch(_){ }
+  e.preventDefault();
+  processCell(i);
+}
+function onPointerMove(e){
+  if(!dragging||S.phase!=='trace')return;
+  const i=cellFromEvent(e);
+  if(i<0||i===lastGestureCell)return;
+  lastGestureCell=i;
+  processCell(i);
+}
+function onPointerUp(){dragging=false;lastGestureCell=-1;}
+window.addEventListener('pointerup',onPointerUp);
+window.addEventListener('pointercancel',onPointerUp);
+
+/* ---------- memorize (pre-snap read) ---------- */
+function memorizePhase(){
+  show('play');
+  S.phase='memorize';
+  buildBoardDom();
+  const cfg=currentCfg();
+  $('phaseLabel').innerHTML='Read the <b>defence</b>';
+  $('memBar').style.display='block';
+  S.board.block.forEach(i=>{
+    const cell=S.cells[i];cell.classList.add('hazard-shown');
+    cell.appendChild(defenderSvg());
+  });
+  renderActions('memorize');
+  const fill=$('memFill');fill.style.transition='none';fill.style.transform='scaleX(1)';
+  void fill.offsetWidth;
+  fill.style.transition='transform '+cfg.mem+'ms linear';fill.style.transform='scaleX(0)';
+  clearTimeout(S.memTimer);
+  S.memTimer=setTimeout(()=>tracePhase(),cfg.mem);
+}
+function defenderSvg(){
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');svg.setAttribute('class','haz');svg.setAttribute('viewBox','0 0 24 24');
+  const p=document.createElementNS(ns,'path');
+  p.setAttribute('d','M5 5 L19 19 M19 5 L5 19');p.setAttribute('stroke-width','3');p.setAttribute('stroke-linecap','round');p.setAttribute('fill','none');
+  svg.appendChild(p);return svg;
+}
+function skipMemorize(){if(S.phase!=='memorize')return;clearTimeout(S.memTimer);tracePhase();}
+
+/* ---------- trace (the snap) ---------- */
+function tracePhase(){
+  clearTimeout(S.memTimer);
+  S.phase='trace';
+  $('memBar').style.display='none';
+  $('phaseLabel').innerHTML='Thread it <span class="go">QB → WR</span>';
+  S.board.block.forEach(i=>{const cell=S.cells[i];cell.classList.remove('hazard-shown');const h=cell.querySelector('.haz');if(h)h.remove();});
+  S.cells.forEach(c=>c.classList.add('trace-on'));
+  renderActions('trace');
+  redrawTrail();
+}
+
+/* Every tap that CHANGES anything is logged, so the run can be replayed. */
+function processCell(i){
+  if(S.phase!=='trace')return;
+  const res=applyMove(S,i);
+  if(res.type==='none')return;
+  S.downMoves.push(String(i));
+
+  if(res.type==='undo'||res.type==='move') redrawTrail();
+  if(res.type==='sack'){
+    dragging=false;
+    const cell=S.cells[res.cell];cell.classList.add('hit-wrong');
+    cell.appendChild(defenderSvg());cell.querySelector('.haz').style.opacity='.9';
+    renderLives();
+    if(S.lives<=0){ endDown(false); return; }
+    toast('Sacked! '+S.lives+(S.lives===1?' life left':' lives left'));
+    setTimeout(()=>{cell.classList.remove('hit-wrong');cell.classList.add('hazard-shown');},600);
+    return;
+  }
+  if(res.type==='goal'){ redrawTrail(); dragging=false; endDown(true); }
+}
+function popTrail(){
+  if(S.phase!=='trace')return;
+  if(S.trail.length<=1)return;
+  // an explicit Undo is the same event as stepping back, so log it that way
+  const back=S.trail[S.trail.length-2];
+  S.downMoves.push(String(back));
+  S.trail.pop();redrawTrail();
+}
+function clearTrail(){
+  if(S.phase!=='trace')return;
+  if(S.trail.length<=1)return;
+  S.downMoves.push('C');
+  applyClear(S);redrawTrail();
+}
+function redrawTrail(){
+  S.cells.forEach((c)=>{c.classList.remove('on-trail','trail-head');});
+  S.trail.forEach((i)=>{const c=S.cells[i];if(i!==S.board.a&&i!==S.board.b)c.classList.add('on-trail');});
+  const headI=S.trail[S.trail.length-1];S.cells[headI].classList.add('trail-head');
+  const poly=$('trailPoly');if(!poly)return;
+  const pts=S.trail.map(i=>{const el=S.cells[i];const cx=el.offsetLeft+el.offsetWidth/2-10;const cy=el.offsetTop+el.offsetHeight/2-10;return cx+','+cy;});
+  poly.setAttribute('points',pts.join(' '));
+  const u=$('btnUndo'),cl=$('btnClear');if(u)u.disabled=S.trail.length<=1;if(cl)cl.disabled=S.trail.length<=1;
+}
+
+/* ---------- actions bar ---------- */
+function renderActions(phase){
+  const host=$('actions');host.innerHTML='';
+  if(phase==='memorize'){
+    const skip=btn('Snap it','act-btn skip');skip.onclick=skipMemorize;host.appendChild(skip);
+  }else{
+    const undo=btn('Undo','act-btn');undo.id='btnUndo';undo.onclick=popTrail;undo.disabled=true;
+    const clear=btn('Clear','act-btn');clear.id='btnClear';clear.onclick=clearTrail;clear.disabled=true;
+    host.appendChild(undo);host.appendChild(clear);
+  }
+}
+function btn(label,cls){const b=document.createElement('button');b.className=cls;b.textContent=label;return b;}
+
+/* ---------- down resolution ---------- */
+function endDown(reached){
+  S.phase='done';
+  S.moveLog.push(S.round+':'+S.downMoves.join('.'));
+  if(reached){
+    const cfg=currentCfg();
+    const clean=S.hits===0;
+    S.streak = clean ? S.streak+1 : 0;
+    const gain=scoreDown(cfg,S.board.optimal,S.trail.length-1,S.hits,S.streak);
+    S.total+=gain;
+    $('scoreNow').textContent=S.total;
+    toast('+'+gain+(clean&&S.streak>1?'  ·  '+S.streak+' clean':''));
+  }
+  if(S.mode==='race'){ raceDownOver(); return; }
+  if(!reached){ driveOver(); return; }
+  setTimeout(()=>nextDown(),850);
+}
+function driveOver(){
+  S.over=true;
+  S.board.block.forEach(i=>{const cell=S.cells[i];if(!cell.querySelector('.haz')){cell.classList.add('hazard-shown');cell.appendChild(defenderSvg());}});
+  S.cells.forEach(c=>c.classList.remove('trace-on'));
+  renderLives();
+  setTimeout(()=>finishRun(),1100);
+}
+function finishRun(){
+  const prev=getBest();
+  const isBest=S.total>prev;
+  if(isBest)setBest(S.total);
+  const cfg=currentCfg();
+  const cleared=S.round-1;
+  const badge=$('resultBadge');badge.className='result-badge lose';
+  badge.innerHTML='<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
+  $('resultTitle').textContent='Drive over';
+  $('resultSub').textContent='Converted '+cleared+' down'+(cleared===1?'':'s')+' · reached '+cfg.name+'.';
+  $('resultScore').textContent=S.total;
+  $('resultNewBest').style.display=(isBest&&S.total>0)?'block':'none';
+  $('resultRows').innerHTML='';
+  $('btnAgain').textContent='Play again';
+  $('lbPanel').hidden=false;
+  show('result');
+  handleLeaderboard();
+}
+
+/* ================= MODAL (§15) ================= */
+let modalAction=null;
+function openModal(title,text,confirmLabel,action){
+  $('modalTitle').textContent=title;
+  $('modalText').textContent=text;$('modalConfirm').textContent=confirmLabel;
+  modalAction=action;
+  $('modalCancel').style.display=action?'':'none';   // informational modals have nothing to cancel
+  $('modalBack').classList.add('show');
+}
+function closeModal(){$('modalBack').classList.remove('show');modalAction=null;}
+
+/* ================= TOAST ================= */
+let toastTimer=null;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1300);}
+
+/* ================= EXIT ================= */
+function exitToMenu(){
+  clearTimeout(S.memTimer);clearInterval(S.countTimer);
+  S.phase='idle';S.over=true;
+  if(S.mode==='race') leaveRoom(); else { show('menu'); refreshHome(); }
+}
+
+/* =====================================================================
+   GLOBAL LEADERBOARD  —  /leaderboard/blind-snap/{playerId}
+   One row per player, holding their best drive. A lower score never
+   overwrites a higher one (enforced by the Firebase rule as well as here).
+   ===================================================================== */
+var LB_GAME='blind-snap';
+var LB_PROOF_V=1;
+var PID_KEY='blindSnapPid', NAME_KEY='blindSnapName', BEST_KEY='blindSnap_best_solo';
+
+function lbApi(pth){ return HUB_DB+'/'+pth+'.json'; }
+function playerId(){
+  var id=null;
+  try{ id=localStorage.getItem(PID_KEY); }catch(e){}
+  if(!id){
+    id='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+    try{ localStorage.setItem(PID_KEY,id); }catch(e){}
+  }
+  return id;
+}
+function playerName(){ try{ return localStorage.getItem(NAME_KEY)||''; }catch(e){ return ''; } }
+function getBest(){ try{ return parseInt(localStorage.getItem(BEST_KEY),10)||0; }catch(e){ return 0; } }
+function setBest(v){ try{ localStorage.setItem(BEST_KEY,String(v)); }catch(e){} }
+
+/* Moves are "down:cell.cell.cell" groups joined by ";" — 'C' marks a Clear.
+   Enough to replay every tap that changed anything, and nothing more. */
+function buildProof(){ return S.moveLog.join(';'); }
+
+function lbFetchAll(){
+  return fetch(lbApi('leaderboard/'+LB_GAME))
+    .then(function(r){ return r.ok?r.json():{}; })
+    .then(function(d){ return (d&&typeof d==='object'&&!d.error)?d:{}; })
+    .catch(function(){ return {}; });
+}
+function lbRank(all,score){
+  var better=0,total=0;
+  for(var k in all){ if(!all[k])continue; total++; if(Number(all[k].score)>score) better++; }
+  return { rank:better+1, total:total };
+}
+function lbSubmit(name){
+  var entry={ name:String(name).slice(0,20), score:S.total, downs:Math.max(0,S.round-1),
+              at:Date.now(), v:LB_PROOF_V, seed:S.runSeed, moves:buildProof() };
+  return fetch(lbApi('leaderboard/'+LB_GAME+'/'+playerId()),
+               { method:'PUT', body:JSON.stringify(entry) })
+    .then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+
+/* Home panel — where this player currently sits. */
+function refreshHome(){
+  var b=getBest();
+  var panel=$('lbHome');
+  /* Nothing is shown until this player actually has a score. The suite does the
+     same thing with its `bestPanel` (display:none until best > 0) -- a menu
+     that greets a first-time player with a zero is the thing being avoided. */
+  if(!b){ panel.style.display='none'; return; }
+  lbFetchAll().then(function(all){
+    var r=lbRank(all,b);
+    panel.innerHTML='Best drive <b>'+b+'</b> &middot; <b class="lb-hi">#'+r.rank+'</b> of '+r.total+' on the global board.';
+    panel.style.display='block';
+  });
+}
+
+/* Drive finished → find where it sits, ask for a name the first time, and
+   submit only if it beats this player's own best. Races are never ranked:
+   placement bonuses and opponent count make race scores non-comparable. */
+function handleLeaderboard(){
+  var line=$('lbLine'), share=$('btnShare');
+  share.hidden=true;
+  if(S.mode!=='solo'){ $('lbPanel').hidden=true; return; }
+  line.textContent='Checking the leaderboard…';
+
+  lbFetchAll().then(function(all){
+    var mine=all[playerId()];
+    var prevBest=mine?(Number(mine.score)||0):0;
+
+    if(S.total<=prevBest){
+      var r=lbRank(all,prevBest);
+      line.innerHTML='Your best is still <b>'+prevBest+'</b> — #'+r.rank+' of '+r.total+'.';
+      showShare(prevBest,r.rank);
+      return;
+    }
+    var name=playerName();
+    var go=name?Promise.resolve(name):askName();
+    go.then(function(entered){
+      if(entered===null){
+        line.textContent='Not submitted. Play again to join the board.';
+        showShare(S.total,null);
+        return;
+      }
+      try{ localStorage.setItem(NAME_KEY,entered); }catch(e){}
+      line.textContent='Submitting…';
+      lbSubmit(entered).then(function(ok){
+        if(!ok){
+          line.textContent='Could not reach the leaderboard — your score is safe locally.';
+          showShare(S.total,null);
+          return;
+        }
+        lbFetchAll().then(function(after){
+          var r2=lbRank(after,S.total);
+          line.innerHTML=prevBest
+            ? 'New personal best — you’re <b>#'+r2.rank+'</b> of '+r2.total+'.'
+            : 'You’re on the board at <b>#'+r2.rank+'</b> of '+r2.total+'.';
+          showShare(S.total,r2.rank);
+        });
+      });
+    });
+  });
+}
+
+/* Name prompt — a modal, not window.prompt(), for the §15 reason. */
+function askName(){
+  return new Promise(function(resolve){
+    var bg=$('nameBg'), input=$('inLbName');
+    input.value=playerName();
+    bg.classList.add('show');
+    setTimeout(function(){ input.focus(); },50);
+    function done(v){
+      bg.classList.remove('show');
+      $('btnNameOk').onclick=null; $('btnNameSkip').onclick=null; input.onkeydown=null;
+      resolve(v);
+    }
+    function ok(){ var n=input.value.trim(); if(n) done(n); }
+    $('btnNameOk').onclick=ok;
+    $('btnNameSkip').onclick=function(){ done(null); };
+    input.onkeydown=function(e){ if(e.key==='Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ----------
+   navigator.share and the clipboard BOTH need a secure context, and
+   navigator.share is largely mobile-only, so on desktop and on file:// neither
+   exists. The manual copy sheet is the guaranteed fallback. */
+var SHARE_HOME='https://arcade.kenmemorize.com/';
+function shareUrl(){
+  if(location.protocol==='file:'||location.origin==='null') return SHARE_HOME;
+  return location.origin+location.pathname.replace(/\/games\/[^/]*$/,'/');
+}
+function showShare(score,rank){
+  var b=$('btnShare');
+  b.hidden=false;
+  b.onclick=function(){ shareScore(score,rank); };
+}
+function shareScore(score,rank){
+  var text='I scored '+score+' on Blind Snap'+
+           (rank?' — #'+rank+' on the board':'')+'. '+shareUrl();
+  if(navigator.share){
+    navigator.share({ title:'Blind Snap', text:text }).catch(function(e){
+      if(e&&e.name==='AbortError') return;      // dismissed, not a failure
+      manualShare(text);
+    });
+    return;
+  }
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ toast('Copied'); },
+                                            function(){ manualShare(text); });
+    return;
+  }
+  manualShare(text);
+}
+function manualShare(text){
+  $('shareText').value=text;
+  $('shareBg').classList.add('show');
+}
+
+/* =====================================================================
+   ONLINE  —  /rooms/{code}
+   ---------------------------------------------------------------------
+   Ported from Tidal Drift, which took it from Cart Recall — same database,
+   same /rooms path, so online play needs no Firebase rules change.
+
+   Unlike Tidal Drift, every player here gets the IDENTICAL board, not just an
+   equally hard one: a Blind Snap board is static for the whole down, so one
+   dealt seed produces the same defence for everyone and the down is directly
+   comparable. Tidal Drift had to deal per-player shores because its board
+   evolves as you tap it.
+   ===================================================================== */
+var RACE_DOWNS=5;
+var MAX_PLAYERS=4;
+var PLACE_BONUS=[200,120,60];
+var M={ code:null, pid:null, name:'', isHost:false, joined:false,
+        room:null, es:null, hb:null, lastKey:'', refereedDown:0, playReported:false };
+
+function api(pth){ return HUB_DB+'/'+pth+'.json'; }
+var net={
+  get:  function(p){ return fetch(api(p)).then(function(r){ return r.json(); }); },
+  put:  function(p,v){ return fetch(api(p),{method:'PUT',  body:JSON.stringify(v)}); },
+  patch:function(p,v){ return fetch(api(p),{method:'PATCH',body:JSON.stringify(v)}); },
+  del:  function(p){ return fetch(api(p),{method:'DELETE'}); }
+};
+
+function subscribe(path,onChange,onError){
+  var mirror=null;
+  var es=new EventSource(api(path));
+  function walk(obj,segs){
+    var o=obj;
+    for(var i=0;i<segs.length-1;i++){ if(!o[segs[i]]) o[segs[i]]={}; o=o[segs[i]]; }
+    return o;
+  }
+  function applyPut(p,d){
+    if(p==='/'){ mirror=d; return; }
+    var segs=p.split('/').filter(Boolean);
+    if(!mirror) mirror={};
+    var parent=walk(mirror,segs);
+    var key=segs[segs.length-1];
+    if(d===null) delete parent[key]; else parent[key]=d;
+  }
+  es.addEventListener('put',function(e){
+    var m=JSON.parse(e.data); applyPut(m.path,m.data); onChange(mirror);
+  });
+  es.addEventListener('patch',function(e){
+    var m=JSON.parse(e.data);
+    var base=m.path==='/'?'':m.path;
+    for(var k in m.data) applyPut((base+'/'+k).replace('//','/'),m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error',function(){ if(onError) onError(); });
+  return es;
+}
+
+var CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I/O — they read as 1/0 on a phone
+function newCode(){
+  var s='';
+  for(var i=0;i<4;i++) s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];
+  return s;
+}
+function P(){ return (M.room&&M.room.players)||{}; }
+function meNode(){ return P()[M.pid]||{}; }
+function freshPlayer(name){
+  return { name:name, score:0, bonus:0, lives:START_LIVES, done:false, finishedAt:0, hb:Date.now() };
+}
+function raceErr(msg){ $('roomErr').textContent=msg||''; }
+
+function createRoom(){
+  var name=$('inName').value.trim();
+  if(!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name=name; M.pid='p'+Math.random().toString(36).slice(2,9); M.isHost=true;
+  try{ localStorage.setItem(NAME_KEY,name); }catch(e){}
+  var code=newCode();
+  M.code=code;
+  var payload={ host:M.pid, phase:'lobby', createdAt:Date.now(), players:{} };
+  payload.players[M.pid]=freshPlayer(name);
+  net.put('rooms/'+code,payload).then(function(ok){
+    if(!ok||!ok.ok) return raceErr('Could not reach the database. Online play needs a "rooms" rule.');
+    watchRoom();
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function joinRoom(){
+  var name=$('inName').value.trim();
+  var code=$('inCode').value.trim().toUpperCase();
+  if(!name) return raceErr('Type a name first.');
+  if(code.length!==4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  net.get('rooms/'+code).then(function(room){
+    if(!room) return raceErr('No room with that code.');
+    if(room.phase!=='lobby') return raceErr('That drive has already started.');
+    if(Object.keys(room.players||{}).length>=MAX_PLAYERS) return raceErr('That room is full.');
+    M.name=name; M.pid='p'+Math.random().toString(36).slice(2,9); M.isHost=false; M.code=code;
+    try{ localStorage.setItem(NAME_KEY,name); }catch(e){}
+    net.put('rooms/'+code+'/players/'+M.pid,freshPlayer(name)).then(watchRoom);
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function watchRoom(){
+  raceErr('');
+  M.joined=true; M.lastKey=''; M.refereedDown=0; M.playReported=false;
+  M.es=subscribe('rooms/'+M.code,onRoom,function(){ raceErr('Connection dropped.'); });
+  clearInterval(M.hb);
+  M.hb=setInterval(function(){
+    if(M.joined) net.patch('rooms/'+M.code+'/players/'+M.pid,{ hb:Date.now() });
+  },5000);
+  show('lobby');
+}
+
+function leaveRoom(){
+  if(M.code&&M.pid) net.del('rooms/'+M.code+'/players/'+M.pid);
+  if(M.isHost&&M.code) net.del('rooms/'+M.code);
+  if(M.es) M.es.close();
+  clearInterval(M.hb);
+  M.joined=false; M.code=null; M.room=null;
+  S.mode='solo';
+  show('menu');
+  refreshHome();
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if(!room){ if(M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  M.room=room;
+
+  if(room.phase==='lobby'){ M.playReported=false; paintLobby(); return; }
+  if(room.phase==='over'){ paintRaceFinal(); return; }
+  if(room.phase==='result'){ paintStandings(); if(M.isHost) hostReferee(); return; }
+
+  var key=room.phase+':'+(room.down&&room.down.n);
+  if(key!==M.lastKey&&room.phase==='playing'&&room.down){
+    M.lastKey=key;
+    if(!M.playReported){ M.playReported=true; hubReportPlay(); }   // §12 — once per race
+    startRaceDown(room.down.n,room.down.seed);
+  }
+  if(S.mode==='race'&&!S.over) renderPlayers();
+  if(M.isHost) hostReferee();
+}
+
+function paintLobby(){
+  show('lobby');
+  $('lobbyCode').textContent=M.code;
+  var ids=Object.keys(P());
+  $('lobbyCount').textContent='('+ids.length+'/'+MAX_PLAYERS+')';
+  var html='';
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i], p=P()[id];
+    html+='<div class="prow"><span>'+escapeHtml(p.name)+'</span>'+
+      (id===M.room.host?'<span class="badge">Host</span>':'')+
+      (id===M.pid&&id!==M.room.host?'<span class="badge">You</span>':'')+'</div>';
+  }
+  $('lobbyList').innerHTML=html;
+  $('btnLaunch').hidden=!M.isHost;
+  $('btnLaunch').disabled=ids.length<2;
+  $('lobbyWait').textContent=M.isHost
+    ? (ids.length<2?'Waiting for at least one more player…':'')
+    : 'Waiting for the host to start…';
+}
+
+function hostDealDown(n){
+  var reset={}, ids=Object.keys(P());
+  for(var i=0;i<ids.length;i++){
+    var p=P()[ids[i]];
+    reset[ids[i]]={ name:p.name, score:p.score||0, bonus:p.bonus||0,
+                    lives:START_LIVES, done:false, finishedAt:0, hb:Date.now() };
+  }
+  net.patch('rooms/'+M.code,{
+    down:{ n:n, seed:(Math.random()*1e9)>>>0, dealtAt:Date.now() },
+    players:reset,
+    phase:'playing'
+  });
+}
+
+/* ---- one down of a race ---- */
+function startRaceDown(n,seed){
+  S.mode='race'; S.over=false; S.raceDone=false;
+  if(n===1){ S.total=0; S.streak=0; S.moveLog=[]; }
+  S.round=n; S.lives=START_LIVES; S.hits=0; S.downMoves=[];
+  var cfg=TIERS[tierForRound(n)];
+  $('roundNow').textContent=n;
+  $('tierTag').textContent=cfg.name;
+  $('scoreNow').textContent=S.total;
+  S.board=genBoard(cfg,seed>>>0);
+  S.trail=[S.board.a];
+  $('playersBar').style.display='flex';
+  countdown(function(){ memorizePhase(); });
+}
+function raceDownOver(){
+  S.raceDone=true;
+  S.cells.forEach(function(c){ c.classList.remove('trace-on'); });
+  S.board.block.forEach(function(i){
+    var cell=S.cells[i];
+    if(!cell.querySelector('.haz')){ cell.classList.add('hazard-shown'); cell.appendChild(defenderSvg()); }
+  });
+  $('phaseLabel').textContent='Down over — waiting for the others…';
+  $('actions').innerHTML='';
+  pushMe(true);
+}
+
+function renderPlayers(){
+  var bar=$('playersBar'); if(!bar) return;
+  var ids=Object.keys(P()), html='';
+  for(var i=0;i<ids.length;i++){
+    var p=P()[ids[i]];
+    html+='<span class="pchip'+(ids[i]===M.pid?' me':'')+(p.done?' done':'')+'">'+
+          escapeHtml(p.name)+' <b>'+((p.score||0)+(p.bonus||0))+'</b></span>';
+  }
+  bar.innerHTML=html;
+}
+
+/* ---- push my state up ---- */
+function pushMe(done){
+  if(S.mode!=='race'||!M.code) return;
+  net.patch('rooms/'+M.code+'/players/'+M.pid,{
+    score: S.total,
+    lives: Math.max(0,S.lives),
+    done: !!done,
+    finishedAt: done?Date.now():(meNode().finishedAt||0),
+    hb: Date.now()
+  });
+}
+
+/* ---- host referees: placement bonuses, down end, race end ---- */
+function hostReferee(){
+  var room=M.room;
+  if(room.phase!=='playing'||!room.down) return;
+  var now=Date.now(), ids=Object.keys(P()), i;
+
+  /* drop anyone whose device stopped reporting, so one dead client can't
+     stall the whole race */
+  for(i=0;i<ids.length;i++){
+    var pp=P()[ids[i]];
+    if(pp.hb&&now-pp.hb>25000&&!pp.done)
+      net.patch('rooms/'+M.code+'/players/'+ids[i],{ done:true });
+  }
+  for(i=0;i<ids.length;i++) if(!P()[ids[i]].done) return;
+  if(M.refereedDown===room.down.n) return;      // pay placements once per down
+  M.refereedDown=room.down.n;
+
+  var order=ids.slice().sort(function(a,b){
+    var d=(P()[b].score||0)-(P()[a].score||0);
+    return d!==0?d:(P()[a].finishedAt||0)-(P()[b].finishedAt||0);
+  });
+  var patch={};
+  for(i=0;i<order.length&&i<PLACE_BONUS.length;i++)
+    patch[order[i]+'/bonus']=(P()[order[i]].bonus||0)+PLACE_BONUS[i];
+  var after=function(){
+    net.patch('rooms/'+M.code,{ phase: room.down.n>=RACE_DOWNS?'over':'result' });
+  };
+  if(Object.keys(patch).length) net.patch('rooms/'+M.code+'/players',patch).then(after);
+  else after();
+}
+
+function standings(){
+  var ids=Object.keys(P()), rows=[];
+  for(var i=0;i<ids.length;i++){
+    var p=P()[ids[i]];
+    rows.push({ id:ids[i], name:p.name, total:(p.score||0)+(p.bonus||0) });
+  }
+  rows.sort(function(a,b){ return b.total-a.total; });
+  return rows;
+}
+
+function paintStandings(){
+  show('standings');
+  var rows=standings(), html='';
+  $('standTitle').textContent='Down '+((M.room&&M.room.down&&M.room.down.n)||1)+' of '+RACE_DOWNS;
+  for(var i=0;i<rows.length;i++)
+    html+='<div class="stat-line"><span><span class="rk">'+(i+1)+'</span>'+
+          escapeHtml(rows[i].name)+(rows[i].id===M.pid?' (you)':'')+
+          '</span><b>'+rows[i].total+'</b></div>';
+  $('standList').innerHTML=html;
+  $('btnNextWave').hidden=!M.isHost;
+  $('standWait').textContent=M.isHost?'':'Waiting for the host…';
+}
+
+function paintRaceFinal(){
+  var rows=standings(), me=null, i;
+  for(i=0;i<rows.length;i++) if(rows[i].id===M.pid) me=rows[i];
+  var place=rows.indexOf(me);
+  $('lbPanel').hidden=true;                    // races are never ranked
+  var badge=$('resultBadge');
+  badge.className='result-badge'+(place===0?'':' lose');
+  badge.innerHTML=place===0
+    ? '<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
+  $('resultTitle').textContent=place===0?'You took the drive!':'Drive over';
+  $('resultSub').textContent=RACE_DOWNS+' downs · '+rows.length+' player'+(rows.length===1?'':'s')+'.';
+  $('resultScore').textContent=me?me.total:0;
+  $('resultNewBest').style.display='none';
+  var html='';
+  for(i=0;i<rows.length;i++)
+    html+='<div class="stat-line"><span><span class="rk">'+(i+1)+'</span>'+
+          escapeHtml(rows[i].name)+(rows[i].id===M.pid?' (you)':'')+
+          '</span><b>'+rows[i].total+'</b></div>';
+  $('resultRows').innerHTML=html;
+  $('btnShare').hidden=true;
+  $('btnAgain').textContent='Back to menu';
+  show('result');
+}
+
+/* =====================================================================
+   VERIFICATION SURFACE
+   admin.html loads this game in a hidden iframe and calls window.BlindSnap,
+   so verification always runs the game's REAL logic rather than a copy that
+   can drift. Do not delete this.
+   ===================================================================== */
+window.BlindSnap={
+  PROOF_V:LB_PROOF_V,
+  mulberry32:mulberry32, genBoard:genBoard, bfsLen:bfsLen, bfsPath:bfsPath,
+  minTurnsPath:minTurnsPath, witnessMonotone:witnessMonotone, pathTurns:pathTurns,
+  TIERS:TIERS, TIER_ORDER:TIER_ORDER, tierForRound:tierForRound,
+  START_LIVES:START_LIVES, STREAK_CAP:STREAK_CAP, RACE_DOWNS:RACE_DOWNS,
+  downSeed:downSeed, boardForRound:boardForRound,
+  applyMove:applyMove, applyClear:applyClear, scoreDown:scoreDown,
+  rc:rc, idx:idx,
+  _state:function(){ return S; },
+
+  /* Replay a submitted proof and report whether the claimed score is possible.
+
+     This rebuilds every board from the recorded run seed and resolves each tap
+     through the game's real applyMove() and scoreDown(), so scoring can never
+     drift from the live rules.
+
+     Like Tidal Drift's and unlike Cart Recall's or MemoMath's, this proof pins
+     an EXACT score rather than a range: Blind Snap has no speed bonus, so
+     nothing about the score depends on unrecorded timing. An inflation of one
+     point is rejected.
+
+     Returns { ok, reason, score, downs, sacks }. */
+  verify:function(seed,movesStr,claimedScore){
+    function fail(reason,st){
+      return { ok:false, reason:reason,
+               score:st?st.total:0, downs:st?Math.max(0,st.round-1):0, sacks:st?st.sacks:0 };
+    }
+    var groups=String(movesStr||'').split(';').filter(Boolean);
+    if(!groups.length) return fail('No moves recorded',null);
+
+    var runSeed=Number(seed);
+    if(!isFinite(runSeed)) return fail('Seed is not a number — this proof cannot be replayed',null);
+    runSeed=runSeed>>>0;
+
+    /* Lives persist across the whole solo drive (races reset per down, but
+       races are never ranked, so a submitted proof is always a solo run). */
+    var st={ total:0, lives:START_LIVES, streak:0, round:0, sacks:0,
+             board:null, trail:[], hits:0 };
+    var ended=false;
+
+    for(var g=0; g<groups.length; g++){
+      if(ended) return fail('Moves recorded after the drive had already ended',st);
+
+      var cut=groups[g].indexOf(':');
+      if(cut<0) return fail('Malformed move group '+(g+1),st);
+      var n=parseInt(groups[g].slice(0,cut),10);
+      var seq=groups[g].slice(cut+1);
+
+      st.round++;
+      if(n!==st.round)
+        return fail('Group '+(g+1)+' claims down '+n+' but the replay is on down '+st.round,st);
+
+      var cfg=TIERS[tierForRound(st.round)];
+      st.board=genBoard(cfg,downSeed(runSeed,st.round));
+      st.trail=[st.board.a];
+      st.hits=0;
+
+      var toks=seq.split('.').filter(function(t){ return t!==''; });
+      var reached=false, res;
+
+      for(var t=0;t<toks.length;t++){
+        if(ended) return fail('Down '+st.round+': moves recorded after the third sack',st);
+        if(reached) return fail('Down '+st.round+': moves recorded after reaching the receiver',st);
+
+        if(toks[t]==='C'){
+          if(st.trail.length<=1) return fail('Down '+st.round+': a Clear was logged with nothing to clear',st);
+          res=applyClear(st);
+        } else {
+          var i=parseInt(toks[t],10);
+          if(!isFinite(i)||i<0||i>=st.board.N*st.board.N)
+            return fail('Down '+st.round+': cell "'+toks[t]+'" is not on that board',st);
+          res=applyMove(st,i);
+          if(res.type==='none')
+            return fail('Down '+st.round+', move '+(t+1)+': tapping cell '+i+' was not a legal step',st);
+        }
+        if(res.type==='sack'){ st.sacks++; if(st.lives<=0) ended=true; }
+        if(res.type==='goal') reached=true;
+      }
+
+      if(reached){
+        var clean=(st.hits===0);
+        st.streak=clean?st.streak+1:0;
+        st.total+=scoreDown(cfg,st.board.optimal,st.trail.length-1,st.hits,st.streak);
+      } else if(!ended){
+        return fail('Down '+st.round+' neither reached the receiver nor ended the drive',st);
+      }
+    }
+
+    if(!ended) return fail('The log does not end with a third sack — the drive never finished',st);
+
+    var ok=Number(claimedScore)===st.total;
+    return {
+      ok:ok, score:st.total, downs:st.round-1, sacks:st.sacks,
+      reason: ok ? 'Replay reproduces the claimed score exactly'
+                 : 'Claimed '+claimedScore+', but this drive replays to '+st.total
+    };
+  }
+};
+
+/* ================= WIRE UP ================= */
+$('btnSolo').onclick=startSolo;
+$('btnOnline').onclick=function(){
+  $('inName').value=playerName();
+  raceErr(''); show('rooms');
+};
+$('btnAgain').onclick=function(){
+  if(S.mode==='race'){ leaveRoom(); return; }
+  startSolo();
+};
+$('btnMenu').onclick=function(){
+  if(S.mode==='race'){ leaveRoom(); return; }
+  show('menu'); refreshHome();
+};
+$('btnExit').onclick=function(){
+  openModal('Leave the drive?','Your score won’t be saved.','Exit',exitToMenu);
+};
+$('themeToggle').onclick=toggleTheme;
+$('btnThemeTop').onclick=toggleTheme;
+$('btnHelpPlay').onclick=function(){
+  openModal('How to play',
+    'The defenders flash before the snap, then hide. Drag or tap to thread a lane from the QB to the receiver using up, down, left and right moves only. Slide back to erase. Every defender you run into is a sack — three ends the drive. Shorter lanes score more, and clean downs build a streak bonus.',
+    'Got it',null);
+};
+$('modalCancel').onclick=closeModal;
+$('modalConfirm').onclick=function(){ var a=modalAction; closeModal(); if(a) a(); };
+$('btnShareClose').onclick=function(){ $('shareBg').classList.remove('show'); };
+
+/* rooms / lobby / standings */
+$('btnCreate').onclick=createRoom;
+$('btnJoin').onclick=joinRoom;
+$('btnRoomsBack').onclick=function(){ show('menu'); refreshHome(); };
+$('btnLeave').onclick=function(){
+  openModal('Leave the room?','The others will keep playing without you.','Leave',leaveRoom);
+};
+$('btnLaunch').onclick=function(){ if(M.isHost) hostDealDown(1); };
+$('btnNextWave').onclick=function(){
+  if(M.isHost&&M.room&&M.room.down) hostDealDown(M.room.down.n+1);
+};
+$('inCode').oninput=function(){ this.value=this.value.toUpperCase(); };
+
+window.addEventListener('resize',function(){
+  if(S.phase==='trace'||S.phase==='memorize'){
+    var board=$('board');
+    board.style.width=boardWidth()+'px';
+    if(S.phase==='trace') redrawTrail();
+  }
+});
+
+refreshHome();
+
+/* debug-only playthrough hook, gated by ?debug=1 — no effect on normal play */
+if(/[?&]debug=1/.test(location.search)){
+  window.BlindSnap.debug={
+    board:function(){ return S.board; }, phase:function(){ return S.phase; },
+    trail:function(){ return S.trail.slice(); }, total:function(){ return S.total; },
+    round:function(){ return S.round; }, lives:function(){ return S.lives; },
+    streak:function(){ return S.streak; }, moveLog:function(){ return S.moveLog.slice(); },
+    proof:function(){ return buildProof(); }, seed:function(){ return S.runSeed; },
+    tap:function(i){ processCell(i); },
+    skipMem:function(){ skipMemorize(); },
+    startSolo:function(){ startSolo(); }
+  };
+}
+})();
+</script>
+</body>
+</html>
