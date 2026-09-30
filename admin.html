@@ -221,6 +221,8 @@ const ICON_OPTIONS = [
   { e:"🔥", l:"Fire" }, { e:"❄️", l:"Snowflake" }, { e:"🌙", l:"Moon" },
   { e:"☀️", l:"Sun" }, { e:"🎪", l:"Circus tent" }, { e:"🐉", l:"Dragon" },
   { e:"🦉", l:"Owl" }, { e:"🍀", l:"Clover" }, { e:"🎈", l:"Balloon" },
+  { e:"🎍", l:"Bamboo" }, { e:"🏈", l:"Football" }, { e:"⚫", l:"Stone" },
+  { e:"🏭", l:"Factory" },
   { e:"🔮", l:"Crystal ball" }, { e:"🏆", l:"Trophy" }, { e:"📐", l:"Ruler" },
   { e:"🔢", l:"Numbers" }, { e:"🎵", l:"Music note" }, { e:"🌈", l:"Rainbow" },
 ];
@@ -506,7 +508,8 @@ const LB_GAMES = {
   'memomath':     { label:'MemoMath',     file:'games/memomath.html',        ns:'MemoMath'   },
   /* id stays 'tidal-recall' (the Firebase key); the game is now Tidal Drift */
   'tidal-recall': { label:'Tidal Drift',  file:'games/tidal_recall.html',    ns:'TidalDrift' },
-  'blind-snap':   { label:'Blind Snap',   file:'games/blind_snap.html',      ns:'BlindSnap'  }
+  'blind-snap':   { label:'Blind Snap',   file:'games/blind_snap.html',      ns:'BlindSnap'  },
+  'lock-in':      { label:'Lock In',      file:'games/lock_in.html',         ns:'LockIn'     }
 };
 let LB_GAME = 'cart-recall';
 let board = {};
@@ -707,7 +710,27 @@ function replayEntry(w, entry){
   if(LB_GAME === 'memomath')     return replayMemoMath(w.MemoMath, entry);
   if(LB_GAME === 'tidal-recall') return replayTidalDrift(w.TidalDrift, entry);
   if(LB_GAME === 'blind-snap')   return replayBlindSnap(w.BlindSnap, entry);
+  if(LB_GAME === 'lock-in')      return replayLockIn(w.LockIn, entry);
   return replay(w.CartRecall, entry);
+}
+
+/* Lock In pins an EXACT score (no timing term), and like Blind Snap its proof
+   proves the run ENDED: every committed answer but the last must be right and
+   the last must be wrong. The game's own verify() replays each answer through
+   the same applyAnswer() live play uses, so the two cannot disagree. */
+function replayLockIn(LI, entry){
+  if(entry.v !== LI.PROOF_V)
+    return { ok:false, label:'stale v' + entry.v, detail:
+      `Proof format v${entry.v}, game is v${LI.PROOF_V}. Room generation or scoring changed since this run, so it can no longer be replayed.` };
+
+  const r = LI.verify(entry.seed, entry.moves, Number(entry.score) || 0);
+  return {
+    ok: r.ok,
+    label: r.ok ? 'consistent' : 'failed',
+    detail: r.ok
+      ? `${r.rooms} room(s) cleared, then spiked. Score ${r.score} reproduced exactly.`
+      : r.reason
+  };
 }
 
 /* Blind Snap, like Tidal Drift, pins an EXACT score — it has no speed bonus
