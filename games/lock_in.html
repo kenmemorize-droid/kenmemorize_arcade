@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Lock In</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──────────────────────────────────
+   UI roles follow Tidal Drift's names. The --r-* tokens are the ROOM: walls,
+   floor and ceiling of the 3D rooms. The question wall stays dark brick in
+   both themes (it is the reel's look), and the memorised OBJECT colours are
+   fixed hex in COLORS below — they are the thing being recalled, so they must
+   render identically in both themes. */
+:root, :root[data-theme="dark"]{
+  --bg1:#07080b; --bg2:#1a1d27; --panel:#14171f; --panel2:#191d27;
+  --tile:#1d2230; --tile2:#222838;
+  --text:#eef0f5; --muted:#a0a8ba; --accent:#ff5c5c; --accent2:#ffb347;
+  --accent-dim:rgba(255,92,92,.14); --on-accent:#ffffff;
+  --correct:#3ddc84; --wrong:#ff4d5e; --warning:#ffc043;
+  --line:#2a3042; --shadow:rgba(0,0,0,.45);
+  --r-wall:#8f8d88; --r-floor-a:#bdbdbd; --r-floor-b:#2e3035; --r-ceil:#9c9a94;
+  --r-fog:rgba(6,7,10,.62); --r-ped:#b4b9c1; --r-ped-top:#cfd3d9; --r-ped-side:#8e949d;
+  --r-concrete:#6e737a;
+}
+:root[data-theme="light"]{
+  --bg1:#f3f4f7; --bg2:#dfe3ea; --panel:#ffffff; --panel2:#f5f6f9;
+  --tile:#eceef3; --tile2:#e4e7ee;
+  --text:#161922; --muted:#586072; --accent:#d32f2f; --accent2:#c46a00;
+  --accent-dim:#fdeaea; --on-accent:#ffffff;
+  --correct:#1f9d52; --wrong:#d6294a; --warning:#b7791f;
+  --line:#d6dae3; --shadow:rgba(20,30,50,.14);
+  --r-wall:#e9e8e3; --r-floor-a:#f6f6f6; --r-floor-b:#3b3d42; --r-ceil:#f1f0ec;
+  --r-fog:rgba(20,22,28,.22); --r-ped:#e2e5ea; --r-ped-top:#f3f5f8; --r-ped-side:#c3c8d0;
+  --r-concrete:#b9bdc3;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{
+  margin:0; min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 65%);
+  background-attachment:fixed; overflow-x:hidden;
+  color:var(--text); display:flex; justify-content:center;
+  padding:14px 12px calc(20px + env(safe-area-inset-bottom));
+  transition:background .3s,color .3s;
+}
+/* §5 — the menu reads at the shared 720px; play and the online screens keep
+   a narrower 520px shell. */
+.app{width:100%; max-width:720px; position:relative;}
+#screen-count, #screen-play, #screen-result,
+#screen-rooms, #screen-lobby, #screen-standings{max-width:520px; margin:0 auto;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+h1{text-align:center; margin:2px 0 2px; font-size:28px; letter-spacing:1px; font-weight:800;}
+.subtitle{text-align:center; color:var(--muted); margin:0 0 16px; font-size:14px;}
+
+/* ── LOGO BLOCK — §3 (icon → h1 → subtitle) ── */
+.logo{text-align:center; margin-bottom:16px;}
+.logo-icon{display:flex; align-items:center; justify-content:center; width:32px; height:32px;
+  margin:0 auto 6px; color:var(--accent);}
+.logo .subtitle{margin:6px 0 0;}
+
+/* ── HOW TO PLAY — §3, always visible ── */
+.howto-box{background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:18px 20px; margin:16px 0 12px; box-shadow:0 2px 12px var(--shadow); text-align:left;}
+.howto-box .howto-title{font-size:11px; text-transform:uppercase; letter-spacing:1.6px;
+  color:var(--accent2); font-weight:800; margin:0 0 10px;}
+.howto-box p{margin:0 0 9px; font-size:13px; line-height:1.6; color:var(--muted);}
+.howto-box p:last-child{margin-bottom:0;}
+.howto-box b{color:var(--text);}
+
+.panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:16px; box-shadow:0 8px 22px var(--shadow);}
+.panel + .panel{margin-top:12px;}
+.section-title{font-size:11px; text-transform:uppercase; letter-spacing:1.6px; color:var(--accent2);
+  margin:0 0 10px; font-weight:800;}
+.stat-line{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 12px; border-radius:10px; background:var(--tile2); border:1px solid var(--line);
+  margin-bottom:7px; font-size:14px;}
+.stat-line:last-child{margin-bottom:0;}
+.stat-line b{color:var(--accent); font-weight:800; text-align:right;}
+.stat-line .rk{display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
+  border-radius:50%; background:var(--line); color:var(--text); font-size:11px; font-weight:800; margin-right:9px;}
+
+/* ── THEME TOGGLE — §2 ── */
+.theme-toggle{position:fixed; top:16px; right:16px; z-index:60; display:flex; align-items:center; gap:7px;
+  min-height:46px; padding:6px 16px; border-radius:50px; border:1px solid var(--line); background:var(--panel);
+  color:var(--muted); font-size:13px; font-family:'Consolas','Courier New',monospace; cursor:pointer;
+  user-select:none; box-shadow:0 4px 12px var(--shadow); transition:border-color .15s, color .15s;}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* ── BUTTONS — §6, sized per §9b (≥46px) ── */
+.big-btn{display:block; width:100%; margin-top:12px; padding:15px; min-height:46px; border-radius:14px; border:none;
+  background:linear-gradient(135deg,#e53935,#b71c1c); color:var(--on-accent); font-size:16px;
+  font-weight:900; letter-spacing:.6px; cursor:pointer; box-shadow:0 8px 18px var(--shadow);
+  font-family:inherit; transition:filter .15s, transform .1s;}
+.big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.big-btn:active{transform:translateY(1px);}
+.big-btn:disabled{opacity:.45; cursor:default; transform:none; filter:none;}
+.ghost-btn{padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:var(--tile2);
+  color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; font-weight:600;
+  min-height:46px; transition:border-color .15s, color .15s;}
+.ghost-btn:hover{border-color:var(--accent); color:var(--accent);}
+.danger-btn{border-color:var(--wrong); color:var(--wrong);}
+.btn-row{display:flex; gap:8px; margin-top:12px;}
+.btn-row .ghost-btn{flex:1;}
+
+/* §9b rule 3 — 16px inputs, or iOS zooms on focus */
+input[type=text], textarea{width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px;
+  border:1px solid var(--line); background:var(--tile2); color:var(--text); font-size:16px;
+  min-height:46px; font-family:inherit;}
+input[type=text]:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
+input.code{text-transform:uppercase; letter-spacing:4px; text-align:center; font-weight:800;}
+
+/* ── TOP BAR (play only) ── */
+.topbar{display:flex; align-items:center; gap:8px; margin-bottom:10px; max-width:520px; margin-left:auto; margin-right:auto;}
+.icon-btn{width:46px; height:46px; flex:0 0 46px; border-radius:50%; border:1px solid var(--line);
+  background:var(--panel); color:var(--text); cursor:pointer; display:flex; align-items:center;
+  justify-content:center; padding:0; transition:border-color .15s;}
+.icon-btn:hover{border-color:var(--accent);}
+.icon-btn svg{width:20px; height:20px;}
+.icon-btn .icon-moon{display:none;}
+:root[data-theme="light"] .icon-btn .icon-sun{display:none;}
+:root[data-theme="light"] .icon-btn .icon-moon{display:inline;}
+.status-pill{flex:1; min-width:0; height:46px; border-radius:23px; background:var(--panel); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:0 18px; font-weight:800;}
+.status-pill .mid{font-size:14px; color:var(--muted); letter-spacing:.3px;}
+.status-pill .mid b{color:var(--text);}
+.status-pill .score{font-size:19px; color:var(--accent2); font-variant-numeric:tabular-nums;
+  font-family:'Consolas','Courier New',monospace;}
+
+/* ── PLAY ── */
+.phase-label{text-align:center; font-size:14px; color:var(--muted); font-weight:700; min-height:22px;
+  letter-spacing:.3px; margin-bottom:8px;}
+.phase-label b{color:var(--text);}
+.phase-label .ok{color:var(--correct);}
+.phase-label .bad{color:var(--wrong);}
+
+/* The stage keeps a fixed 10:9 aspect (the 600x540 logical scene) and is
+   scaled as a whole, so the room is identical on every device — only its
+   size changes. Width is capped by the viewport height so the controls
+   stay on screen. */
+.stage{position:relative; margin:0 auto; aspect-ratio:10/9; border-radius:18px; overflow:hidden;
+  width:min(100%, max(260px, calc((100vh - 290px) * 10 / 9)));
+  background:#050608; border:1px solid var(--line); box-shadow:0 12px 30px var(--shadow);}
+@supports (height:100svh){ .stage{width:min(100%, max(260px, calc((100svh - 290px) * 10 / 9)));} }
+.stage.shake{animation:shake .45s cubic-bezier(.36,.07,.19,.97);}
+@keyframes shake{10%,90%{transform:translate(-2px,1px);}20%,80%{transform:translate(4px,-2px);}
+  30%,50%,70%{transform:translate(-7px,3px);}40%,60%{transform:translate(7px,-3px);}}
+.fit{position:absolute; left:0; top:0; width:600px; height:540px; transform-origin:0 0;}
+.scene{position:absolute; inset:0; perspective:600px; perspective-origin:50% 50%; overflow:hidden;
+  opacity:0; visibility:hidden;}
+.scene.on{visibility:visible;}
+.box{position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d;}
+.pl{position:absolute;}
+.pl::after{content:''; position:absolute; inset:0; pointer-events:none;}
+
+/* surfaces — textures anchor at each plane's FAR edge, so when the hall's
+   depth shrinks the tiles slide toward the camera: the walk is the texture. */
+.floor{background:repeating-conic-gradient(var(--r-floor-a) 0 25%, var(--r-floor-b) 0 50%) 0 0/160px 160px;}
+.floor::after{background:linear-gradient(to bottom, var(--r-fog), transparent 80%);}
+.ceil{background-color:var(--r-ceil);
+  background-image:linear-gradient(90deg, rgba(0,0,0,.16) 0 3px, transparent 3px),
+                   linear-gradient(rgba(0,0,0,.12) 0 3px, transparent 3px);
+  background-size:90px 100%, 100% 300px; background-position:0 100%, 0 100%;}
+.ceil::after{background:linear-gradient(to top, var(--r-fog), transparent 80%);}
+.wall{background-color:var(--r-wall);
+  background-image:linear-gradient(rgba(0,0,0,.16) 0 3px, transparent 3px),
+                   linear-gradient(90deg, rgba(0,0,0,.16) 0 3px, transparent 3px);
+  background-size:140px 68px, 140px 68px;}
+.wl{background-position:100% 0, 100% 0;}
+.wl::after{background:linear-gradient(to left, var(--r-fog), transparent 80%);}
+.wr::after{background:linear-gradient(to right, var(--r-fog), transparent 80%);}
+.back.tiles{background-color:var(--r-wall);
+  background-image:linear-gradient(rgba(0,0,0,.16) 0 3px, transparent 3px),
+                   linear-gradient(90deg, rgba(0,0,0,.16) 0 3px, transparent 3px);
+  background-size:140px 68px, 140px 68px; background-position:center;}
+.back.tiles::after{background:var(--r-fog); opacity:.75;}
+.concrete{background-color:var(--r-concrete);
+  background-image:repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 2px, transparent 2px 23px, rgba(255,255,255,.06) 23px 25px, transparent 25px 61px);}
+.pf::after{background:linear-gradient(to bottom, rgba(0,0,0,.7), transparent 85%);}
+.pc::after{background:linear-gradient(to top, rgba(0,0,0,.7), transparent 85%);}
+.hole{background:radial-gradient(ellipse at 50% 30%, #0b0c0f, #000 70%);}
+
+/* pedestals + billboards */
+.ped-front{background:var(--r-ped); box-shadow:inset 0 0 0 10px rgba(255,255,255,.08);}
+.ped-front::after{inset:18px 16px 22px; border:3px solid rgba(0,0,0,.14); border-radius:6px;}
+.ped-top{background:var(--r-ped-top);}
+.ped-side{background:var(--r-ped-side); backface-visibility:hidden;}
+.bill svg{display:block; width:100%; height:100%; overflow:visible;}
+
+/* the question wall — dark brick in both themes */
+.qwall{background-color:#2a2c31; display:flex;}
+.qwall::after{background:radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.07), rgba(0,0,0,.35) 75%);}
+.qw{position:relative; z-index:1; flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; text-align:center; padding:30px 40px; color:#e7e9ee; gap:14px;}
+.qw-chip{font-size:24px; font-weight:900; letter-spacing:3px; padding:6px 16px; border-radius:8px;
+  background:rgba(255,179,71,.14); color:#ffb347; border:2px solid rgba(255,179,71,.5);}
+.qw-chip.back{background:rgba(255,92,92,.16); color:#ff7676; border-color:rgba(255,92,92,.6);}
+.qw-q{font-size:36px; font-weight:700; line-height:1.25; max-width:520px; text-shadow:0 2px 0 rgba(0,0,0,.4);}
+.qw-val{font-size:118px; font-weight:900; line-height:1; letter-spacing:2px; display:flex; align-items:center;
+  gap:22px; text-shadow:0 4px 0 rgba(0,0,0,.45); transition:color .2s, transform .12s;}
+.qw-val.color{font-size:84px;}
+.qw-val .sw{width:74px; height:74px; border-radius:14px; border:5px solid rgba(255,255,255,.85);
+  box-shadow:0 4px 0 rgba(0,0,0,.4);}
+.qw-val.bump{transform:scale(1.08);}
+.qw-val.good{color:#3ddc84;}
+.qw-lock{font-size:40px; font-weight:900; letter-spacing:5px; color:rgba(231,233,238,.55); margin-top:4px;}
+.qw-no{font-size:230px; font-weight:900; letter-spacing:10px; color:#f1f2f5; text-shadow:0 8px 0 rgba(0,0,0,.45);}
+
+/* stage overlays */
+.vignette{position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0,0,0,.45));}
+.flash{position:absolute; inset:0; pointer-events:none; background:#d10f1f; opacity:0;}
+.flash.go{animation:flash .9s ease-out;}
+@keyframes flash{0%{opacity:.75;}100%{opacity:0;}}
+.plate{position:absolute; left:12px; top:12px; padding:6px 11px; border-radius:9px; pointer-events:none;
+  background:rgba(8,9,12,.62); color:#fff; font-size:12px; font-weight:800; letter-spacing:1.6px;
+  font-family:'Consolas','Courier New',monospace;}
+
+/* countdown bar under the stage — §16 counts DOWN, with a warning state */
+.tbar-row{display:flex; align-items:center; gap:10px; margin:10px auto 0; max-width:100%;}
+.tbar{flex:1; height:8px; border-radius:5px; background:var(--tile2); overflow:hidden;}
+.tbar i{display:block; height:100%; width:100%; background:var(--accent2); transform-origin:left; transform:scaleX(1);}
+.tbar.warn i{background:var(--warning);}
+.tbar.danger i{background:var(--wrong);}
+.tleft{min-width:34px; text-align:right; font-size:13px; font-weight:800; color:var(--muted);
+  font-family:'Consolas','Courier New',monospace;}
+.tbar-row.idle{visibility:hidden;}
+
+/* controls — the reel's red arcade buttons on dark bases */
+.controls{min-height:100px; display:flex; align-items:center; justify-content:center; margin-top:10px;}
+.ctl{display:none; align-items:center; justify-content:center; gap:10px;}
+.ctl.on{display:flex;}
+.ready-btn{min-width:220px; font-size:15px; font-weight:800; color:var(--text);}
+.arc-wrap{padding:7px; border-radius:18px; background:linear-gradient(#262a35,#14161c);
+  box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);}
+.arc{display:flex; align-items:center; justify-content:center; width:60px; height:60px; border-radius:50%;
+  border:3px solid #111318; cursor:pointer; padding:0; color:#fff; font-family:inherit;
+  background:radial-gradient(circle at 38% 30%, #ff9a90 0 10%, #f23b3b 40%, #a90f18 100%);
+  box-shadow:0 6px 0 #5a090d, 0 10px 16px rgba(0,0,0,.35); font-size:34px; font-weight:900; line-height:1;
+  transition:transform .07s, box-shadow .07s; text-shadow:0 2px 0 rgba(0,0,0,.25); user-select:none;}
+.arc svg{width:26px; height:26px;}
+.arc:active{transform:translateY(5px); box-shadow:0 1px 0 #5a090d, 0 4px 8px rgba(0,0,0,.3);}
+.arc.lock{width:auto; min-width:136px; padding:0 20px; border-radius:34px; font-size:18px; letter-spacing:1.6px;}
+.arc:disabled{filter:grayscale(.85) brightness(.75); cursor:default; transform:none;}
+.arc:focus-visible, .ghost-btn:focus-visible, .big-btn:focus-visible{outline:3px solid var(--accent2); outline-offset:3px;}
+
+.players-bar{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:10px;}
+.pchip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:20px;
+  background:var(--panel); border:1px solid var(--line); font-size:12px; font-weight:700; color:var(--muted);}
+.pchip.me{border-color:var(--accent); color:var(--text);}
+.pchip.done{opacity:.55;}
+.pchip b{color:var(--text);}
+
+/* ── COUNTDOWN ── */
+#screen-count{text-align:center; padding-top:22vh;}
+.count-num{font-size:118px; font-weight:900; color:var(--accent); text-shadow:0 0 40px rgba(255,92,92,.35); animation:pop .5s ease;}
+@keyframes pop{0%{transform:scale(.4); opacity:0;}50%{transform:scale(1.1);}100%{transform:scale(1); opacity:1;}}
+
+/* ── RESULT ── */
+#screen-result{text-align:center; padding-top:10px;}
+.result-badge{width:92px; height:92px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  margin:6px auto 16px; background:radial-gradient(circle at 40% 35%, #ff9aa4, #c62828); box-shadow:0 0 40px rgba(255,77,94,.3);}
+.result-badge.win{background:radial-gradient(circle at 40% 35%, #9dffc7, #1f9d52); box-shadow:0 0 40px rgba(61,220,132,.3);}
+.result-badge svg{width:50px; height:50px;}
+.result-title{font-size:28px; font-weight:800; margin:0 0 6px;}
+.result-sub{color:var(--muted); font-size:15px; margin:0 0 16px;}
+.truth{text-align:left; font-size:14px; line-height:1.55; color:var(--muted); margin-bottom:14px;}
+.truth .tq{color:var(--text); font-weight:700; display:block; margin-bottom:4px;}
+.truth .ta b{color:var(--correct);}
+.truth .ty b{color:var(--wrong);}
+.score-block{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:18px 30px;
+  margin:0 auto 14px; display:inline-block; min-width:210px;}
+.score-block .big{font-size:44px; font-weight:900; color:var(--accent2); font-variant-numeric:tabular-nums; line-height:1;
+  font-family:'Consolas','Courier New',monospace;}
+.score-block .lbl{font-size:12px; color:var(--muted); margin-top:6px; letter-spacing:1px;}
+.newbest{color:var(--correct); font-size:13px; font-weight:800; margin-top:8px;}
+.result-rows{margin:4px 0 12px; text-align:left;}
+.lb-line{font-size:14px; color:var(--muted); line-height:1.5;}
+.lb-line b{color:var(--text);}
+.result-actions{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
+
+/* ── ONLINE ── */
+.code-display{text-align:center; margin:6px 0 14px;}
+.code-display .lbl{font-size:11px; letter-spacing:2px; color:var(--muted); text-transform:uppercase;}
+.code-display .val{font-size:42px; font-weight:900; letter-spacing:10px; text-indent:10px; color:var(--accent);
+  line-height:1.2; font-family:'Consolas','Courier New',monospace;}
+.prow{display:flex; align-items:center; gap:8px; padding:11px 13px; border-radius:11px; background:var(--tile2);
+  border:1px solid var(--line); margin-bottom:7px; font-size:15px; font-weight:700;}
+.prow .badge{margin-left:auto; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase;
+  padding:4px 8px; border-radius:7px; background:var(--accent); color:#fff;}
+.err-line{color:var(--wrong); font-size:13px; font-weight:600; min-height:18px; margin-top:8px;}
+.wait-line{color:var(--muted); font-size:13px; text-align:center; margin-top:12px;}
+.form-col{display:flex; flex-direction:column; gap:10px;}
+
+/* ── MODALS — §6 / §15 (never native confirm/prompt) ── */
+.modal-back{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center;
+  justify-content:center; z-index:80; padding:22px;}
+.modal-back.show{display:flex; animation:fadeIn .2s ease;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px;
+  max-width:360px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.4);}
+.modal h3{margin:0 0 8px; font-size:18px; font-weight:800;}
+.modal p{margin:0 0 18px; font-size:14px; line-height:1.55; color:var(--muted);}
+.modal .sub{margin:0 0 13px; font-size:13px; color:var(--muted); line-height:1.5;}
+.modal textarea{min-height:90px; resize:vertical; line-height:1.5;}
+.modal-row{display:flex; gap:10px;}
+.modal-row button{flex:1;}
+
+.hint-toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); opacity:0;
+  background:var(--panel); border:1px solid var(--line); color:var(--text); padding:11px 18px; border-radius:12px;
+  font-size:14px; font-weight:600; pointer-events:none; transition:.25s; z-index:90; box-shadow:0 8px 20px var(--shadow);}
+.hint-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+
+/* No hand-placed <ins> ad slot: §4 — the loader tag in <head> is the whole
+   integration and auto-ads inject their own units. */
+
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  body{padding-top:66px;}
+  body.playing{padding-top:12px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px;}
+  .howto-box{padding:14px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .panel{padding:14px;}
+  .count-num{font-size:92px;}
+  .stat-line{font-size:13px;}
+}
+@media (max-width:380px){
+  h1{font-size:19px; letter-spacing:.5px;}
+  .theme-toggle{top:10px; right:10px; padding:5px 12px; font-size:12px;}
+  .status-pill{padding:0 13px;}
+  .arc-wrap{padding:5px; border-radius:15px;}
+  .arc{width:54px; height:54px; font-size:30px;}
+  .arc.lock{min-width:118px; padding:0 14px; font-size:16px; letter-spacing:1px;}
+  .ctl{gap:8px;}
+  .code-display .val{font-size:34px; letter-spacing:7px; text-indent:7px;}
+  .stat-line{padding:9px 10px;}
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle colour theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="app">
+
+  <!-- TOP BAR (play only) -->
+  <div class="topbar" id="topbar" style="display:none;">
+    <button class="icon-btn" id="btnExit" aria-label="Leave the run">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="status-pill">
+      <span class="mid">Room <b id="roomNow">1</b></span>
+      <span class="score" id="scoreNow">0</span>
+    </div>
+    <button class="icon-btn" id="btnThemeTop" aria-label="Toggle colour theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    </button>
+    <button class="icon-btn" id="btnHelpPlay" aria-label="How to play">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 015.8 1c0 2-3 2.6-3 4.5"/><circle cx="12" cy="18.2" r=".6" fill="currentColor"/></svg>
+    </button>
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <section class="screen active" id="screen-menu">
+    <div class="logo">
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10.5" width="16" height="10.5" rx="2.2"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/><path d="M12 14.6v2.6"/></svg></span>
+      <h1>LOCK IN</h1>
+      <p class="subtitle">Study the room. Walk the hall. Answer from memory, or drop into the spikes</p>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>Each room has objects on pedestals. <b>Study everything</b> — how many leaves, candles or fish, and what colour things are.</p>
+      <p>Walk the hall to the brick wall. It asks <b>one question</b>. Set your answer with <b>− / +</b>, then hit <b>LOCK IN</b>.</p>
+      <p>The question isn't always about the room you just left. It can ask about <b>the previous room, or up to three rooms back</b> — the wall always says which.</p>
+      <p><b>One wrong answer and the floor drops.</b> Rooms get busier the deeper you go.</p>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Scoring</div>
+      <div class="stat-line"><span>Each room cleared</span><b>100, +10 per room deep</b></div>
+      <div class="stat-line"><span>Question about an earlier room</span><b>+80 per room back</b></div>
+      <div class="stat-line"><span>Race placement (1st/2nd/3rd)</span><b>200 / 120 / 60</b></div>
+      <div class="stat-line"><span>A wrong answer</span><b>the spike pit</b></div>
+    </div>
+
+    <button class="big-btn" id="btnSolo">SOLO RUN</button>
+    <button class="ghost-btn" id="btnOnline" style="width:100%; margin-top:10px;">Online &middot; up to 4 players</button>
+
+    <div class="panel" id="bestPanel" style="display:none; margin-top:18px;">
+      <div class="section-title">Best solo run</div>
+      <div id="bestText" class="lb-line" style="text-align:center; font-size:15px;"></div>
+    </div>
+  </section>
+
+  <!-- ================= ONLINE: CREATE / JOIN ================= -->
+  <section class="screen" id="screen-rooms">
+    <div class="logo"><h1 style="font-size:24px;">ONLINE</h1>
+      <p class="subtitle">Up to 4 players, 5 rooms. Everyone walks the same rooms and gets the same questions</p></div>
+    <div class="panel">
+      <div class="section-title">Your name</div>
+      <input type="text" id="inName" maxlength="20" placeholder="Name" autocomplete="off">
+      <button class="big-btn" id="btnCreate">Create a room</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Join a room</div>
+      <input type="text" class="code" id="inCode" maxlength="4" placeholder="CODE" autocomplete="off">
+      <button class="ghost-btn" id="btnJoin" style="width:100%; margin-top:10px;">Join</button>
+      <div class="err-line" id="roomErr"></div>
+    </div>
+    <div class="btn-row"><button class="ghost-btn" id="btnRoomsBack">Back</button></div>
+  </section>
+
+  <!-- ================= LOBBY ================= -->
+  <section class="screen" id="screen-lobby">
+    <div class="code-display">
+      <div class="lbl">Room code</div>
+      <div class="val" id="lobbyCode">----</div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Players <span id="lobbyCount">(1/4)</span></div>
+      <div id="lobbyList"></div>
+      <div class="wait-line" id="lobbyWait"></div>
+    </div>
+    <button class="big-btn" id="btnLaunch">START THE RACE</button>
+    <div class="btn-row"><button class="ghost-btn" id="btnLeave">Leave room</button></div>
+  </section>
+
+  <!-- ================= STANDINGS (between rooms) ================= -->
+  <section class="screen" id="screen-standings">
+    <div class="logo"><h1 style="font-size:24px;" id="standTitle">Room 1 of 5</h1></div>
+    <div class="panel">
+      <div class="section-title">Standings</div>
+      <div id="standList"></div>
+      <div class="wait-line" id="standWait"></div>
+    </div>
+    <button class="big-btn" id="btnNextRoom">NEXT ROOM</button>
+  </section>
+
+  <!-- ================= COUNTDOWN (§14) ================= -->
+  <section class="screen" id="screen-count">
+    <div class="count-num" id="countNum">3</div>
+  </section>
+
+  <!-- ================= PLAY ================= -->
+  <section class="screen" id="screen-play">
+    <div class="players-bar" id="playersBar" style="display:none;"></div>
+    <div class="phase-label" id="phaseLabel">Study the room</div>
+    <div class="stage" id="stage">
+      <div class="fit" id="fit"></div>
+      <div class="vignette"></div>
+      <div class="flash" id="flash"></div>
+      <div class="plate" id="plate">ROOM 1</div>
+    </div>
+    <div class="tbar-row idle" id="tbarRow"><div class="tbar" id="tbar"><i id="tfill"></i></div><span class="tleft" id="tleft"></span></div>
+    <div class="controls">
+      <div class="ctl" id="ctlStudy"><button class="ghost-btn ready-btn" id="btnReady">I'm ready</button></div>
+      <div class="ctl" id="ctlAnswer">
+        <div class="arc-wrap"><button class="arc" id="btnMinus" aria-label="Previous value">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button></div>
+        <div class="arc-wrap"><button class="arc" id="btnPlus" aria-label="Next value">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button></div>
+        <div class="arc-wrap"><button class="arc lock" id="btnLock">LOCK IN</button></div>
+      </div>
+    </div>
+    <div class="sr-only" aria-live="polite" id="srLive"></div>
+  </section>
+
+  <!-- ================= RESULT ================= -->
+  <section class="screen" id="screen-result">
+    <div class="result-badge" id="resultBadge"></div>
+    <h2 class="result-title" id="resultTitle">Spiked</h2>
+    <p class="result-sub" id="resultSub"></p>
+    <div class="panel truth" id="truthPanel"></div>
+    <div class="score-block">
+      <div class="big" id="resultScore">0</div>
+      <div class="lbl">SCORE</div>
+      <div class="newbest" id="resultNewBest" style="display:none;">New personal best!</div>
+    </div>
+    <div id="resultRows" class="result-rows"></div>
+    <div class="panel" id="lbPanel"><div class="lb-line" id="lbLine">Checking the leaderboard…</div></div>
+    <div class="result-actions">
+      <button class="big-btn" id="btnAgain" style="margin-top:0;">PLAY AGAIN</button>
+      <button class="ghost-btn" id="btnShare" hidden>Share your score</button>
+      <button class="ghost-btn" id="btnMenu">Back to menu</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- CONFIRM / INFO MODAL (§15 — never native confirm()) -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h3 id="modalTitle">Leave this run?</h3>
+    <p id="modalText">Your score won't be saved.</p>
+    <div class="modal-row">
+      <button class="ghost-btn" id="modalCancel">Stay</button>
+      <button class="ghost-btn danger-btn" id="modalConfirm">Leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME MODAL (§15 — never native prompt()) -->
+<div class="modal-back" id="nameBg">
+  <div class="modal">
+    <h3>Name for the board</h3>
+    <p class="sub">Shown on the global leaderboard. Up to 20 characters.</p>
+    <input type="text" id="inLbName" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="modal-row" style="margin-top:13px;">
+      <button class="ghost-btn" id="btnNameSkip">Not now</button>
+      <button class="big-btn" id="btnNameOk" style="margin-top:0; flex:1;">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE SHEET (tier 3 — always works) -->
+<div class="modal-back" id="shareBg">
+  <div class="modal">
+    <h3>Copy your result</h3>
+    <p class="sub">Sharing isn't available here, so select the text below and copy it.</p>
+    <textarea id="shareText" readonly></textarea>
+    <div class="modal-row" style="margin-top:13px;">
+      <button class="ghost-btn" id="btnShareClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="hint-toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Portable: copy verbatim into another game and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'lock-in';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ================= PRNG + small helpers ================= */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const $=id=>document.getElementById(id);
+
+const DEBUG=/[?&]debug=1/.test(location.search);
+/* Animation speed only — never touches generation or scoring. `fast` exists
+   so an automated playthrough doesn't take minutes; reduced-motion users get
+   shorter walks rather than none, because the walk is the retention gap. */
+let REDUCED=false; try{ REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+const ANIM = (DEBUG && /[?&]fast=1/.test(location.search)) ? 0.04 : (REDUCED ? 0.4 : 1);
+const TIMERS = (DEBUG && /[?&]fast=1/.test(location.search)) ? 0.04 : 1;
+
+/* ═══════════════════════════════════════════════════════════════
+   THE CAST — what can stand on a pedestal
+   ───────────────────────────────────────────────────────────────
+   Every object has exactly two things that can be asked: a COUNT and a
+   COLOUR. Colours are fixed hex in both themes, because the colour is the
+   answer. Palette indices (not names) are what a proof records, so this
+   array's ORDER is part of the proof format — append, never reorder, and
+   bump LB_PROOF_V if it ever has to change.
+
+   Colour exclusions are per object, where the object's own fixed parts
+   would camouflage a colour: green vases beside green bamboo, blue fish
+   in blue water.
+   ═══════════════════════════════════════════════════════════════ */
+const COLORS=[
+  {name:'Red',    hex:'#e53935'},
+  {name:'Orange', hex:'#fb8c00'},
+  {name:'Yellow', hex:'#fdd835'},
+  {name:'Green',  hex:'#43a047'},
+  {name:'Blue',   hex:'#1e88e5'},
+  {name:'Purple', hex:'#8e24aa'},
+  {name:'Black',  hex:'#263238'}
+];
+const ALL_C=[0,1,2,3,4,5,6];
+
+const TYPES=[
+  {key:'bamboo',   min:3, max:8,  colors:[0,1,2,4,5,6],
+   countQ:'How many leaves did the bamboo plant have?', colorQ:"What colour was the bamboo plant's vase?",
+   countT:n=>'the bamboo plant had '+n+' leaves', colorT:c=>'the vase was '+c},
+  {key:'candles',  min:1, max:6,  colors:ALL_C,
+   countQ:'How many candles were on the tray?', colorQ:'What colour were the candles?',
+   countT:n=>n===1?'there was 1 candle':'there were '+n+' candles', colorT:c=>'the candles were '+c},
+  {key:'books',    min:2, max:7,  colors:ALL_C,
+   countQ:'How many books were in the stack?', colorQ:'What colour were the books?',
+   countT:n=>'the stack had '+n+' books', colorT:c=>'the books were '+c},
+  {key:'fish',     min:1, max:6,  colors:[0,1,2,3,5,6],
+   countQ:'How many fish were in the bowl?', colorQ:'What colour were the fish?',
+   countT:n=>n===1?'there was 1 fish':'there were '+n+' fish', colorT:c=>'the fish were '+c},
+  {key:'balloons', min:2, max:6,  colors:ALL_C,
+   countQ:'How many balloons were there?', colorQ:'What colour were the balloons?',
+   countT:n=>'there were '+n+' balloons', colorT:c=>'the balloons were '+c},
+  {key:'die',      min:1, max:6,  colors:ALL_C,
+   countQ:'What number did the die show?', colorQ:'What colour was the die?',
+   countT:n=>'the die showed '+n, colorT:c=>'the die was '+c},
+  {key:'clock',    min:1, max:12, colors:ALL_C,
+   countQ:'What hour did the clock show?', colorQ:"What colour was the clock's frame?",
+   countT:n=>"the clock showed "+n+" o'clock", colorT:c=>"the clock's frame was "+c},
+  {key:'painting', min:1, max:6,  colors:ALL_C,
+   countQ:'How many birds were in the painting?', colorQ:"What colour was the painting's frame?",
+   countT:n=>n===1?'the painting had 1 bird':'the painting had '+n+' birds', colorT:c=>"the painting's frame was "+c}
+];
+const BACK_CHIP=['THIS ROOM','PREVIOUS ROOM','2 ROOMS AGO','3 ROOMS AGO'];
+const BACK_WHEN=['In this room','In the previous room','Two rooms ago','Three rooms ago'];
+
+/* ═══════════════════════════════════════════════════════════════
+   GENERATION — pure functions of (runSeed, room number, offset)
+   ───────────────────────────────────────────────────────────────
+   A room never depends on how earlier rooms were answered (a wrong answer
+   ends a solo run), so any room can be rebuilt from the seed alone. That is
+   what lets a question reach back three rooms, what lets every racer see
+   the same rooms, and what lets admin.html replay a run.
+
+   `offset` shifts the difficulty ramp: 0 for a solo run, RACE_OFFSET for a
+   race so its five rooms start busier. Do not introduce Math.random()
+   anywhere in this section.
+   ═══════════════════════════════════════════════════════════════ */
+function roomSeed(runSeed, n){ return (runSeed + n*2654435761)>>>0; }
+/* the ramp — `e` is the effective room number (room + offset) */
+function objectsFor(e){ return e<=3 ? 1 : e<=8 ? 2 : 3; }
+function maxBackFor(e){ return e<=2 ? 0 : e<=5 ? 1 : e<=9 ? 2 : 3; }
+
+function genObjects(runSeed, n, offset){
+  const rng=mulberry32(roomSeed(runSeed,n));
+  const k=objectsFor(n+offset);
+  const order=TYPES.map((_,i)=>i);
+  for(let i=order.length-1;i>0;i--){ const j=(rng()*(i+1))|0; const t=order[i]; order[i]=order[j]; order[j]=t; }
+  const out=[];
+  for(let a=0;a<k;a++){
+    const T=TYPES[order[a]];
+    const count=T.min+((rng()*(T.max-T.min+1))|0);
+    const color=T.colors[(rng()*T.colors.length)|0];
+    const look=(rng()*4294967296)>>>0;          // cosmetic layout only
+    out.push({t:order[a], count:count, color:color, look:look});
+  }
+  return out;
+}
+
+function genQuestion(runSeed, n, offset){
+  const rng=mulberry32((roomSeed(runSeed,n)^0x9E3779B9)>>>0);
+  const maxBack=Math.min(n-1, maxBackFor(n+offset));
+  const back=(rng()*(maxBack+1))|0;
+  const objs=genObjects(runSeed, n-back, offset);
+  const o=objs[(rng()*objs.length)|0];
+  const T=TYPES[o.t];
+  const attr=rng()<0.5 ? 'count' : 'color';
+  let options;
+  if(attr==='count'){ options=[]; for(let v=T.min;v<=T.max;v++) options.push(v); }
+  else options=T.colors.slice();
+  const answer=attr==='count' ? o.count : o.color;
+  const start=(rng()*options.length)|0;          // where the dial starts — cosmetic
+  return {n:n, back:back, t:o.t, attr:attr, options:options, answer:answer, start:start};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCORING — no timing term, so a replay pins the score EXACTLY.
+     100  per room cleared
+     +10  per room deep (room 1 = +0), capped at +500
+     +80  per room the question reached back
+   A race adds placement bonuses on top, but races are never ranked.
+   Do not add a speed bonus: CLAUDE.md / STYLE_GUIDE record why (it would
+   silently downgrade the proof from exact to a range).
+   ═══════════════════════════════════════════════════════════════ */
+const DEPTH_CAP=50;
+function scoreRoom(e, back){ return 100 + 10*Math.min(e-1, DEPTH_CAP) + 80*back; }
+
+/* THE single source of truth for what a LOCK IN does. Live play and the
+   replay verifier both call this, so they cannot disagree (Blind Snap's
+   shape — see STYLE_GUIDE §17 notes).
+   `st` is {seed, room, offset, total}. Mutates st.total. */
+function applyAnswer(st, value){
+  const q=genQuestion(st.seed, st.room, st.offset);
+  const v=Number(value);
+  const legal=q.options.indexOf(v)>=0;
+  const correct=legal && v===q.answer;
+  const gain=correct ? scoreRoom(st.room+st.offset, q.back) : 0;
+  st.total+=gain;
+  return {correct:correct, legal:legal, gain:gain, q:q, value:v};
+}
+
+function valueText(q, v){ return q.attr==='count' ? String(v) : COLORS[v].name; }
+function truthParts(q, value){
+  const T=TYPES[q.t];
+  const truth=q.attr==='count' ? T.countT(q.answer) : T.colorT(COLORS[q.answer].name.toLowerCase());
+  return { when:BACK_WHEN[q.back], question:(q.attr==='count'?T.countQ:T.colorQ),
+           truth:truth, said:valueText(q,value).toLowerCase() };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   OBJECT ART — procedural SVG, viewBox 0 0 200 220, base at y=220.
+   Counts are drawn so each unit is separate and outlined: the question is
+   "how many", so nothing countable may overlap or hide another.
+   ═══════════════════════════════════════════════════════════════ */
+function shade(hex, amt){
+  const n=parseInt(hex.slice(1),16); const ch=[n>>16, (n>>8)&255, n&255];
+  const f=amt<0 ? c=>Math.round(c*(1+amt)) : c=>Math.round(c+(255-c)*amt);
+  return '#'+ch.map(c=>f(c).toString(16).padStart(2,'0')).join('');
+}
+function lum(hex){ const n=parseInt(hex.slice(1),16); return (0.299*(n>>16)+0.587*((n>>8)&255)+0.114*(n&255))/255; }
+const SHADOW='<ellipse cx="100" cy="217" rx="62" ry="5" fill="rgba(0,0,0,.2)"/>';
+
+const DRAW={
+  bamboo(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.4), lt=shade(c,.45), rng=mulberry32(o.look);
+    const stalks=[{x:88,top:34},{x:112,top:58}];
+    let s=SHADOW;
+    stalks.forEach(st=>{
+      s+=`<rect x="${st.x-6}" y="${st.top}" width="12" height="${150-st.top}" rx="5" fill="#9ccc65" stroke="#558b2f" stroke-width="2"/>`;
+      for(let y=st.top+22;y<146;y+=24) s+=`<rect x="${st.x-7.5}" y="${y}" width="15" height="4" rx="2" fill="#558b2f"/>`;
+    });
+    /* leaves alternate stalks, and each stalk's leaves only point AWAY from the
+       other stalk — so no two leaves ever cross */
+    const n=o.count, nl=Math.ceil(n/2), nr=n-nl;
+    const place=(cnt,top,bot)=>{ const a=[]; for(let i=0;i<cnt;i++) a.push(cnt===1?(top+bot)/2:top+(bot-top)*i/(cnt-1)); return a; };
+    const ys=[place(nl,44,130), place(nr,66,132)];
+    for(let side=0;side<2;side++){
+      const st=stalks[side], dir=side===0?-1:1;
+      ys[side].forEach(y=>{
+        const len=54+rng()*12, ang=-(18+rng()*16);
+        s+=`<g transform="translate(${st.x+dir*5} ${y}) scale(${dir} 1) rotate(${ang})">`+
+           `<path d="M0 0 C 16 -12, ${len*0.7} -13, ${len} -3 C ${len*0.7} 5, 16 6, 0 0 Z" fill="#66bb6a" stroke="#2e7d32" stroke-width="2"/>`+
+           `<path d="M3 0 L ${len-6} -3" stroke="#2e7d32" stroke-width="1.3" opacity=".7"/></g>`;
+      });
+    }
+    s+=`<path d="M58 150 L142 150 L131 213 Q100 219 69 213 Z" fill="${c}" stroke="${dk}" stroke-width="3"/>`+
+       `<rect x="52" y="140" width="96" height="15" rx="4" fill="${c}" stroke="${dk}" stroke-width="3"/>`+
+       `<path d="M72 162 L77 204" stroke="${lt}" stroke-width="6" stroke-linecap="round" opacity=".5"/>`;
+    return s;
+  },
+  candles(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.42), lt=shade(c,.4), rng=mulberry32(o.look);
+    const n=o.count, w=22, gap=8, total=n*w+(n-1)*gap, x0=100-total/2;
+    let s=SHADOW+`<ellipse cx="100" cy="207" rx="88" ry="10" fill="#b0bec5" stroke="#607d8b" stroke-width="3"/>`;
+    for(let i=0;i<n;i++){
+      const h=64+rng()*62, x=x0+i*(w+gap), top=204-h, cx=x+w/2;
+      s+=`<rect x="${x}" y="${top}" width="${w}" height="${h}" rx="4" fill="${c}" stroke="${dk}" stroke-width="2.5"/>`+
+         `<rect x="${x+4}" y="${top+6}" width="4" height="${h-14}" rx="2" fill="${lt}" opacity=".55"/>`+
+         `<line x1="${cx}" y1="${top}" x2="${cx}" y2="${top-7}" stroke="#333" stroke-width="2"/>`+
+         `<path d="M${cx} ${top-30} C ${cx+10} ${top-18}, ${cx+7} ${top-7}, ${cx} ${top-7} C ${cx-7} ${top-7}, ${cx-10} ${top-18}, ${cx} ${top-30} Z" fill="#ffc53d" stroke="#bf5a00" stroke-width="1.8"/>`+
+         `<path d="M${cx} ${top-20} C ${cx+4} ${top-14}, ${cx+3} ${top-9}, ${cx} ${top-9} C ${cx-3} ${top-9}, ${cx-4} ${top-14}, ${cx} ${top-20} Z" fill="#fff59d"/>`;
+    }
+    return s;
+  },
+  books(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45), rng=mulberry32(o.look);
+    const n=o.count, bh=26;
+    let s=SHADOW;
+    for(let i=0;i<n;i++){
+      const w=122+rng()*40, x=100-w/2+(rng()-0.5)*18, y=215-(i+1)*bh;
+      s+=`<rect x="${x}" y="${y}" width="${w}" height="${bh-1}" rx="4" fill="${c}" stroke="${c==='#263238'?'#90a4ae':dk}" stroke-width="2.5"/>`+
+         `<rect x="${x+20}" y="${y+5}" width="${w-25}" height="${bh-11}" rx="1.5" fill="#f6f0df"/>`+
+         `<path d="M${x+22} ${y+9.5}H${x+w-8}M${x+22} ${y+13.5}H${x+w-8}" stroke="#d8cfb6" stroke-width="1"/>`;
+    }
+    return s;
+  },
+  fish(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45), rng=mulberry32(o.look);
+    const slots=[[56,108],[100,102],[144,110],[60,152],[102,146],[142,156]];
+    for(let i=slots.length-1;i>0;i--){ const j=(rng()*(i+1))|0; const t=slots[i]; slots[i]=slots[j]; slots[j]=t; }
+    let s=SHADOW+`<rect x="62" y="200" width="76" height="16" rx="5" fill="#455a64"/>`+
+      `<circle cx="100" cy="128" r="80" fill="rgba(179,229,252,.28)" stroke="#81d4fa" stroke-width="4"/>`+
+      /* water: the LARGE arc under the chord at y=86, i.e. the bottom of the bowl */
+      `<path d="M32 86 Q 100 76 168 86 A 80 80 0 1 1 32 86 Z" fill="rgba(66,165,245,.30)"/>`+
+      `<path d="M40 184 Q 100 204 160 184 Q 150 200 100 207 Q 50 200 40 184 Z" fill="#a1887f"/>`+
+      `<ellipse cx="100" cy="52" rx="42" ry="8" fill="none" stroke="#81d4fa" stroke-width="4"/>`;
+    for(let i=0;i<o.count;i++){
+      const x=slots[i][0]+(rng()-0.5)*5, y=slots[i][1]+(rng()-0.5)*5, f=rng()<0.5?-1:1;
+      s+=`<g transform="translate(${x} ${y}) scale(${f*1.22} 1.22)">`+
+         `<path d="M10 0 L22 -9 L22 9 Z" fill="${c}" stroke="${dk}" stroke-width="2" stroke-linejoin="round"/>`+
+         `<ellipse cx="-2" cy="0" rx="15" ry="9.5" fill="${c}" stroke="${dk}" stroke-width="2"/>`+
+         `<circle cx="-9" cy="-2.5" r="2.6" fill="#fff"/><circle cx="-9.5" cy="-2.5" r="1.3" fill="#111"/></g>`;
+    }
+    s+=`<path d="M48 80 Q 44 110 52 136" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".35"/>`;
+    return s;
+  },
+  balloons(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45), rng=mulberry32(o.look);
+    const n=o.count, step=Math.min(30, 120/(n-1));
+    let strings='', heads='';
+    for(let i=0;i<n;i++){
+      const a=(-90+(i-(n-1)/2)*step)*Math.PI/180, r=92+(rng()-0.5)*10;
+      const x=100+r*Math.cos(a), y=148+r*Math.sin(a);
+      strings+=`<path d="M${x} ${y+22} Q ${(x+100)/2+(rng()-0.5)*16} ${(y+205)/2} 100 203" stroke="#78909c" stroke-width="1.6" fill="none"/>`;
+      heads+=`<ellipse cx="${x}" cy="${y}" rx="17" ry="21" fill="${c}" stroke="${dk}" stroke-width="2.2"/>`+
+             `<path d="M${x-4} ${y+24} L${x+4} ${y+24} L${x} ${y+19} Z" fill="${dk}"/>`+
+             `<ellipse cx="${x-6}" cy="${y-8}" rx="4" ry="6" fill="#fff" opacity=".45"/>`;
+    }
+    return SHADOW+strings+`<rect x="88" y="200" width="24" height="16" rx="4" fill="#546e7a"/>`+heads;
+  },
+  die(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45);
+    const top=shade(c,.3), side=shade(c,-.25), pip=lum(c)>0.5?'#263238':'#ffffff';
+    let s=SHADOW+`<path d="M45 102 L72 78 L182 78 L155 102 Z" fill="${top}" stroke="${dk}" stroke-width="2.5" stroke-linejoin="round"/>`+
+      `<path d="M155 102 L182 78 L182 188 L155 212 Z" fill="${side}" stroke="${dk}" stroke-width="2.5" stroke-linejoin="round"/>`+
+      `<rect x="45" y="102" width="110" height="110" rx="12" fill="${c}" stroke="${dk}" stroke-width="2.5"/>`;
+    const P={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[2,0],[0,2],[2,2]],
+             5:[[0,0],[2,0],[1,1],[0,2],[2,2]],6:[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]}[o.count];
+    P.forEach(p=>{ s+=`<circle cx="${45+27.5+p[0]*27.5}" cy="${102+27.5+p[1]*27.5}" r="10" fill="${pip}"/>`; });
+    return s;
+  },
+  clock(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45);
+    let s=SHADOW+`<path d="M68 196 L56 216 M132 196 L144 216" stroke="${dk}" stroke-width="8" stroke-linecap="round"/>`+
+      `<circle cx="100" cy="124" r="80" fill="${c}" stroke="${dk}" stroke-width="3"/>`+
+      `<circle cx="100" cy="124" r="63" fill="#fdfaf2" stroke="${dk}" stroke-width="2"/>`;
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6, q=i%3===0, r1=q?50:54, r2=60;
+      s+=`<line x1="${100+r1*Math.sin(a)}" y1="${124-r1*Math.cos(a)}" x2="${100+r2*Math.sin(a)}" y2="${124-r2*Math.cos(a)}" stroke="#37474f" stroke-width="${q?4:2.5}" stroke-linecap="round"/>`;
+    }
+    [[12,0],[3,90],[6,180],[9,270]].forEach(p=>{ const a=p[1]*Math.PI/180;
+      s+=`<text x="${100+38*Math.sin(a)}" y="${124-38*Math.cos(a)+6}" font-family="Segoe UI,Arial,sans-serif" font-size="17" font-weight="800" fill="#37474f" text-anchor="middle">${p[0]}</text>`; });
+    const ha=(o.count%12)*Math.PI/6;
+    s+=`<line x1="100" y1="124" x2="100" y2="72" stroke="#263238" stroke-width="4.5" stroke-linecap="round"/>`+
+       `<line x1="100" y1="124" x2="${100+34*Math.sin(ha)}" y2="${124-34*Math.cos(ha)}" stroke="#263238" stroke-width="8" stroke-linecap="round"/>`+
+       `<circle cx="100" cy="124" r="6" fill="${c}" stroke="${dk}" stroke-width="2"/>`;
+    return s;
+  },
+  painting(o){
+    const c=COLORS[o.color].hex, dk=shade(c,-.45), rng=mulberry32(o.look);
+    const slots=[[54,98],[100,94],[146,100],[58,130],[102,126],[144,132]];
+    for(let i=slots.length-1;i>0;i--){ const j=(rng()*(i+1))|0; const t=slots[i]; slots[i]=slots[j]; slots[j]=t; }
+    let s=SHADOW+`<path d="M44 200 L32 216 M156 200 L168 216" stroke="#6d4c41" stroke-width="7" stroke-linecap="round"/>`+
+      `<rect x="10" y="62" width="180" height="142" rx="4" fill="${c}" stroke="${dk}" stroke-width="3"/>`+
+      `<rect x="25" y="77" width="150" height="112" fill="#cfe8fb" stroke="${dk}" stroke-width="2"/>`+
+      `<path d="M25 162 Q 70 128 112 156 Q 145 140 175 152 L175 189 L25 189 Z" fill="#81c784"/>`+
+      `<path d="M25 176 Q 90 158 175 174 L175 189 L25 189 Z" fill="#5daa62"/>`;
+    for(let i=0;i<o.count;i++){
+      const x=slots[i][0]+(rng()-0.5)*8, y=slots[i][1]+(rng()-0.5)*6;
+      s+=`<path d="M${x-14} ${y-4} Q ${x-7} ${y-12} ${x} ${y} Q ${x+7} ${y-12} ${x+14} ${y-4}" stroke="#263238" stroke-width="4.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    return s;
+  }
+};
+function objectSvg(o){ return `<svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">${DRAW[TYPES[o.t].key](o)}</svg>`; }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE STAGE — CSS 3D boxes in a fixed 600x540 logical scene
+   ───────────────────────────────────────────────────────────────
+   Three scenes: the ROOM (static box with pedestals), the HALL (a box whose
+   depth shrinks as you walk, so its textures slide toward the camera and
+   nothing ever crosses the camera plane) and the PIT. Fades are applied to
+   .scene, never to .box: opacity on a preserve-3d element flattens it.
+   ═══════════════════════════════════════════════════════════════ */
+const W=600, H=540, ROOM_D=720, HALL_FAR=1750, HALL_NEAR=250, PIT_FAR=1500, PIT_NEAR=250;
+const G={};   // stage element handles
+
+function el(tag, cls, parent){ const d=document.createElement(tag); if(cls) d.className=cls; if(parent) parent.appendChild(d); return d; }
+function plane(parent, cls, w, h, tf){
+  const d=el('div','pl '+cls,parent);
+  d.style.width=w+'px'; d.style.height=h+'px'; d.style.left=(-w/2)+'px'; d.style.top=(-h/2)+'px';
+  d.style.transform=tf; return d;
+}
+function makeBox(scene, backCls, sideCls, d){
+  const box=el('div','box',scene);
+  const b={box:box, d:d};
+  b.back =plane(box,'back '+backCls,W,H,'');
+  b.floor=plane(box,sideCls.floor,W,d,'');
+  b.ceil =plane(box,sideCls.ceil,W,d,'');
+  b.left =plane(box,sideCls.wall+' wl',d,H,'');
+  b.right=plane(box,sideCls.wall+' wr',d,H,'');
+  sizeBox(b,d);
+  return b;
+}
+/* Re-lay the five planes for depth d. Cheap enough to run every frame. */
+function sizeBox(b, d){
+  b.d=d;
+  b.back.style.transform=`translateZ(${-d}px)` + (b.lift ? ` translateY(${-b.lift}px)` : '');
+  b.floor.style.height=d+'px'; b.floor.style.top=(-d/2)+'px';
+  b.floor.style.transform=`translateY(${H/2}px) translateZ(${-d/2}px) rotateX(90deg)`;
+  b.ceil.style.height=d+'px'; b.ceil.style.top=(-d/2)+'px';
+  b.ceil.style.transform=`translateY(${-H/2}px) translateZ(${-d/2}px) rotateX(-90deg)`;
+  b.left.style.width=d+'px'; b.left.style.left=(-d/2)+'px';
+  b.left.style.transform=`translateX(${-W/2}px) translateZ(${-d/2}px) rotateY(90deg)`;
+  b.right.style.width=d+'px'; b.right.style.left=(-d/2)+'px';
+  b.right.style.transform=`translateX(${W/2}px) translateZ(${-d/2}px) rotateY(-90deg)`;
+}
+const TILE_SIDES={floor:'floor', ceil:'ceil', wall:'wall'};
+const PIT_SIDES={floor:'concrete pf', ceil:'concrete pc', wall:'concrete'};
+
+function svgUrl(svg){ return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'")'; }
+const BRICK_BG=svgUrl("<svg xmlns='http://www.w3.org/2000/svg' width='80' height='72'><g fill='none' stroke='#000' stroke-opacity='.5' stroke-width='4'><path d='M0 36H80M0 72H80M2 0V36M42 36V72'/></g></svg>");
+const SPIKE_BG=svgUrl("<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'>"+
+  "<polygon points='0,0 100,0 50,50' fill='#c3c8cf'/><polygon points='100,0 100,100 50,50' fill='#7e858e'/>"+
+  "<polygon points='0,100 100,100 50,50' fill='#454a52'/><polygon points='0,0 0,100 50,50' fill='#9da3ac'/>"+
+  "<path d='M0 0L100 100M100 0L0 100' stroke='#2a2e34' stroke-width='2'/>"+
+  "<circle cx='50' cy='50' r='3' fill='#e9ecef'/>"+
+  "<rect width='100' height='100' fill='none' stroke='#1b1d22' stroke-width='3'/></svg>");
+
+function buildStage(){
+  const fit=$('fit');
+  G.fit=fit;
+  G.sRoom=el('div','scene',fit);
+  G.room=makeBox(G.sRoom,'tiles',TILE_SIDES,ROOM_D);
+
+  G.sHall=el('div','scene',fit);
+  G.hall=makeBox(G.sHall,'qwall',TILE_SIDES,HALL_FAR);
+  G.hall.back.style.backgroundImage=BRICK_BG;
+  G.hall.back.style.backgroundSize='80px 72px';
+  G.qw=el('div','qw',G.hall.back);
+
+  G.sPit=el('div','scene',fit);
+  G.pit=makeBox(G.sPit,'spikes',PIT_SIDES,PIT_FAR);
+  G.pit.back.style.background=SPIKE_BG+' center/108px 108px, #50555c';
+  G.pit.back.style.boxShadow='inset 0 0 90px rgba(0,0,0,.65)';
+}
+function fitStage(){
+  const st=$('stage'); if(!st||!G.fit) return;
+  const k=st.clientWidth/W;
+  if(k>0) G.fit.style.transform=`scale(${k})`;
+}
+function showScene(which){
+  ['sRoom','sHall','sPit'].forEach(k=>{
+    const on=(k===which);
+    G[k].classList.toggle('on',on);
+    if(!on) G[k].style.opacity='0';
+  });
+}
+
+/* ---------- the room: pedestals and what stands on them ---------- */
+const LAYOUT={
+  1:{xs:[0],             z:-150, s:1.5,  pw:210},
+  2:{xs:[-160,160],      z:-190, s:1.18, pw:190},
+  3:{xs:[-215,0,215],    z:-220, s:0.98, pw:170}
+};
+const PED_H=150, PED_D=170;
+function buildRoom(objs){
+  const box=G.room.box;
+  box.querySelectorAll('.prop').forEach(n=>n.remove());
+  const L=LAYOUT[objs.length];
+  const floorY=H/2, topY=floorY-PED_H;
+  objs.forEach((o,i)=>{
+    const x=L.xs[i], z=L.z, w=L.pw;
+    plane(box,'prop ped-front',w,PED_H,`translate3d(${x}px,${floorY-PED_H/2}px,${z+PED_D/2}px)`);
+    plane(box,'prop ped-top',w,PED_D,`translate3d(${x}px,${topY}px,${z}px) rotateX(90deg)`);
+    plane(box,'prop ped-side',PED_D,PED_H,`translate3d(${x-w/2}px,${floorY-PED_H/2}px,${z}px) rotateY(-90deg)`);
+    plane(box,'prop ped-side',PED_D,PED_H,`translate3d(${x+w/2}px,${floorY-PED_H/2}px,${z}px) rotateY(90deg)`);
+    const bw=200*L.s, bh=220*L.s;
+    const bill=plane(box,'prop bill',bw,bh,`translate3d(${x}px,${topY-bh/2+2}px,${z}px)`);
+    bill.innerHTML=objectSvg(o);
+  });
+}
+
+/* ---------- the question wall ---------- */
+function renderWall(){
+  const q=S.q, T=TYPES[q.t];
+  G.qw.innerHTML=
+    `<div class="qw-chip${q.back?' back':''}">${BACK_CHIP[q.back]}</div>`+
+    `<div class="qw-q">${escapeHtml(q.attr==='count'?T.countQ:T.colorQ)}</div>`+
+    `<div class="qw-val" id="qwVal"></div>`+
+    `<div class="qw-lock">LOCK IN</div>`;
+  renderWallValue(false);
+}
+function renderWallValue(bump){
+  const q=S.q, v=q.options[S.pick], node=$('qwVal');
+  if(!node) return;
+  if(q.attr==='count'){ node.className='qw-val'; node.textContent=String(v); }
+  else { node.className='qw-val color'; node.innerHTML=`<span class="sw" style="background:${COLORS[v].hex}"></span>${COLORS[v].name.toUpperCase()}`; }
+  if(bump){ node.classList.add('bump'); setTimeout(()=>node.classList.remove('bump'),110); }
+  $('srLive').textContent=valueText(q,v);
+}
+function wallCorrect(gain){
+  const node=$('qwVal'); if(node) node.classList.add('good');
+  const chip=G.qw.querySelector('.qw-chip');
+  if(chip){ chip.className='qw-chip'; chip.style.color='#3ddc84'; chip.style.borderColor='rgba(61,220,132,.6)';
+            chip.style.background='rgba(61,220,132,.14)'; chip.textContent='CORRECT  +'+gain; }
+}
+function wallNo(){ G.qw.innerHTML='<div class="qw-no">NO</div>'; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMATION + TIMERS
+   ═══════════════════════════════════════════════════════════════ */
+const easeInOut=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+const easeOut=p=>1-Math.pow(1-p,3);
+const easeIn=p=>p*p*p;
+/* Frames drive the motion, but a timer guarantees the END: an occluded or
+   throttled window can stop requestAnimationFrame entirely, and a walk that
+   waits on frames alone would hang the run at the door. */
+function tween(ms, fn, ease){
+  ease=ease||easeInOut; ms=Math.max(1,ms*ANIM);
+  return new Promise(res=>{
+    const t0=performance.now(); let done=false;
+    function finish(){ if(done) return; done=true; fn(ease(1)); res(); }
+    function step(now){ if(done) return; const p=Math.min(1,(now-t0)/ms); fn(ease(p)); if(p<1) requestAnimationFrame(step); else finish(); }
+    requestAnimationFrame(step);
+    setTimeout(finish, ms+60);
+  });
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms*ANIM));
+
+/* A pausable countdown. Used for the study phase, and for the answer phase
+   in a race. §15: cancelling the exit modal resumes it exactly. */
+function Clock(){ this.h=null; this.active=false; this.running=false; this.left=0; this.total=1; }
+Clock.prototype.start=function(ms,onDone,onTick){
+  this.clear(); ms*=TIMERS;
+  this.total=ms; this.left=ms; this.onDone=onDone; this.onTick=onTick; this.active=true;
+  if(S.paused){ if(onTick) onTick(1, ms); return; }
+  this.resume();
+};
+Clock.prototype.resume=function(){
+  if(!this.active||this.running) return;
+  const self=this; this.running=true; this.t0=performance.now();
+  this.h=setTimeout(function(){
+    self.running=false; self.active=false;
+    if(self.onTick) self.onTick(0,0);
+    const f=self.onDone; self.onDone=null; if(f) f();
+  }, this.left);
+  (function loop(){ if(!self.running) return; const r=self.remaining(); if(self.onTick) self.onTick(r/self.total, r); requestAnimationFrame(loop); })();
+};
+Clock.prototype.pause=function(){ if(!this.running) return; clearTimeout(this.h); this.left=this.remaining(); this.running=false; };
+Clock.prototype.remaining=function(){ return this.running ? Math.max(0,this.left-(performance.now()-this.t0)) : this.left; };
+Clock.prototype.clear=function(){ clearTimeout(this.h); this.running=false; this.active=false; this.onDone=null; };
+const clock=new Clock();
+
+function paintBar(frac, msLeft){
+  const row=$('tbarRow'), bar=$('tbar');
+  row.classList.remove('idle');
+  $('tfill').style.transform=`scaleX(${Math.max(0,Math.min(1,frac))})`;
+  bar.classList.toggle('danger', frac<=0.12);
+  bar.classList.toggle('warn', frac>0.12 && frac<=0.25);
+  $('tleft').textContent=Math.ceil(msLeft/1000)+'s';
+}
+function hideBar(){ $('tbarRow').classList.add('idle'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE + SCREENS
+   ═══════════════════════════════════════════════════════════════ */
+const STUDY_BASE=2500, STUDY_PER=2000;     // 4.5s / 6.5s / 8.5s for 1 / 2 / 3 objects
+const RACE_ANSWER_MS=25000;
+var S={mode:'solo', seed:0, offset:0, room:0, total:0, objs:[], q:null, pick:0,
+       phase:'idle', runId:0, moveLog:[], last:null, paused:false, raceDone:false};
+
+const SCREEN_IDS=['screen-menu','screen-rooms','screen-lobby','screen-standings','screen-count','screen-play','screen-result'];
+function show(name){
+  const full=name.indexOf('screen-')===0 ? name : 'screen-'+name;
+  SCREEN_IDS.forEach(id=>{ const e=$(id); if(e) e.classList.toggle('active', id===full); });
+  const inPlay=(full==='screen-play'||full==='screen-count');
+  $('topbar').style.display=inPlay?'flex':'none';
+  $('theme-btn').style.display=inPlay?'none':'flex';
+  document.body.classList.toggle('playing',inPlay);
+  if(full==='screen-play') fitStage();
+  window.scrollTo(0,0);
+}
+function label(html){ $('phaseLabel').innerHTML=html; }
+function setControls(which, disabled){
+  $('ctlStudy').classList.toggle('on', which==='study');
+  $('ctlAnswer').classList.toggle('on', which==='answer');
+  ['btnReady','btnMinus','btnPlus','btnLock'].forEach(id=>{ $(id).disabled=!!disabled; });
+}
+
+/* ---------- THEME (§2) ---------- */
+const THEME_KEY='lockin_theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t); store.set(THEME_KEY,t);
+  $('theme-label').textContent = t==='dark' ? 'Light' : 'Dark';
+}
+applyTheme(store.get(THEME_KEY,'dark'));
+function toggleTheme(){ applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   RUN FLOW  —  Menu → Countdown → [Room: study → Hall: walk → Wall: answer]* → Result
+   Every async step re-checks S.runId, so leaving mid-animation can never let
+   a stale flow carry on behind the menu.
+   ═══════════════════════════════════════════════════════════════ */
+function startSolo(){
+  S.runId++;
+  S.mode='solo'; S.offset=0; S.seed=(Math.random()*1e9)>>>0;
+  S.room=0; S.total=0; S.moveLog=[]; S.last=null;
+  $('playersBar').style.display='none'; $('playersBar').innerHTML='';
+  $('scoreNow').textContent='0';
+  hubReportPlay();                       // §12 — once per run
+  const id=S.runId;
+  countdown(()=>{ if(id===S.runId){ show('play'); enterRoom(1); } });
+}
+
+function countdown(done){
+  show('count');
+  let n=3; const e=$('countNum'); e.textContent=n;
+  const restart=()=>{ e.style.animation='none'; void e.offsetWidth; e.style.animation=''; };
+  restart();
+  clearInterval(S.countTimer);
+  S.countTimer=setInterval(()=>{
+    n--;
+    if(n<=0){ clearInterval(S.countTimer); e.textContent='GO'; restart(); setTimeout(done, 520*TIMERS); return; }
+    e.textContent=n; restart();
+  }, 700*TIMERS);
+}
+
+async function enterRoom(n){
+  const id=S.runId;
+  S.room=n; S.phase='walkin';
+  $('roomNow').textContent=n; $('plate').textContent='ROOM '+n;
+  S.objs=genObjects(S.seed,n,S.offset);
+  buildRoom(S.objs);
+  G.room.box.style.transform='translateZ(-340px)';
+  setControls('study',true); hideBar();
+  label('Entering room <b>'+n+'</b>…');
+  showScene('sRoom');
+  await tween(750, p=>{ G.room.box.style.transform=`translateZ(${-340*(1-p)}px)`; G.sRoom.style.opacity=String(p); }, easeOut);
+  if(id!==S.runId) return;
+  study();
+}
+
+function study(){
+  S.phase='study';
+  const k=S.objs.length;
+  label(k===1 ? 'Study the room — <b>count it, note the colour</b>' : 'Study the room — <b>all '+k+' objects</b>');
+  setControls('study',false);
+  clock.start(STUDY_BASE+STUDY_PER*k, ()=>toHall(), paintBar);
+}
+
+async function toHall(){
+  if(S.phase!=='study') return;
+  clock.clear();
+  const id=S.runId;
+  S.phase='walk';
+  hideBar();
+  setControls('answer',true);
+  label('Walking to the wall…');
+  S.q=genQuestion(S.seed,S.room,S.offset); S.pick=S.q.start;
+  renderWall();
+  G.hall.lift=0; sizeBox(G.hall,HALL_FAR);
+  G.hall.box.style.transform='';
+  G.sHall.classList.add('on'); G.sHall.style.opacity='0';
+  await tween(420, p=>{
+    G.room.box.style.transform=`rotateY(${38*p}deg) translateZ(${90*p}px)`;
+    G.sRoom.style.opacity=String(1-p); G.sHall.style.opacity=String(p);
+  });
+  if(id!==S.runId) return;
+  showScene('sHall'); G.sHall.style.opacity='1';
+  await tween(1500, p=>{
+    sizeBox(G.hall, HALL_FAR+(HALL_NEAR-HALL_FAR)*p);
+    G.hall.box.style.transform=`translateY(${Math.sin(p*Math.PI*7)*3.5*(1-p)}px)`;
+  });
+  if(id!==S.runId) return;
+  answerPhase();
+}
+
+function answerPhase(){
+  S.phase='answer';
+  label('Set your answer, then <b>LOCK IN</b>');
+  setControls('answer',false);
+  if(S.mode==='race') clock.start(RACE_ANSWER_MS, ()=>lockIn(), paintBar);
+}
+
+function bump(dir){
+  if(S.phase!=='answer') return;
+  const len=S.q.options.length;
+  S.pick=(S.pick+dir+len)%len;
+  renderWallValue(true);
+}
+
+function lockIn(){
+  if(S.phase!=='answer') return;
+  clock.clear(); hideBar();
+  S.phase='resolve';
+  setControls('answer',true);
+  const value=S.q.options[S.pick];
+  const res=applyAnswer(S,value);
+  S.moveLog.push(S.room+':'+value);
+  S.last=res;
+  if(res.correct) onCorrect(res); else onWrong(res);
+}
+
+async function onCorrect(res){
+  const id=S.runId;
+  $('scoreNow').textContent=S.total;
+  wallCorrect(res.gain);
+  label('<span class="ok">Correct!</span> +'+res.gain);
+  await sleep(800);
+  if(id!==S.runId) return;
+  await tween(650, p=>{ G.hall.lift=H*p; sizeBox(G.hall,G.hall.d); }, easeIn);   // the wall rises like a door
+  if(id!==S.runId) return;
+  if(S.mode==='race'){ raceRoomOver(true); return; }
+  enterRoom(S.room+1);
+}
+
+async function onWrong(res){
+  const id=S.runId;
+  wallNo();
+  label('<span class="bad">NO.</span>');
+  await sleep(750);
+  if(id!==S.runId) return;
+  /* trapdoor: two floor halves hinged at the side walls swing down */
+  const b=G.hall, d=b.d;
+  const hole=plane(b.box,'hole',W,d,`translateY(${H/2+2}px) translateZ(${-d/2}px) rotateX(90deg)`);
+  const halves=[-1,1].map(sgn=>{
+    const h=plane(b.box,'floor',W/2,d,'');
+    h.style.transformOrigin=sgn<0?'0 50%':'100% 50%';
+    h.style.backgroundPosition=sgn<0?'0 0':'-300px 0';
+    return h;
+  });
+  b.floor.style.visibility='hidden';
+  const setHalves=a=>halves.forEach((h,i)=>{ const sgn=i?1:-1;
+    h.style.transform=`translateX(${sgn*W/4}px) translateY(${H/2}px) translateZ(${-d/2}px) rotateX(90deg) rotateY(${-sgn*a}deg)`; });
+  setHalves(0);
+  await tween(420, p=>setHalves(100*p), easeIn);
+  if(id!==S.runId) return cleanupTrap();
+  await tween(360, p=>{ b.box.style.transform=`translateY(${-760*p}px) rotateX(${-14*p}deg)`; }, easeIn);
+  if(id!==S.runId) return cleanupTrap();
+  cleanupTrap();
+  /* the drop */
+  sizeBox(G.pit,PIT_FAR); showScene('sPit'); G.sPit.style.opacity='1';
+  await tween(560, p=>{ sizeBox(G.pit, PIT_FAR+(PIT_NEAR-PIT_FAR)*p); G.pit.box.style.transform=`rotateZ(${3*p}deg) scale(${1+0.08*p})`; }, easeIn);
+  if(id!==S.runId) return;
+  const st=$('stage'), fl=$('flash');
+  st.classList.remove('shake'); fl.classList.remove('go'); void st.offsetWidth;
+  st.classList.add('shake'); fl.classList.add('go');
+  label('<span class="bad">Spiked.</span>');
+  await sleep(1100);
+  if(id!==S.runId) return;
+  if(S.mode==='race'){ raceRoomOver(false); return; }
+  finishRun(res);
+
+  function cleanupTrap(){ hole.remove(); halves.forEach(h=>h.remove()); b.floor.style.visibility=''; b.box.style.transform=''; }
+}
+
+function finishRun(res){
+  S.phase='over';
+  const prev=getBest(), isBest=S.total>prev;
+  if(isBest) setBest(S.total);
+  const cleared=S.room-1;
+  $('resultBadge').className='result-badge';
+  $('resultBadge').innerHTML=SPIKE_ICON;
+  $('resultTitle').textContent='Spiked';
+  $('resultSub').textContent = cleared===0 ? 'The floor dropped in the very first room.'
+    : 'You cleared '+cleared+' room'+(cleared===1?'':'s')+' before the floor dropped.';
+  /* every string here is generated from TYPES/COLORS, never from input, so
+     bolding the true value by substitution is safe */
+  const t=truthParts(res.q,res.value);
+  const real=valueText(res.q,res.q.answer).toLowerCase();
+  $('truthPanel').style.display='';
+  $('truthPanel').innerHTML=
+    `<span class="tq">${BACK_CHIP[res.q.back]} · ${t.question}</span>`+
+    `<span class="ta">${t.when}, ${t.truth.replace(real,'<b>'+real+'</b>')}.</span> `+
+    `<span class="ty">You locked in <b>${t.said}</b>.</span>`;
+  $('resultScore').textContent=S.total;
+  $('resultNewBest').style.display=(isBest&&S.total>0)?'block':'none';
+  $('resultRows').innerHTML='';
+  $('btnAgain').textContent='PLAY AGAIN';
+  $('lbPanel').hidden=false;
+  show('result');
+  handleLeaderboard();
+}
+const SPIKE_ICON='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M2 20l3.3-9 3.3 9M8.7 20L12 7l3.3 13M15.4 20l3.3-9 3.3 9"/><path d="M1.5 20.5h21" stroke-linecap="round"/></svg>';
+const CHECK_ICON='<svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL (§15) — pausing, not just asking
+   Opening any modal mid-run pauses the running countdown; cancelling
+   resumes it with exactly the time that was left. A race can't be paused
+   (the others keep playing), so there the clock keeps running.
+   ═══════════════════════════════════════════════════════════════ */
+let modalAction=null;
+function openModal(title,text,confirmLabel,action,cancelLabel){
+  $('modalTitle').textContent=title; $('modalText').textContent=text;
+  $('modalConfirm').textContent=confirmLabel;
+  $('modalCancel').textContent=cancelLabel||'Stay';
+  $('modalCancel').style.display=action?'':'none';
+  $('modalConfirm').classList.toggle('danger-btn', !!action);
+  modalAction=action;
+  if(S.mode!=='race'){ S.paused=true; clock.pause(); }
+  $('modalBack').classList.add('show');
+}
+function closeModal(){
+  $('modalBack').classList.remove('show'); modalAction=null;
+  if(S.paused){ S.paused=false; clock.resume(); }
+}
+
+let toastTimer=null;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1500); }
+
+function exitToMenu(){
+  S.runId++; clock.clear(); clearInterval(S.countTimer);
+  S.phase='idle'; S.paused=false; hideBar();
+  if(S.mode==='race'){ leaveRoom(); return; }
+  show('menu'); refreshHome();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL LEADERBOARD  —  /leaderboard/lock-in/{playerId}
+   One row per player, holding their best run. A lower score never
+   overwrites a higher one (enforced by the Firebase rule as well as here).
+   ═══════════════════════════════════════════════════════════════ */
+var LB_GAME='lock-in';
+var LB_PROOF_V=1;
+var PID_KEY='lockInPid', NAME_KEY='lockInName', BEST_KEY='lockIn_best_solo';
+
+function lbApi(pth){ return HUB_DB+'/'+pth+'.json'; }
+function playerId(){
+  var id=null;
+  try{ id=localStorage.getItem(PID_KEY); }catch(e){}
+  if(!id){
+    id='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+    try{ localStorage.setItem(PID_KEY,id); }catch(e){}
+  }
+  return id;
+}
+function playerName(){ try{ return localStorage.getItem(NAME_KEY)||''; }catch(e){ return ''; } }
+function getBest(){ try{ return parseInt(localStorage.getItem(BEST_KEY),10)||0; }catch(e){ return 0; } }
+function setBest(v){ try{ localStorage.setItem(BEST_KEY,String(v)); }catch(e){} }
+
+/* Moves are "room:value" pairs joined by ";" — the value each LOCK IN
+   committed (a count, or a COLORS index). The − / + taps are not recorded:
+   only the committed answer can change the outcome. */
+function buildProof(){ return S.moveLog.join(';'); }
+
+function lbFetchAll(){
+  return fetch(lbApi('leaderboard/'+LB_GAME))
+    .then(function(r){ return r.ok?r.json():{}; })
+    .then(function(d){ return (d&&typeof d==='object'&&!d.error)?d:{}; })
+    .catch(function(){ return {}; });
+}
+function lbRank(all,score){
+  var better=0,total=0;
+  for(var k in all){ if(!all[k])continue; total++; if(Number(all[k].score)>score) better++; }
+  return { rank:better+1, total:total };
+}
+function lbSubmit(name){
+  /* `rounds` (not `rooms`) so admin.html's shared Rounds column fills in */
+  var entry={ name:String(name).slice(0,20), score:S.total, rounds:Math.max(0,S.room-1),
+              at:Date.now(), v:LB_PROOF_V, seed:S.seed, moves:buildProof() };
+  return fetch(lbApi('leaderboard/'+LB_GAME+'/'+playerId()),
+               { method:'PUT', body:JSON.stringify(entry) })
+    .then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+
+/* Home panel — hidden until this player has actually scored (a menu should
+   not greet a first-time player with a zero). */
+function refreshHome(){
+  var b=getBest();
+  if(!b){ $('bestPanel').style.display='none'; return; }
+  $('bestText').innerHTML='Best run <b>'+b+'</b>';
+  $('bestPanel').style.display='';
+  lbFetchAll().then(function(all){
+    var mine=all[playerId()];
+    if(!mine) return;
+    var r=lbRank(all,Number(mine.score)||0);
+    $('bestText').innerHTML='Best run <b>'+b+'</b> &middot; <b style="color:var(--accent)">#'+r.rank+'</b> of '+r.total+' on the global board';
+  });
+}
+
+/* Run finished → find where it sits, ask for a name the first time, and
+   submit only if it beats this player's own best. Races are never ranked. */
+function handleLeaderboard(){
+  var line=$('lbLine'), share=$('btnShare');
+  share.hidden=true;
+  if(S.mode!=='solo'){ $('lbPanel').hidden=true; return; }
+  line.textContent='Checking the leaderboard…';
+
+  if(S.total<=0){ line.textContent='Clear a room to get on the board.'; return; }
+
+  lbFetchAll().then(function(all){
+    var mine=all[playerId()];
+    var prevBest=mine?(Number(mine.score)||0):0;
+
+    if(S.total<=prevBest){
+      var r=lbRank(all,prevBest);
+      line.innerHTML='Your best is still <b>'+prevBest+'</b> — #'+r.rank+' of '+r.total+'.';
+      showShare(prevBest,r.rank);
+      return;
+    }
+    var name=playerName();
+    var go=name?Promise.resolve(name):askName();
+    go.then(function(entered){
+      if(entered===null){
+        line.textContent='Not submitted. Play again to join the board.';
+        showShare(S.total,null);
+        return;
+      }
+      try{ localStorage.setItem(NAME_KEY,entered); }catch(e){}
+      line.textContent='Submitting…';
+      lbSubmit(entered).then(function(ok){
+        if(!ok){
+          line.textContent='Could not reach the leaderboard — your score is safe locally.';
+          showShare(S.total,null);
+          return;
+        }
+        lbFetchAll().then(function(after){
+          var r2=lbRank(after,S.total);
+          line.innerHTML=prevBest
+            ? 'New personal best — you’re <b>#'+r2.rank+'</b> of '+r2.total+'.'
+            : 'You’re on the board at <b>#'+r2.rank+'</b> of '+r2.total+'.';
+          showShare(S.total,r2.rank);
+        });
+      });
+    });
+  });
+}
+
+function askName(){
+  return new Promise(function(resolve){
+    var bg=$('nameBg'), input=$('inLbName');
+    input.value=playerName();
+    bg.classList.add('show');
+    setTimeout(function(){ input.focus(); },50);
+    function done(v){
+      bg.classList.remove('show');
+      $('btnNameOk').onclick=null; $('btnNameSkip').onclick=null; input.onkeydown=null;
+      resolve(v);
+    }
+    function ok(){ var n=input.value.trim(); if(n) done(n); }
+    $('btnNameOk').onclick=ok;
+    $('btnNameSkip').onclick=function(){ done(null); };
+    input.onkeydown=function(e){ if(e.key==='Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ---------- */
+var SHARE_HOME='https://arcade.kenmemorize.com/';
+function shareUrl(){
+  if(location.protocol==='file:'||location.origin==='null') return SHARE_HOME;
+  return location.origin+location.pathname.replace(/\/games\/[^/]*$/,'/');
+}
+function showShare(score,rank){
+  var b=$('btnShare'); b.hidden=false;
+  b.onclick=function(){ shareScore(score,rank); };
+}
+function shareScore(score,rank){
+  var text='I scored '+score+' on Lock In'+(rank?' — #'+rank+' on the board':'')+'. '+shareUrl();
+  if(navigator.share){
+    navigator.share({ title:'Lock In', text:text }).catch(function(e){
+      if(e&&e.name==='AbortError') return;
+      manualShare(text);
+    });
+    return;
+  }
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ toast('Copied'); }, function(){ manualShare(text); });
+    return;
+  }
+  manualShare(text);
+}
+function manualShare(text){ $('shareText').value=text; $('shareBg').classList.add('show'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ONLINE  —  /rooms/{code}
+   ───────────────────────────────────────────────────────────────
+   Ported from Blind Snap (same database, same /rooms path, so no rules
+   change). The one real difference: Blind Snap deals a fresh seed per down,
+   but here a question can reach back into earlier rooms, so ONE race seed is
+   dealt at launch and every round reuses it. Rooms are pure functions of
+   (seed, n), so every phone walks identical rooms and gets identical
+   questions.
+
+   A wrong answer scores 0 for that room but does NOT eliminate — with one
+   strike and 4 players, a race would otherwise empty by room 2.
+   ═══════════════════════════════════════════════════════════════ */
+var RACE_ROOMS=5, RACE_OFFSET=3, MAX_PLAYERS=4;
+var PLACE_BONUS=[200,120,60];
+var M={ code:null, pid:null, name:'', isHost:false, joined:false,
+        room:null, es:null, hb:null, lastKey:'', refereed:0, playReported:false };
+
+function api(pth){ return HUB_DB+'/'+pth+'.json'; }
+var net={
+  get:  function(p){ return fetch(api(p)).then(function(r){ return r.json(); }); },
+  put:  function(p,v){ return fetch(api(p),{method:'PUT',  body:JSON.stringify(v)}); },
+  patch:function(p,v){ return fetch(api(p),{method:'PATCH',body:JSON.stringify(v)}); },
+  del:  function(p){ return fetch(api(p),{method:'DELETE'}); }
+};
+
+function subscribe(path,onChange,onError){
+  var mirror=null;
+  var es=new EventSource(api(path));
+  function walk(obj,segs){ var o=obj; for(var i=0;i<segs.length-1;i++){ if(!o[segs[i]]) o[segs[i]]={}; o=o[segs[i]]; } return o; }
+  function applyPut(p,d){
+    if(p==='/'){ mirror=d; return; }
+    var segs=p.split('/').filter(Boolean);
+    if(!mirror) mirror={};
+    var parent=walk(mirror,segs), key=segs[segs.length-1];
+    if(d===null) delete parent[key]; else parent[key]=d;
+  }
+  es.addEventListener('put',function(e){ var m=JSON.parse(e.data); applyPut(m.path,m.data); onChange(mirror); });
+  es.addEventListener('patch',function(e){
+    var m=JSON.parse(e.data), base=m.path==='/'?'':m.path;
+    for(var k in m.data) applyPut((base+'/'+k).replace('//','/'),m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error',function(){ if(onError) onError(); });
+  return es;
+}
+
+var CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I/O — they read as 1/0 on a phone
+function newCode(){ var s=''; for(var i=0;i<4;i++) s+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]; return s; }
+function P(){ return (M.room&&M.room.players)||{}; }
+function meNode(){ return P()[M.pid]||{}; }
+function freshPlayer(name){ return { name:name, score:0, prev:0, bonus:0, done:false, finishedAt:0, hb:Date.now() }; }
+function raceErr(msg){ $('roomErr').textContent=msg||''; }
+
+function createRoom(){
+  var name=$('inName').value.trim();
+  if(!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name=name; M.pid='p'+Math.random().toString(36).slice(2,9); M.isHost=true;
+  try{ localStorage.setItem(NAME_KEY,name); }catch(e){}
+  var code=newCode(); M.code=code;
+  /* `game` tags the room: every arcade game shares /rooms, and a Blind Snap
+     code typed into Lock In must be refused rather than joined */
+  var payload={ game:HUB_ID, host:M.pid, phase:'lobby', createdAt:Date.now(), players:{} };
+  payload.players[M.pid]=freshPlayer(name);
+  net.put('rooms/'+code,payload).then(function(r){
+    if(!r||!r.ok) return raceErr('Could not reach the database. Online play needs a "rooms" rule.');
+    watchRoom();
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function joinRoom(){
+  var name=$('inName').value.trim();
+  var code=$('inCode').value.trim().toUpperCase();
+  if(!name) return raceErr('Type a name first.');
+  if(code.length!==4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  net.get('rooms/'+code).then(function(room){
+    if(!room||room.error) return raceErr('No room with that code.');
+    if(room.game!==HUB_ID) return raceErr('That code belongs to a different game.');
+    if(room.phase!=='lobby') return raceErr('That race has already started.');
+    if(Object.keys(room.players||{}).length>=MAX_PLAYERS) return raceErr('That room is full.');
+    M.name=name; M.pid='p'+Math.random().toString(36).slice(2,9); M.isHost=false; M.code=code;
+    try{ localStorage.setItem(NAME_KEY,name); }catch(e){}
+    net.put('rooms/'+code+'/players/'+M.pid,freshPlayer(name)).then(watchRoom);
+  }).catch(function(){ raceErr('Could not reach the database.'); });
+}
+
+function watchRoom(){
+  raceErr('');
+  M.joined=true; M.lastKey=''; M.refereed=0; M.playReported=false;
+  M.es=subscribe('rooms/'+M.code,onRoom,function(){ raceErr('Connection dropped.'); });
+  clearInterval(M.hb);
+  M.hb=setInterval(function(){ if(M.joined) net.patch('rooms/'+M.code+'/players/'+M.pid,{ hb:Date.now() }); },5000);
+  show('lobby');
+}
+
+function leaveRoom(){
+  S.runId++; clock.clear(); clearInterval(S.countTimer); hideBar();
+  if(M.code&&M.pid) net.del('rooms/'+M.code+'/players/'+M.pid);
+  if(M.isHost&&M.code) net.del('rooms/'+M.code);
+  if(M.es) M.es.close();
+  clearInterval(M.hb);
+  M.joined=false; M.code=null; M.room=null;
+  S.mode='solo'; S.phase='idle';
+  show('menu'); refreshHome();
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if(!room){ if(M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  M.room=room;
+  if(room.phase==='lobby'){ M.playReported=false; paintLobby(); return; }
+  if(room.phase==='over'){ paintRaceFinal(); return; }
+  if(room.phase==='result'){ paintStandings(); if(M.isHost) hostReferee(); return; }
+
+  var key=room.phase+':'+(room.round&&room.round.n);
+  if(key!==M.lastKey&&room.phase==='playing'&&room.round){
+    M.lastKey=key;
+    if(!M.playReported){ M.playReported=true; hubReportPlay(); }   // §12 — once per race
+    startRaceRoom(room.round.n, room.round.seed);
+  }
+  if(S.mode==='race') renderPlayers();
+  if(M.isHost) hostReferee();
+}
+
+function paintLobby(){
+  show('lobby');
+  $('lobbyCode').textContent=M.code;
+  var ids=Object.keys(P());
+  $('lobbyCount').textContent='('+ids.length+'/'+MAX_PLAYERS+')';
+  var html='';
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i], p=P()[id];
+    html+='<div class="prow"><span>'+escapeHtml(p.name)+'</span>'+
+      (id===M.room.host?'<span class="badge">Host</span>':'')+
+      (id===M.pid&&id!==M.room.host?'<span class="badge">You</span>':'')+'</div>';
+  }
+  $('lobbyList').innerHTML=html;
+  $('btnLaunch').hidden=!M.isHost;
+  $('btnLaunch').disabled=ids.length<2;
+  $('lobbyWait').textContent=M.isHost
+    ? (ids.length<2?'Waiting for at least one more player…':'')
+    : 'Waiting for the host to start…';
+}
+
+function hostDealRound(n, seed){
+  var reset={}, ids=Object.keys(P());
+  for(var i=0;i<ids.length;i++){
+    var p=P()[ids[i]];
+    /* `prev` = score at the start of this room, so the referee can rank
+       players on THIS room's points rather than on the running total */
+    reset[ids[i]]={ name:p.name, score:p.score||0, prev:p.score||0, bonus:p.bonus||0,
+                    done:false, finishedAt:0, hb:Date.now() };
+  }
+  net.patch('rooms/'+M.code,{ round:{ n:n, seed:seed, dealtAt:Date.now() }, players:reset, phase:'playing' });
+}
+
+function startRaceRoom(n, seed){
+  S.runId++;
+  S.mode='race'; S.offset=RACE_OFFSET; S.seed=seed>>>0; S.raceDone=false;
+  if(n===1){ S.total=0; S.moveLog=[]; }
+  $('scoreNow').textContent=S.total;
+  $('playersBar').style.display='flex';
+  renderPlayers();
+  const id=S.runId;
+  countdown(()=>{ if(id===S.runId){ show('play'); enterRoom(n); } });
+}
+function raceRoomOver(correct){
+  S.raceDone=true; S.phase='waiting';
+  setControls('none'); hideBar();
+  label(correct ? '<span class="ok">Cleared.</span> Waiting for the others…'
+                : '<span class="bad">Spiked</span> — 0 this room. Waiting for the others…');
+  pushMe(true);
+}
+
+function renderPlayers(){
+  var bar=$('playersBar'); if(!bar) return;
+  var ids=Object.keys(P()), html='';
+  for(var i=0;i<ids.length;i++){
+    var p=P()[ids[i]];
+    html+='<span class="pchip'+(ids[i]===M.pid?' me':'')+(p.done?' done':'')+'">'+
+          escapeHtml(p.name)+' <b>'+((p.score||0)+(p.bonus||0))+'</b></span>';
+  }
+  bar.innerHTML=html;
+}
+
+function pushMe(done){
+  if(S.mode!=='race'||!M.code) return;
+  net.patch('rooms/'+M.code+'/players/'+M.pid,{
+    score:S.total, done:!!done,
+    finishedAt: done?Date.now():(meNode().finishedAt||0), hb:Date.now()
+  });
+}
+
+/* ---- host referees: placement bonuses, room end, race end ---- */
+function hostReferee(){
+  var room=M.room;
+  if(room.phase!=='playing'||!room.round) return;
+  var now=Date.now(), ids=Object.keys(P()), i;
+  /* drop anyone whose device stopped reporting, so one dead client can't
+     stall the whole race */
+  for(i=0;i<ids.length;i++){
+    var pp=P()[ids[i]];
+    if(pp.hb&&now-pp.hb>25000&&!pp.done) net.patch('rooms/'+M.code+'/players/'+ids[i],{ done:true });
+  }
+  for(i=0;i<ids.length;i++) if(!P()[ids[i]].done) return;
+  if(M.refereed===room.round.n) return;          // pay placements once per room
+  M.refereed=room.round.n;
+
+  /* placement = this ROOM's points, then who locked in first. A spiked
+     player scores 0 this room and so places behind every correct one. */
+  var roomGain=function(id){ return (P()[id].score||0)-(P()[id].prev||0); };
+  var order=ids.slice().sort(function(a,b){
+    var d=roomGain(b)-roomGain(a);
+    return d!==0?d:(P()[a].finishedAt||0)-(P()[b].finishedAt||0);
+  });
+  var patch={};
+  for(i=0;i<order.length&&i<PLACE_BONUS.length;i++){
+    if(roomGain(order[i])<=0) break;              // no podium for a spike
+    patch[order[i]+'/bonus']=(P()[order[i]].bonus||0)+PLACE_BONUS[i];
+  }
+  var after=function(){ net.patch('rooms/'+M.code,{ phase: room.round.n>=RACE_ROOMS?'over':'result' }); };
+  if(Object.keys(patch).length) net.patch('rooms/'+M.code+'/players',patch).then(after);
+  else after();
+}
+
+function standings(){
+  var ids=Object.keys(P()), rows=[];
+  for(var i=0;i<ids.length;i++){ var p=P()[ids[i]]; rows.push({ id:ids[i], name:p.name, total:(p.score||0)+(p.bonus||0) }); }
+  rows.sort(function(a,b){ return b.total-a.total; });
+  return rows;
+}
+function standRows(rows){
+  var html='';
+  for(var i=0;i<rows.length;i++)
+    html+='<div class="stat-line"><span><span class="rk">'+(i+1)+'</span>'+escapeHtml(rows[i].name)+
+          (rows[i].id===M.pid?' (you)':'')+'</span><b>'+rows[i].total+'</b></div>';
+  return html;
+}
+function paintStandings(){
+  S.runId++; clock.clear(); hideBar();
+  show('standings');
+  $('standTitle').textContent='Room '+((M.room&&M.room.round&&M.room.round.n)||1)+' of '+RACE_ROOMS;
+  $('standList').innerHTML=standRows(standings());
+  $('btnNextRoom').hidden=!M.isHost;
+  $('standWait').textContent=M.isHost?'':'Waiting for the host…';
+}
+function paintRaceFinal(){
+  S.runId++; clock.clear(); hideBar();
+  var rows=standings(), me=null, i;
+  for(i=0;i<rows.length;i++) if(rows[i].id===M.pid) me=rows[i];
+  var place=rows.indexOf(me);
+  $('lbPanel').hidden=true;                      // races are never ranked
+  $('truthPanel').style.display='none';
+  $('resultBadge').className='result-badge'+(place===0?' win':'');
+  $('resultBadge').innerHTML=place===0?CHECK_ICON:SPIKE_ICON;
+  $('resultTitle').textContent=place===0?'You won the race!':'Race over';
+  $('resultSub').textContent=RACE_ROOMS+' rooms · '+rows.length+' player'+(rows.length===1?'':'s')+'.';
+  $('resultScore').textContent=me?me.total:0;
+  $('resultNewBest').style.display='none';
+  $('resultRows').innerHTML=standRows(rows);
+  $('btnShare').hidden=true;
+  $('btnAgain').textContent='BACK TO MENU';
+  show('result');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   VERIFICATION SURFACE
+   admin.html loads this game in a hidden iframe and calls window.LockIn, so
+   verification always runs the game's REAL logic. Do not delete this.
+   ═══════════════════════════════════════════════════════════════ */
+window.LockIn={
+  PROOF_V:LB_PROOF_V,
+  mulberry32:mulberry32, COLORS:COLORS, TYPES:TYPES,
+  roomSeed:roomSeed, objectsFor:objectsFor, maxBackFor:maxBackFor,
+  genObjects:genObjects, genQuestion:genQuestion,
+  scoreRoom:scoreRoom, applyAnswer:applyAnswer,
+  RACE_ROOMS:RACE_ROOMS, RACE_OFFSET:RACE_OFFSET,
+
+  /* Replay a submitted proof and report whether the claimed score is possible.
+
+     Every room and question is regenerated from the recorded seed and each
+     committed answer is resolved through the game's own applyAnswer(), so
+     scoring cannot drift from the live rules.
+
+     The proof pins an EXACT score: there is no timing term, so an inflation
+     of one point is rejected. It also proves the run ENDED — every answer
+     but the last must be right and the last must be wrong — so a run cannot
+     be cut short at a flattering total, and a value the dial can't show is
+     treated as fabricated.
+
+     Returns { ok, reason, score, rooms }. */
+  verify:function(seed,movesStr,claimedScore){
+    function fail(reason,st){ return { ok:false, reason:reason, score:st?st.total:0, rooms:st?st.cleared:0 }; }
+    var groups=String(movesStr||'').split(';').filter(Boolean);
+    if(!groups.length) return fail('No moves recorded',null);
+    var runSeed=Number(seed);
+    if(!isFinite(runSeed)) return fail('Seed is not a number — this proof cannot be replayed',null);
+    var st={ seed:runSeed>>>0, room:0, offset:0, total:0, cleared:0 };
+    var ended=false;
+    for(var g=0;g<groups.length;g++){
+      if(ended) return fail('Answers recorded after the floor had already dropped',st);
+      var cut=groups[g].indexOf(':');
+      if(cut<0) return fail('Malformed entry '+(g+1),st);
+      var n=parseInt(groups[g].slice(0,cut),10);
+      var v=groups[g].slice(cut+1);
+      st.room++;
+      if(n!==st.room) return fail('Entry '+(g+1)+' claims room '+n+' but the replay is in room '+st.room,st);
+      if(!/^\d+$/.test(v)) return fail('Room '+n+': "'+v+'" is not a value',st);
+      var res=applyAnswer(st,parseInt(v,10));
+      if(!res.legal) return fail('Room '+n+': '+v+' is not a value the dial can show for that question',st);
+      if(res.correct) st.cleared++; else ended=true;
+    }
+    if(!ended) return fail('The log does not end on a wrong answer — the run never finished',st);
+    var ok=Number(claimedScore)===st.total;
+    return { ok:ok, score:st.total, rooms:st.cleared,
+             reason: ok ? 'Replay reproduces the claimed score exactly'
+                        : 'Claimed '+claimedScore+', but this run replays to '+st.total };
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   WIRE UP
+   ═══════════════════════════════════════════════════════════════ */
+buildStage();
+
+$('btnSolo').onclick=function(){ startSolo(); };
+$('btnOnline').onclick=function(){ $('inName').value=playerName(); raceErr(''); show('rooms'); };
+$('btnAgain').onclick=function(){ if(S.mode==='race'){ leaveRoom(); return; } startSolo(); };
+$('btnMenu').onclick=function(){ if(S.mode==='race'){ leaveRoom(); return; } show('menu'); refreshHome(); };
+$('btnExit').onclick=function(){
+  if(S.mode==='race') openModal('Leave the race?','The others will keep playing without you.','Leave',exitToMenu);
+  else openModal('Leave this run?','Your score won’t be saved.','Leave',exitToMenu);
+};
+$('theme-btn').onclick=toggleTheme;
+$('btnThemeTop').onclick=toggleTheme;
+$('btnHelpPlay').onclick=function(){
+  openModal('How to play',
+    'Study the objects in each room: how many, and what colour. At the brick wall, set your answer with − and +, then hit LOCK IN. The wall says which room it is asking about — this one, the previous one, or up to three back. One wrong answer drops you into the spikes.',
+    'Got it',null);
+};
+$('modalCancel').onclick=closeModal;
+$('modalConfirm').onclick=function(){ var a=modalAction; closeModal(); if(a) a(); };
+$('btnShareClose').onclick=function(){ $('shareBg').classList.remove('show'); };
+
+$('btnReady').onclick=function(){ toHall(); };
+$('btnMinus').onclick=function(){ bump(-1); };
+$('btnPlus').onclick=function(){ bump(1); };
+$('btnLock').onclick=function(){ lockIn(); };
+
+$('btnCreate').onclick=createRoom;
+$('btnJoin').onclick=joinRoom;
+$('btnRoomsBack').onclick=function(){ show('menu'); refreshHome(); };
+$('btnLeave').onclick=function(){ openModal('Leave the room?','The others will keep playing without you.','Leave',leaveRoom); };
+$('btnLaunch').onclick=function(){ if(M.isHost) hostDealRound(1,(Math.random()*1e9)>>>0); };
+$('btnNextRoom').onclick=function(){ if(M.isHost&&M.room&&M.room.round) hostDealRound(M.room.round.n+1, M.room.round.seed); };
+$('inCode').oninput=function(){ this.value=this.value.toUpperCase(); };
+
+/* keyboard: − / + / Enter at the wall, Enter or Space to finish studying.
+   Enter/Space are left alone while a button has focus (its own click fires),
+   so a keypress never acts twice — arrows still work after a mouse click. */
+document.addEventListener('keydown',function(e){
+  if(!$('screen-play').classList.contains('active')) return;
+  if($('modalBack').classList.contains('show')) return;
+  var tag=(e.target&&e.target.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA') return;
+  if(tag==='BUTTON'&&(e.key==='Enter'||e.key===' ')) return;
+  if(S.phase==='answer'){
+    if(e.key==='ArrowLeft'||e.key==='ArrowDown'||e.key==='-'){ e.preventDefault(); bump(-1); }
+    else if(e.key==='ArrowRight'||e.key==='ArrowUp'||e.key==='+'||e.key==='='){ e.preventDefault(); bump(1); }
+    else if(e.key==='Enter'){ e.preventDefault(); lockIn(); }
+  } else if(S.phase==='study' && (e.key==='Enter'||e.key===' ')){ e.preventDefault(); toHall(); }
+});
+window.addEventListener('resize',fitStage);
+
+refreshHome();
+
+/* debug-only playthrough hook, gated by ?debug=1 — no effect on normal play */
+if(DEBUG){
+  window.LockIn.debug={
+    state:function(){ return S; }, question:function(){ return S.q; },
+    set:function(v){ if(S.q){ var i=S.q.options.indexOf(v); if(i>=0){ S.pick=i; renderWallValue(false); } } },
+    answer:function(){ return S.q?S.q.answer:null; },
+    lock:function(){ lockIn(); }, ready:function(){ toHall(); },
+    proof:function(){ return buildProof(); }, startSolo:function(){ startSolo(); },
+    stage:function(){ return {G:G, sizeBox:sizeBox, plane:plane, showScene:showScene, renderWall:renderWall, objectSvg:objectSvg}; },
+    showRoom:function(seed,n,offset){ S.seed=seed>>>0; S.offset=offset||0; S.objs=genObjects(S.seed,n,S.offset); buildRoom(S.objs);
+      G.room.box.style.transform=''; showScene('sRoom'); G.sRoom.style.opacity='1'; }
+  };
+}
+})();
+</script>
+</body>
+</html>
