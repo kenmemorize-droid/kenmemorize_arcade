@@ -222,7 +222,7 @@ const ICON_OPTIONS = [
   { e:"☀️", l:"Sun" }, { e:"🎪", l:"Circus tent" }, { e:"🐉", l:"Dragon" },
   { e:"🦉", l:"Owl" }, { e:"🍀", l:"Clover" }, { e:"🎈", l:"Balloon" },
   { e:"🎍", l:"Bamboo" }, { e:"🏈", l:"Football" }, { e:"⚫", l:"Stone" },
-  { e:"🏭", l:"Factory" },
+  { e:"🏭", l:"Factory" }, { e:"☕", l:"Coffee" },
   { e:"🔮", l:"Crystal ball" }, { e:"🏆", l:"Trophy" }, { e:"📐", l:"Ruler" },
   { e:"🔢", l:"Numbers" }, { e:"🎵", l:"Music note" }, { e:"🌈", l:"Rainbow" },
 ];
@@ -509,7 +509,10 @@ const LB_GAMES = {
   /* id stays 'tidal-recall' (the Firebase key); the game is now Tidal Drift */
   'tidal-recall': { label:'Tidal Drift',  file:'games/tidal_recall.html',    ns:'TidalDrift' },
   'blind-snap':   { label:'Blind Snap',   file:'games/blind_snap.html',      ns:'BlindSnap'  },
-  'lock-in':      { label:'Lock In',      file:'games/lock_in.html',         ns:'LockIn'     }
+  'lock-in':      { label:'Lock In',      file:'games/lock_in.html',         ns:'LockIn'     },
+  /* Kopi Rush keeps two boards — one game, one file, one verifier */
+  'kopi-rush-recall':  { label:'Kopi Rush · Recall',  file:'games/kopi_rush.html', ns:'KopiRush', mode:'recall'  },
+  'kopi-rush-display': { label:'Kopi Rush · Display', file:'games/kopi_rush.html', ns:'KopiRush', mode:'display' }
 };
 let LB_GAME = 'cart-recall';
 let board = {};
@@ -711,7 +714,31 @@ function replayEntry(w, entry){
   if(LB_GAME === 'tidal-recall') return replayTidalDrift(w.TidalDrift, entry);
   if(LB_GAME === 'blind-snap')   return replayBlindSnap(w.BlindSnap, entry);
   if(LB_GAME === 'lock-in')      return replayLockIn(w.LockIn, entry);
+  if(LB_GAMES[LB_GAME].ns === 'KopiRush') return replayKopiRush(w.KopiRush, entry, LB_GAMES[LB_GAME].mode);
   return replay(w.CartRecall, entry);
+}
+
+/* Kopi Rush pins an EXACT score: the game's own verify() regenerates the
+   order queue from the seed and re-scores every served drink. It also checks
+   the pace — each serve must leave room for its pours, its stuns and the
+   serve lock, inside 60 seconds. A run filed on the wrong board (a Display
+   rush on the Recall board) fails here too. */
+function replayKopiRush(KR, entry, mode){
+  if(entry.v !== KR.PROOF_V)
+    return { ok:false, label:'stale v' + entry.v, detail:
+      `Proof format v${entry.v}, game is v${KR.PROOF_V}. The menu, recipes or scoring changed since this run, so it can no longer be replayed.` };
+  if(entry.mode !== mode)
+    return { ok:false, label:'wrong board', detail:
+      `This run was played in ${entry.mode || 'an unknown'} mode but sits on the ${mode} board.` };
+
+  const r = KR.verify(entry.seed, entry.moves, Number(entry.score) || 0);
+  return {
+    ok: r.ok,
+    label: r.ok ? 'consistent' : 'failed',
+    detail: r.ok
+      ? `${r.served} drink(s) served, ${r.clean} clean. Score ${r.score} reproduced exactly.`
+      : r.reason
+  };
 }
 
 /* Lock In pins an EXACT score (no timing term), and like Blind Snap its proof
