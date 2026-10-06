@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Kopi Rush</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──────────────────────────────────
+   Kopitiam palette: roasted-brown surfaces in dark, the photo's warm grey
+   counter in light. The accent is the orange-red of the serving lanes. The
+   station art and the cup are fixed hex (they are the objects being used),
+   so they render identically in both themes. */
+:root, :root[data-theme="dark"]{
+  --bg1:#100b08; --bg2:#2a1d14; --panel:#1c1510; --panel2:#231a14;
+  --tile:#33281f; --tile2:#3d3026;
+  --text:#f7efe4; --muted:#b9a693; --accent:#f26b3a; --accent2:#f4c27a;
+  --accent-tint:rgba(242,107,58,.16); --on-accent:#ffffff;
+  --correct:#52d273; --wrong:#ef476f; --warn:#f0a83c; --line:#3b2d22;
+  --shadow:rgba(0,0,0,.45);
+  --lane:#2a2019; --chev:rgba(255,236,214,.07);
+}
+:root[data-theme="light"]{
+  --bg1:#efebe5; --bg2:#dcd5cb; --panel:#ffffff; --panel2:#f8f4ee;
+  --tile:#ece6dd; --tile2:#e3dbcf;
+  --text:#2a1d14; --muted:#6e5d4f; --accent:#d4511c; --accent2:#9a5b16;
+  --accent-tint:rgba(212,81,28,.12); --on-accent:#ffffff;
+  --correct:#2f9d52; --wrong:#d3355c; --warn:#a8620a; --line:#ded4c6;
+  --shadow:rgba(60,40,20,.14);
+  --lane:#e2ddd5; --chev:rgba(80,60,40,.08);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+/* `hidden` must win over .big-btn's display:block — host-only buttons rely on it */
+[hidden]{display:none !important;}
+html,body{margin:0;}
+button{touch-action:manipulation; font-family:inherit;}
+body{
+  min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 62%);
+  background-attachment:fixed; overflow-x:hidden;
+  color:var(--text); display:flex; justify-content:center;
+  padding:16px 14px calc(16px + env(safe-area-inset-bottom));
+  /* headroom for the fixed theme toggle / full-rules pills (§2) */
+  padding-top:calc(64px + env(safe-area-inset-top));
+  transition:background .3s,color .3s; -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none;
+}
+/* While pouring, the corner pills would sit on top of the HUD — the HUD
+   carries its own quit button instead. */
+body.playing{padding-top:calc(12px + env(safe-area-inset-top));}
+body.playing .theme-toggle, body.playing .help-fab{display:none;}
+
+.app{width:100%; max-width:720px;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadeIn .35s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+/* §5 — menu at the shared 720px, everything else in the 520px shell */
+#screen-howto,#screen-board,#screen-rooms,#screen-lobby,#screen-count,#screen-play,#screen-summary{max-width:520px; margin:0 auto;}
+
+/* ── LOGO BLOCK — §3 ── */
+.logo{text-align:center;}
+.logo-icon{display:flex; justify-content:center; margin:0 auto 6px; color:var(--accent); width:34px; height:34px;}
+h1{text-align:center; margin:2px 0; font-size:28px; letter-spacing:1px; font-weight:900;}
+h1 .m2{color:var(--accent);}
+.subtitle{text-align:center; color:var(--muted); margin-bottom:18px; font-size:14px; padding:0 6px;}
+
+/* ── HOW TO PLAY CARD — §3, always visible ── */
+.howto-box{
+  background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:18px 20px; margin-bottom:12px; text-align:left;
+  box-shadow:0 10px 30px var(--shadow);
+}
+.howto-box .howto-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:10px; font-weight:700;}
+.howto-box p{font-size:13px; color:var(--muted); line-height:1.6; margin:0 0 8px;}
+.howto-box p:last-of-type{margin-bottom:0;}
+.howto-box strong{color:var(--text);}
+.howto-box .full-rules{margin-top:12px; width:100%; font-size:13px; min-height:44px; padding:9px 14px;}
+
+.panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 10px 30px var(--shadow);}
+.panel + .panel{margin-top:12px;}
+.section-title{font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--accent2); margin-bottom:12px; font-weight:700;}
+
+/* Pills — §6 */
+.pill-group{display:flex; gap:8px; flex-wrap:wrap;}
+.pill{
+  flex:1; min-width:120px; padding:11px 10px; border-radius:16px; border:1px solid var(--line);
+  background:var(--panel); color:var(--muted); cursor:pointer; text-align:center; font-size:14px; transition:.15s;
+  min-height:46px;
+}
+.pill .sub{display:block; font-size:11.5px; color:var(--muted); margin-top:3px; font-weight:400;}
+.pill.active{background:var(--accent-tint); color:var(--accent); border-color:var(--accent); font-weight:700;}
+.pill.active .sub{color:var(--accent); opacity:.85;}
+.pill:active{transform:scale(.97);}
+.pill:hover:not(.active):not(:disabled){border-color:var(--accent); color:var(--text);}
+.pill:disabled{cursor:default; opacity:.7;}
+
+.big-btn{
+  display:block; width:100%; margin-top:14px; padding:15px; border-radius:14px; border:none;
+  background:var(--accent); color:var(--on-accent); font-size:16px; font-weight:800;
+  letter-spacing:.5px; cursor:pointer; box-shadow:0 8px 18px var(--shadow); min-height:54px;
+  transition:filter .15s, transform .15s;
+}
+.big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.big-btn:active{transform:translateY(0);}
+.big-btn:disabled{opacity:.45; cursor:not-allowed; transform:none; filter:none;}
+.ghost-btn{
+  padding:12px 18px; border-radius:12px; border:1px solid var(--line); background:var(--panel);
+  color:var(--muted); cursor:pointer; font-size:14px; min-height:46px; transition:.15s;
+}
+.ghost-btn:hover{border-color:var(--accent); color:var(--accent);}
+.ghost-btn:active{transform:scale(.98);}
+.ghost-btn.wide{width:100%; margin-top:10px;}
+.danger-btn{border-color:var(--wrong); color:var(--wrong);}
+.danger-btn:hover{background:rgba(239,71,111,.12); border-color:var(--wrong); color:var(--wrong);}
+
+/* ── THEME TOGGLE — §2 ── */
+.theme-toggle, .help-fab{
+  position:fixed; top:calc(16px + env(safe-area-inset-top)); background:var(--panel);
+  border:1px solid var(--line); border-radius:50px; padding:6px 14px; cursor:pointer; display:flex;
+  align-items:center; gap:7px; font-size:13px; color:var(--muted); transition:all .15s; z-index:60;
+  user-select:none; font-family:'Consolas','Courier New',monospace;
+}
+.theme-toggle{right:16px;}
+.help-fab{left:16px;}
+.theme-toggle:hover, .help-fab:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* Menu readouts */
+.stat-line{display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:13px; color:var(--muted); padding:6px 0;}
+.stat-line + .stat-line{border-top:1px solid var(--line);}
+.stat-line b{color:var(--text); font-family:'Consolas','Courier New',monospace; font-size:13px; text-align:right;}
+.best-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+/* Full rules + lingo */
+.howto{list-style:none; padding:0; margin:0; counter-reset:step;}
+.howto li{position:relative; padding:8px 0 8px 42px; color:var(--text); font-size:14px; line-height:1.5;}
+.howto li::before{
+  counter-increment:step; content:counter(step);
+  position:absolute; left:0; top:6px; width:28px; height:28px; border-radius:50%;
+  background:var(--accent); color:var(--on-accent); font-weight:800; display:flex; align-items:center; justify-content:center; font-size:13px;
+}
+.lingo{width:100%; border-collapse:collapse; font-size:13px;}
+.lingo td{padding:8px 6px; border-top:1px solid var(--line); vertical-align:top; line-height:1.45;}
+.lingo tr:first-child td{border-top:none;}
+.lingo td:first-child{white-space:nowrap; font-weight:800; color:var(--text);}
+.lingo td:first-child small{display:block; font-weight:400; color:var(--muted); font-size:12px;}
+.lingo td:last-child{color:var(--muted);}
+.lingo b{color:var(--text);}
+.example{margin-top:12px; padding:12px; border-radius:12px; background:var(--accent-tint); border:1px dashed var(--accent); font-size:13px; line-height:1.55;}
+.example b{color:var(--accent);}
+
+/* Menu board */
+.board-group + .board-group{margin-top:16px;}
+.board-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--line);}
+.section-title + .board-row{border-top:none;}
+.board-name{flex:0 0 46%; min-width:0;}
+.board-name b{display:block; font-size:14px;}
+.board-name small{color:var(--muted); font-size:12px;}
+.board-recipe{flex:1; display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end;}
+
+/* Recipe chip (ticket + menu board) */
+.rchip{display:inline-flex; align-items:center; gap:3px; padding:3px 7px 3px 4px; border-radius:999px;
+  background:var(--tile); border:1px solid var(--line); font-size:12px; font-weight:700; color:var(--text); white-space:nowrap;}
+.rchip svg{width:20px; height:20px; flex:none;}
+.rchip .dots{display:inline-flex; gap:2px; margin-left:2px;}
+.rchip .dots i{width:7px; height:7px; border-radius:50%; border:1.5px solid var(--muted); display:block;}
+.rchip .dots i.on{background:var(--correct); border-color:var(--correct);}
+.rchip.done{border-color:var(--correct); background:rgba(82,210,115,.14);}
+
+/* Countdown */
+#screen-count{text-align:center; padding-top:70px;}
+#countNum{font-size:clamp(90px,30vw,130px); font-weight:900; color:var(--accent); text-shadow:0 0 40px rgba(242,107,58,.45); animation:pop .5s ease;}
+#countSub{color:var(--muted); font-size:15px; margin-top:6px;}
+@keyframes pop{from{transform:scale(.5); opacity:0;} to{transform:scale(1); opacity:1;}}
+
+/* ── PLAY ── */
+.hud{display:flex; align-items:center; gap:8px; margin-bottom:10px;}
+.hud-chip{background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-size:12px; color:var(--muted); white-space:nowrap; display:flex; align-items:baseline; gap:5px;}
+.hud-chip b{color:var(--text); font-size:16px; font-family:'Consolas','Courier New',monospace;}
+.hud-chip.timer{flex:1; justify-content:center; font-family:'Consolas','Courier New',monospace; font-size:22px; font-weight:900; color:var(--text); padding:4px 12px; font-variant-numeric:tabular-nums;}
+.hud-chip.timer.warn{color:var(--warn); border-color:var(--warn);}
+.hud-chip.timer.danger{color:var(--wrong); border-color:var(--wrong); animation:throb .5s ease infinite alternate;}
+@keyframes throb{from{transform:scale(1);} to{transform:scale(1.04);}}
+.hud-quit{width:40px; height:40px; flex:none; border-radius:50%; border:1px solid var(--line); background:var(--panel); color:var(--muted); font-size:16px; cursor:pointer;}
+.hud-quit:hover{border-color:var(--wrong); color:var(--wrong);}
+
+.rivals{display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; justify-content:center;}
+.rival{background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:4px 11px; font-size:12px; color:var(--muted);}
+.rival b{color:var(--text); font-family:'Consolas','Courier New',monospace;}
+.rival.me{border-color:var(--accent);}
+.rival.done{border-color:var(--correct); color:var(--correct);}
+
+.ticket{
+  position:relative; background:#fffaf0; color:#2a1d14; border-radius:14px; padding:10px 14px 12px;
+  box-shadow:0 8px 20px var(--shadow); border:2px solid #2a1d14; text-align:center; min-height:92px;
+}
+.ticket-top{display:flex; justify-content:space-between; font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#8a7464;}
+.ticket-name{font-size:clamp(22px,6.4vw,30px); font-weight:900; letter-spacing:.5px; line-height:1.1; margin-top:2px;}
+.ticket-zh{font-size:15px; font-weight:700; color:#8a5a2b; margin-top:2px;}
+.ticket-recipe{display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin-top:8px;}
+.ticket-recipe .rchip{background:#f1e9dc; border-color:#d9cbb7; color:#2a1d14;}
+.ticket-recipe .rchip.done{background:#dff3e4; border-color:#2f9d52;}
+.ticket-recipe .rchip .dots i{border-color:#8a7464;}
+.ticket-recipe .rchip .dots i.on{background:#2f9d52; border-color:#2f9d52;}
+.ticket-recall{font-size:12px; color:#8a7464; margin-top:6px; font-style:italic;}
+.ticket.flash{animation:ticketIn .3s ease;}
+@keyframes ticketIn{from{transform:translateY(-10px) scale(.97); opacity:0;} to{transform:none; opacity:1;}}
+
+.lane{
+  position:relative; height:clamp(200px,34vh,270px); margin:12px 0 10px; border-radius:18px; overflow:hidden;
+  background:var(--lane); border:1px solid var(--line); touch-action:none; cursor:grab;
+}
+.lane:active{cursor:grabbing;}
+.chevrons{
+  position:absolute; inset:-60px 25%; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60' viewBox='0 0 120 60'%3E%3Cpath d='M10 50 L60 15 L110 50' fill='none' stroke='%23000' stroke-width='16' stroke-linejoin='round' stroke-linecap='round' opacity='.5'/%3E%3C/svg%3E");
+  background-size:100% 60px; background-repeat:repeat-y; opacity:.16;
+}
+:root[data-theme="dark"] .chevrons{filter:invert(1); opacity:.08;}
+.lane.ready .chevrons{animation:chev .7s linear infinite; opacity:.32;}
+:root[data-theme="dark"] .lane.ready .chevrons{opacity:.2;}
+@keyframes chev{from{background-position-y:0;} to{background-position-y:-60px;}}
+.cup-wrap{position:absolute; left:50%; bottom:14px; width:clamp(150px,44vw,190px); aspect-ratio:1; transform:translateX(-50%); will-change:transform;}
+.cup-wrap svg{width:100%; height:100%; display:block; filter:drop-shadow(0 8px 14px rgba(0,0,0,.25));}
+.cup-wrap.bump{animation:bump .18s ease;}
+@keyframes bump{50%{transform:translateX(-50%) scale(1.04);}}
+.cup-wrap.nope{animation:nope .35s ease;}
+@keyframes nope{20%,60%{transform:translateX(calc(-50% - 8px));} 40%,80%{transform:translateX(calc(-50% + 8px));}}
+.cup-wrap.fly{transition:transform .28s cubic-bezier(.5,0,.9,.5), opacity .28s; transform:translateX(-50%) translateY(-260px) scale(.8) !important; opacity:0;}
+.cup-wrap.enter{animation:cupIn .25s ease;}
+@keyframes cupIn{from{transform:translateX(-50%) translateY(40px); opacity:0;} to{transform:translateX(-50%); opacity:1;}}
+.lane.ready .cup-wrap svg{filter:drop-shadow(0 0 14px rgba(255,214,120,.75));}
+.lane-hint{position:absolute; top:10px; left:0; right:0; text-align:center; font-size:13px; font-weight:800; letter-spacing:.5px; color:var(--muted); pointer-events:none; transition:.2s;}
+.lane.ready .lane-hint{color:var(--accent); animation:hintUp .7s ease infinite alternate;}
+@keyframes hintUp{from{transform:translateY(0);} to{transform:translateY(-4px);}}
+.tally{position:absolute; left:8px; top:34px; display:flex; flex-direction:column; gap:4px; pointer-events:none; max-width:30%;}
+.tally .rchip{font-size:11px; padding:2px 6px 2px 3px; opacity:.95;}
+.tally .rchip svg{width:18px; height:18px;}
+
+.pop{
+  position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) rotate(-8deg) scale(.4); opacity:0;
+  font-size:clamp(28px,9vw,40px); font-weight:900; line-height:1; text-align:center; pointer-events:none; white-space:nowrap;
+  color:#f6e2b8; -webkit-text-stroke:2px #3a2416; text-shadow:0 4px 0 #3a2416, 0 0 0 #3a2416;
+}
+/* small CJK glyphs smudge under -webkit-text-stroke — outline with shadows instead */
+.pop small{display:block; font-size:.55em; -webkit-text-stroke:0; color:#ffd166; margin-top:4px;
+  text-shadow:1.5px 1.5px 0 #3a2416, -1.5px -1.5px 0 #3a2416, 1.5px -1.5px 0 #3a2416, -1.5px 1.5px 0 #3a2416, 0 3px 0 #3a2416;}
+.pop.show{animation:popIn .75s ease forwards;}
+@keyframes popIn{
+  0%{opacity:0; transform:translate(-50%,-50%) rotate(-8deg) scale(.4);}
+  18%{opacity:1; transform:translate(-50%,-50%) rotate(-8deg) scale(1.1);}
+  70%{opacity:1; transform:translate(-50%,-62%) rotate(-8deg) scale(1);}
+  100%{opacity:0; transform:translate(-50%,-80%) rotate(-8deg) scale(1);}
+}
+
+.stations-wrap{position:relative;}
+.stations{display:flex; flex-wrap:wrap; justify-content:center; gap:8px;}
+.station{
+  position:relative; flex:0 0 calc(25% - 6px); min-height:92px; border-radius:14px; border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--tile),var(--tile2)); color:var(--text); cursor:pointer; padding:6px 2px 6px;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px;
+  transition:transform .08s, border-color .15s, opacity .15s; touch-action:manipulation;
+}
+.station svg{width:46px; height:46px; display:block; pointer-events:none;}
+.station .name{font-size:12px; font-weight:800; line-height:1.15; text-align:center; padding:0 2px;}
+.station:active, .station.hit{transform:scale(.93);}
+.station.hit{border-color:var(--correct);}
+.station.bad{border-color:var(--wrong); background:rgba(239,71,111,.18); animation:nope2 .3s ease;}
+@keyframes nope2{25%,75%{transform:translateX(-4px);} 50%{transform:translateX(4px);}}
+/* Display mode only: a tick once an ingredient is fully poured. No counts on
+   the buttons — the quantities live on the ticket. */
+.station .badge{
+  position:absolute; top:4px; right:5px; width:20px; height:20px; border-radius:10px;
+  background:var(--correct); color:#fff; font-size:12px; font-weight:900; display:none; align-items:center; justify-content:center;
+}
+.show-qty .station .badge.on{display:flex;}
+.station .key{position:absolute; top:4px; left:6px; font-size:10px; color:var(--muted); font-family:'Consolas','Courier New',monospace; display:none;}
+@media (hover:hover) and (pointer:fine){ .station .key{display:block;} }
+
+.stun{
+  position:absolute; inset:-4px; border-radius:16px; background:rgba(20,8,8,.72); display:none;
+  flex-direction:column; align-items:center; justify-content:center; gap:10px; z-index:5; padding:12px; text-align:center;
+}
+.stun.on{display:flex; animation:fadeIn .12s ease;}
+.stun-msg{color:#fff; font-weight:800; font-size:16px; line-height:1.35;}
+.stun-msg small{display:block; font-weight:600; font-size:13px; color:#ffc9d3; margin-top:3px;}
+.stun-bar{width:60%; height:8px; border-radius:4px; background:rgba(255,255,255,.2); overflow:hidden;}
+.stun-bar i{display:block; height:100%; width:100%; background:var(--wrong);}
+
+#screen-play.paused .ticket, #screen-play.paused .lane, #screen-play.paused .stations-wrap{visibility:hidden;}
+
+.timesup{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:75; pointer-events:none; background:rgba(0,0,0,.45);}
+.timesup.on{display:flex;}
+.timesup .pop{position:static; transform:rotate(-6deg); opacity:1; animation:pop .4s ease; font-size:clamp(34px,11vw,54px);}
+
+/* Summary */
+.score-big{text-align:center; font-size:60px; font-weight:900; color:var(--accent); margin:4px 0; font-variant-numeric:tabular-nums; font-family:'Consolas','Courier New',monospace;}
+.score-label{text-align:center; color:var(--muted); text-transform:uppercase; letter-spacing:2px; font-size:12px; margin-bottom:14px;}
+.stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+.stat-box{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center;}
+.stat-box .v{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; font-family:'Consolas','Courier New',monospace;}
+.stat-box .l{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px;}
+.best-flag{text-align:center; color:var(--correct); font-weight:800; margin-bottom:12px; font-size:15px;}
+
+/* Online */
+.txt{width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+     padding:13px 14px; color:var(--text); font-size:16px; font-family:inherit; text-align:center; user-select:text; -webkit-user-select:text;}
+.txt:focus{outline:none; border-color:var(--accent);}
+.txt.code{font-family:'Consolas','Courier New',monospace; font-size:26px; letter-spacing:10px; text-transform:uppercase; padding-left:24px;}
+.err{color:var(--wrong); font-size:13px; text-align:center; min-height:19px; margin:10px 0;}
+.codebox{text-align:center; margin-bottom:18px;}
+.codebox .big{font-family:'Consolas','Courier New',monospace; font-size:46px; font-weight:900; letter-spacing:12px;
+              color:var(--accent); padding-left:12px;}
+.codebox small{display:block; color:var(--muted); font-size:12px; letter-spacing:1px; text-transform:uppercase;}
+.plist{display:flex; flex-direction:column; gap:8px;}
+.prow{display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line);
+      border-radius:12px; padding:10px 14px; font-size:14px;}
+.prow .badge{margin-left:auto; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent);
+             border:1px solid var(--accent); border-radius:999px; padding:2px 8px;}
+.prow .badge + .badge{margin-left:0;}
+.rk{display:inline-block; min-width:1.7em; color:var(--muted); font-family:'Consolas','Courier New',monospace; font-weight:800;}
+.wait-line{color:var(--muted); font-size:13px; text-align:center; margin-top:12px;}
+
+/* Modals — §6 / §15 (never native confirm/prompt) */
+.overlay{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center; justify-content:center; z-index:80; padding:20px;}
+.overlay.active{display:flex;}
+.modal{background:var(--panel2); border:1px solid var(--line); border-radius:18px; padding:24px; width:100%; max-width:340px; text-align:center; box-shadow:0 20px 50px var(--shadow);}
+.modal h3{margin:0 0 10px; font-size:20px;}
+.modal p{color:var(--muted); font-size:14px; margin:0 0 20px; line-height:1.5;}
+.modal-btns{display:flex; gap:10px; justify-content:center;}
+.modal-btns > button{flex:1; margin-top:0;}
+
+.hint-toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); opacity:0;
+  background:var(--panel); border:1px solid var(--line); color:var(--text); padding:11px 18px; border-radius:12px;
+  font-size:14px; font-weight:600; pointer-events:none; transition:.25s; z-index:90; box-shadow:0 8px 20px var(--shadow); max-width:90vw; text-align:center;}
+.hint-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+/* No hand-placed <ins> ad slot: §4 — the loader tag in <head> is the whole
+   integration and auto-ads inject their own units. */
+
+/* ── MOBILE — §9 ── */
+@media (min-width:560px){
+  .station{flex:1 1 0; min-width:0;}
+  .stations{flex-wrap:nowrap; gap:6px;}
+}
+@media (max-width:520px){
+  body{padding-left:12px; padding-right:12px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px; margin-bottom:16px;}
+  .howto-box{padding:14px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .panel{padding:16px;}
+  .theme-toggle,.help-fab{font-size:12px; padding:5px 11px;}
+  #screen-count{padding-top:50px;}
+  .station{min-height:86px;}
+  .station svg{width:42px; height:42px;}
+}
+@media (max-width:380px){
+  h1{letter-spacing:.5px;}
+  .theme-toggle,.help-fab{padding:5px 9px; gap:5px;}
+  .station .name{font-size:11px;}
+  .hud-chip{padding:5px 9px;}
+  .hud-chip.timer{font-size:19px;}
+  .board-name{flex-basis:42%;}
+}
+@media (max-height:700px){
+  .lane{height:clamp(170px,28vh,230px);}
+  .cup-wrap{width:clamp(130px,36vw,170px);}
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<!-- Full rules — the deep walk-through; the menu card is the summary (§3) -->
+<button class="help-fab" id="btnHelp" aria-label="Open the full rules">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.4 9a2.7 2.7 0 015.2 1c0 1.8-2.6 2.3-2.6 4"/><path d="M12 17.4h.01"/></svg>
+  <span>Full rules</span>
+</button>
+
+<div class="app">
+
+  <!-- ================= MENU ================= -->
+  <div class="screen active" id="screen-menu">
+    <div class="logo">
+      <span class="logo-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h13v5a6 6 0 01-6 6h-1a6 6 0 01-6-6z"/><path d="M17 11h1.5a2.5 2.5 0 010 5H16.5"/><path d="M8 2.5c-.8 1 .8 2-0 3M12 2.5c-.8 1 .8 2 0 3"/></svg></span>
+      <h1>Kopi <span class="m2">Rush</span></h1>
+      <div class="subtitle">Read the order, pour it right, swipe it out. 60 seconds behind the kopitiam counter.</div>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>An order comes in, like <strong>Kopi O Siew Dai</strong>. Tap the stations to pour each ingredient the <strong>right number of times</strong>.</p>
+      <p>A wrong tap — something that isn't in the drink, or one pour too many — <strong>stuns you for a second</strong>. Nothing wrong ever lands in the cup.</p>
+      <p>When the drink is complete, <strong>swipe the cup up</strong> to serve it. Serve as many as you can before the clock runs out.</p>
+      <button class="ghost-btn full-rules" id="btnHowtoOpen">Full rules &amp; kopi lingo →</button>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Mode</div>
+      <div class="pill-group" id="showPills">
+        <button class="pill" data-show="display">Display 显示<span class="sub">Quantities shown on the ticket</span></button>
+        <button class="pill" data-show="recall">Recall 记忆<span class="sub">Order name only — from memory</span></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Scoring</div>
+      <div class="stat-line"><span>Each pour in a served drink</span><b>+10</b></div>
+      <div class="stat-line"><span>Clean drink (no wrong tap)</span><b>+20</b></div>
+      <div class="stat-line"><span>A wrong tap</span><b>1s stun</b></div>
+      <div class="stat-line"><span>Rush length</span><b>60s</b></div>
+    </div>
+
+    <button class="big-btn" id="btnSolo">Start rush</button>
+    <button class="ghost-btn wide" id="btnOnline">Online race &middot; up to 4 players</button>
+    <button class="ghost-btn wide" id="btnBoard">Menu board 菜单 — every drink &amp; recipe</button>
+
+    <div class="panel" id="bestPanel" style="margin-top:18px;">
+      <div class="section-title">Best rush</div>
+      <div class="best-grid" id="bestGrid"></div>
+    </div>
+  </div>
+
+  <!-- ================= FULL RULES ================= -->
+  <div class="screen" id="screen-howto">
+    <h1>Full <span class="m2">Rules</span></h1>
+    <div class="subtitle">How a rush works, and how to read any order.</div>
+    <div class="panel">
+      <ol class="howto">
+        <li>Each order shows its kopitiam name, in English and Chinese. In <b>Display</b> mode the ticket also lists every ingredient and how many pours it needs. In <b>Recall</b> mode you only get the name.</li>
+        <li>Tap a station once per pour. The order you pour in doesn't matter.</li>
+        <li>Tapping something the drink doesn't use, or pouring one too many, is a <b>wrong tap</b>: the counter locks for 1 second and nothing goes in the cup.</li>
+        <li>When every ingredient is in, the cup glows. <b>Swipe it up</b> (or press ↑ / Space) to serve. An unfinished cup won't go.</li>
+        <li>Every pour in a served drink is worth 10 points, and a drink made with no wrong taps earns +20 more. The rush lasts 60 seconds.</li>
+      </ol>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Kopi lingo — the recipe rules</div>
+      <table class="lingo" id="lingoTable">
+        <tr><td>Kopi<small>咖啡</small></td><td><b>2 coffee + 2 hot water</b>, sweetened with <b>2 condensed milk</b>.</td></tr>
+        <tr><td>Teh<small>茶</small></td><td>Same as Kopi, with <b>tea</b> in place of coffee.</td></tr>
+        <tr><td>Cham<small>鸳鸯 Yuan Yang</small></td><td>Coffee and tea mixed: <b>1 coffee + 1 tea + 2 hot water</b>, 2 condensed milk.</td></tr>
+        <tr><td>O<small>乌</small></td><td>No milk. Sweetened with <b>2 sugar</b> instead.</td></tr>
+        <tr><td>C<small>西</small></td><td><b>1 evaporated milk</b>, plus <b>2 sugar</b>.</td></tr>
+        <tr><td>Siew Dai<small>少甜</small></td><td>Less sweet: the sweetener (sugar, or condensed milk) drops to <b>1</b>.</td></tr>
+        <tr><td>Ga Dai<small>加甜</small></td><td>More sweet: the sweetener goes up to <b>3</b>.</td></tr>
+        <tr><td>Kosong<small>无糖</small></td><td>No sugar at all. Only for O and C — condensed milk is already sweet.</td></tr>
+        <tr><td>Gao<small>厚</small></td><td>Strong: <b>3</b> coffee/tea, only <b>1</b> hot water.</td></tr>
+        <tr><td>Po<small>薄</small></td><td>Weak: <b>1</b> coffee/tea, <b>3</b> hot water.</td></tr>
+        <tr><td>Di Lo<small>滴露</small></td><td>Extra thick: <b>3</b> coffee/tea and <b>no</b> hot water.</td></tr>
+        <tr><td>Peng<small>冰</small></td><td>Iced: add <b>1 ice</b>.</td></tr>
+      </table>
+      <div class="example">
+        <b>Kopi C Gao Siew Dai Peng</b> →
+        Gao: 3 coffee, 1 hot water · C: 1 evaporated milk · Siew Dai: 1 sugar · Peng: 1 ice.
+      </div>
+    </div>
+    <button class="ghost-btn wide" id="btnHowtoBoard">See the full menu board →</button>
+    <button class="big-btn" id="btnHowtoBack">Got it</button>
+  </div>
+
+  <!-- ================= MENU BOARD ================= -->
+  <div class="screen" id="screen-board">
+    <h1>Menu <span class="m2">Board</span></h1>
+    <div class="subtitle">Every order a rush can deal, with its recipe. <span id="boardCount"></span></div>
+    <div class="panel" id="boardList"></div>
+    <button class="big-btn" id="btnBoardBack">Back</button>
+  </div>
+
+  <!-- ================= ONLINE: ROOMS ================= -->
+  <div class="screen" id="screen-rooms">
+    <div class="logo">
+      <h1>Race</h1>
+      <div class="subtitle">Same orders &middot; Same 60 seconds &middot; Own phone</div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Your name</div>
+      <input type="text" id="inName" class="txt" maxlength="12" placeholder="Tap to type" autocomplete="off">
+    </div>
+    <div class="panel">
+      <div class="section-title">Start a new room</div>
+      <button class="big-btn" id="btnCreate" style="margin-top:4px;">Create room</button>
+    </div>
+    <div class="panel">
+      <div class="section-title">Join a room</div>
+      <input type="text" id="inCode" class="txt code" maxlength="4" placeholder="CODE" autocomplete="off">
+      <button class="ghost-btn wide" id="btnJoin">Join</button>
+    </div>
+    <div class="err" id="roomErr"></div>
+    <button class="ghost-btn wide" id="btnRoomsBack">Back to menu</button>
+  </div>
+
+  <!-- ================= ONLINE: LOBBY ================= -->
+  <div class="screen" id="screen-lobby">
+    <div class="codebox">
+      <div class="big" id="lobbyCode">----</div>
+      <small>Room code &mdash; share it</small>
+    </div>
+    <div class="panel">
+      <div class="section-title">Players <span id="lobbyCount"></span></div>
+      <div class="plist" id="lobbyList"></div>
+    </div>
+    <div class="panel">
+      <div class="section-title">Mode <span id="lobbyModeNote" style="text-transform:none; letter-spacing:0; color:var(--muted); font-weight:400;"></span></div>
+      <div class="pill-group" id="lobbyPills">
+        <button class="pill" data-show="display">Display 显示<span class="sub">Quantities shown</span></button>
+        <button class="pill" data-show="recall">Recall 记忆<span class="sub">From memory</span></button>
+      </div>
+      <div class="wait-line">Everyone gets the identical order queue and a 60-second rush. Most points wins.</div>
+    </div>
+    <button class="big-btn" id="btnLaunch">Start the race</button>
+    <div class="wait-line" id="lobbyWait"></div>
+    <button class="ghost-btn wide" id="btnLeave">Leave room</button>
+  </div>
+
+  <!-- ================= COUNTDOWN ================= -->
+  <div class="screen" id="screen-count">
+    <div id="countNum">3</div>
+    <div id="countSub"></div>
+  </div>
+
+  <!-- ================= PLAY ================= -->
+  <div class="screen" id="screen-play">
+    <div class="rivals" id="rivals" hidden></div>
+    <div class="hud">
+      <button class="hud-quit" id="btnQuit" aria-label="Quit">✕</button>
+      <div class="hud-chip timer" id="hudTimer">60.00</div>
+      <div class="hud-chip"><span>Served</span><b id="hudServed">×0</b></div>
+      <div class="hud-chip"><b id="hudScore">0</b><span>pts</span></div>
+    </div>
+
+    <div class="ticket" id="ticket">
+      <div class="ticket-top"><span id="tkNo">Order #1</span><span id="tkMode">Display</span></div>
+      <div class="ticket-name" id="tkName">Kopi</div>
+      <div class="ticket-zh" id="tkZh">咖啡</div>
+      <div class="ticket-recipe" id="tkRecipe"></div>
+    </div>
+
+    <div class="lane" id="lane" aria-label="Serving lane — swipe the cup up to serve">
+      <div class="chevrons"></div>
+      <div class="lane-hint" id="laneHint">Pour the order…</div>
+      <div class="tally" id="tally"></div>
+      <div class="cup-wrap" id="cupWrap"></div>
+      <div class="pop" id="pop"></div>
+    </div>
+
+    <div class="stations-wrap">
+      <div class="stations" id="stations"></div>
+      <div class="stun" id="stun" aria-live="assertive">
+        <div class="stun-msg" id="stunMsg"></div>
+        <div class="stun-bar"><i id="stunBar"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SUMMARY ================= -->
+  <div class="screen" id="screen-summary">
+    <h1 id="sumTitle">Rush <span class="m2">Over</span></h1>
+    <div class="panel">
+      <div class="score-big" id="sumScore">0</div>
+      <div class="score-label" id="sumScoreLabel">Total score</div>
+      <div class="best-flag" id="sumBestFlag" style="display:none;">★ New personal best!</div>
+      <div class="stat-grid" id="sumStats"></div>
+      <div style="text-align:center; color:var(--muted); font-size:13px;" id="sumBestLine"></div>
+    </div>
+
+    <!-- Global leaderboard outcome. Async — never blocks this screen. -->
+    <div class="panel" id="lbPanel">
+      <div class="section-title" id="lbTitle">Leaderboard</div>
+      <div style="text-align:center; font-size:14px; color:var(--muted);" id="lbLine">Checking the leaderboard…</div>
+      <button class="ghost-btn wide" id="btnShare" hidden>Share your score</button>
+    </div>
+
+    <button class="big-btn" id="btnPlayAgain">Play again</button>
+    <button class="ghost-btn wide" id="btnSumMenu">Back to menu</button>
+  </div>
+
+</div>
+
+<div class="timesup" id="timesup"><div class="pop">TIME'S UP!<small>时间到!</small></div></div>
+<div class="hint-toast" id="toast"></div>
+
+<!-- CONFIRM MODAL — §15. Never a native confirm(): browsers can suppress it, and
+     a suppressed confirm() returns false, so the guarded action never runs. -->
+<div class="overlay" id="exitOverlay">
+  <div class="modal">
+    <h3 id="exitTitle">Quit this rush?</h3>
+    <p id="exitMsg">Your score for this rush will be lost.</p>
+    <div class="modal-btns">
+      <button class="ghost-btn" id="btnExitCancel">Stay</button>
+      <button class="ghost-btn danger-btn" id="btnExitConfirm">Quit</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME PROMPT — same reasoning applies to native prompt() -->
+<div class="overlay" id="nameOverlay">
+  <div class="modal">
+    <h3>You made the leaderboard</h3>
+    <p>Pick a name to show. It stays on this device.</p>
+    <input type="text" id="inLbName" class="txt" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="ghost-btn" id="btnNameSkip">Not now</button>
+      <button class="big-btn" id="btnNameOk">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANUAL SHARE SHEET — tier 3: navigator.share and the clipboard both need a
+     secure context, so on file:// neither exists. -->
+<div class="overlay" id="shareOverlay">
+  <div class="modal">
+    <h3>Share your score</h3>
+    <p>Copy this and paste it anywhere.</p>
+    <textarea id="shareText" class="txt" rows="4" readonly style="text-align:left; font-size:16px; resize:none;"></textarea>
+    <div class="modal-btns" style="margin-top:18px;">
+      <button class="ghost-btn" id="btnShareClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'kopi-rush';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — fire-and-forget increment. Racy under heavy concurrency, but it is a
+   display counter, not currency. Never awaited, never surfaced. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});
+}
+
+/* ---------- Seeded PRNG (mulberry32) — suite convention ---------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function newSeed(){ return (Date.now() ^ (Math.random() * 0xFFFFFFFF)) | 0; }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE COUNTER — the seven stations from the kopitiam table game.
+   `k` is the recipe key. Order here is left-to-right on screen and
+   the 1–7 keyboard shortcut.
+   ═══════════════════════════════════════════════════════════════ */
+/* Ingredient text is English only (drink names keep their Chinese). `en` is
+   the button label; `short` fits the recipe chips. */
+const STATIONS = [
+  { k:'coffee', en:'Coffee',          short:'Coffee'     },
+  { k:'tea',    en:'Tea',             short:'Tea'        },
+  { k:'sugar',  en:'Sugar',           short:'Sugar'      },
+  { k:'water',  en:'Hot water',       short:'Hot water'  },
+  { k:'ice',    en:'Ice',             short:'Ice'        },
+  { k:'evap',   en:'Evaporated milk', short:'Evap. milk' },
+  { k:'cond',   en:'Condensed milk',  short:'Cond. milk' }
+];
+const ST = Object.fromEntries(STATIONS.map(s => [s.k, s]));
+const longEn = k => ST[k].en.toLowerCase();
+
+/* ═══════════════════════════════════════════════════════════════
+   RECIPE RULES — one grammar, so Recall mode tests the kopi lingo
+   rather than 54 unrelated recipes. Checked against Singapore
+   kopitiam usage (O = no milk + sugar, C = evaporated milk + sugar,
+   plain = condensed milk; Siew Dai / Ga Dai / Kosong = less / more /
+   no sugar; Gao / Po / Di Lo = strong / weak / no water; Peng = iced).
+   The pour COUNTS are the game's own convention.
+
+     brew   standard 2 + 2 hot water · Gao 3+1 · Po 1+3 · Di Lo 3+0
+            Cham (鸳鸯) = 1 coffee + 1 tea + 2 hot water
+     sweet  standard 2 · Siew Dai 1 · Ga Dai 3 · Kosong 0
+            plain → condensed milk carries the sweetness
+            O     → sugar
+            C     → 1 evaporated milk + sugar
+     Peng   + 1 ice
+
+   Changing ANY of this — or the MENU list or its order — changes which
+   drinks a seed deals and what they score, so bump LB_PROOF_V with it.
+   ═══════════════════════════════════════════════════════════════ */
+const TERMS = {
+  kopi:{en:'Kopi', zh:'咖啡'}, teh:{en:'Teh', zh:'茶'}, cham:{en:'Cham', zh:'鸳鸯'},
+  o:{en:'O', zh:'乌'}, c:{en:'C', zh:'西'},
+  gao:{en:'Gao', zh:'厚'}, po:{en:'Po', zh:'薄'}, dilo:{en:'Di Lo', zh:'滴露'},
+  kosong:{en:'Kosong', zh:'无糖'}, siewdai:{en:'Siew Dai', zh:'少甜'}, gadai:{en:'Ga Dai', zh:'加甜'},
+  peng:{en:'Peng', zh:'冰'}
+};
+const BREW  = { std:[2,2], gao:[3,1], po:[1,3], dilo:[3,0] };
+const SWEET = { std:2, siewdai:1, gadai:3, kosong:0 };
+
+function parseSpec(spec){
+  const d = { base:null, milk:'', strength:'std', sweet:'std', peng:false, tokens:[] };
+  for(const t of spec.split(' ')){
+    d.tokens.push(t);
+    if(t === 'kopi' || t === 'teh' || t === 'cham') d.base = t;
+    else if(t === 'o' || t === 'c') d.milk = t;
+    else if(BREW[t]) d.strength = t;
+    else if(t in SWEET) d.sweet = t;
+    else if(t === 'peng') d.peng = true;
+    else throw new Error('Unknown kopi term: ' + t);
+  }
+  return d;
+}
+
+function recipeFor(d){
+  const r = { coffee:0, tea:0, sugar:0, water:0, ice:0, evap:0, cond:0 };
+  if(d.base === 'cham'){ r.coffee = 1; r.tea = 1; r.water = 2; }
+  else { const [b, w] = BREW[d.strength]; r[d.base === 'kopi' ? 'coffee' : 'tea'] = b; r.water = w; }
+  const s = SWEET[d.sweet];
+  if(d.milk === 'o') r.sugar = s;
+  else if(d.milk === 'c'){ r.evap = 1; r.sugar = s; }
+  else r.cond = s;
+  if(d.peng) r.ice = 1;
+  return r;
+}
+const unitsOf = r => STATIONS.reduce((n, s) => n + (r[s.k] || 0), 0);
+
+/* The menu: the everyday orders, not every legal combination. Plain Kopi /
+   Teh never take Kosong — condensed milk is the sweetener, and "Kopi Kosong"
+   means different things at different stalls. */
+const MENU_SPECS = [
+  // Kopi — condensed milk
+  'kopi', 'kopi siewdai', 'kopi gadai', 'kopi gao', 'kopi po', 'kopi dilo',
+  'kopi peng', 'kopi siewdai peng', 'kopi gao siewdai', 'kopi gao peng',
+  // Kopi O — sugar, no milk
+  'kopi o', 'kopi o kosong', 'kopi o siewdai', 'kopi o gadai', 'kopi o gao', 'kopi o po',
+  'kopi o peng', 'kopi o kosong peng', 'kopi o gao kosong', 'kopi o dilo kosong',
+  // Kopi C — evaporated milk + sugar
+  'kopi c', 'kopi c kosong', 'kopi c siewdai', 'kopi c gadai', 'kopi c gao', 'kopi c po',
+  'kopi c peng', 'kopi c kosong peng', 'kopi c siewdai peng',
+  // Teh
+  'teh', 'teh siewdai', 'teh gadai', 'teh gao', 'teh po', 'teh peng', 'teh siewdai peng', 'teh gao peng',
+  // Teh O
+  'teh o', 'teh o kosong', 'teh o siewdai', 'teh o gadai', 'teh o gao', 'teh o peng', 'teh o kosong peng',
+  // Teh C
+  'teh c', 'teh c kosong', 'teh c siewdai', 'teh c gao', 'teh c peng', 'teh c kosong peng',
+  // Cham / Yuan Yang
+  'cham', 'cham siewdai', 'cham gadai', 'cham peng'
+];
+const MENU = MENU_SPECS.map((spec, idx) => {
+  const d = parseSpec(spec);
+  const recipe = recipeFor(d);
+  return {
+    idx, spec, recipe, units: unitsOf(recipe),
+    en: d.tokens.map(t => TERMS[t].en).join(' '),
+    zh: d.tokens.map(t => TERMS[t].zh).join(''),
+    family: d.base + (d.milk ? '-' + d.milk : ''),
+    /* tier = how many modifiers stack on the base order; the queue opens
+       on bare orders and works up */
+    tier: (d.strength !== 'std') + (d.sweet !== 'std') + d.peng
+  };
+});
+
+/* ---------- The order queue ----------
+   One rng stream per rush, so the whole queue is a pure function of the
+   seed: a race deals one seed and every phone pours the same drinks, and the
+   verifier regenerates the exact queue a solo run saw. The opening orders are
+   bare (Kopi, Teh O…), then one modifier, then anything. Never the same drink
+   twice in a row. */
+function tierCapFor(i){ return i < 3 ? 0 : i < 9 ? 1 : 9; }
+function orderStream(seed){
+  const rng = mulberry32(seed | 0);
+  let prev = -1, i = 0;
+  return function next(){
+    const cap = tierCapFor(i++);
+    const pool = MENU.filter(m => m.tier <= cap && m.idx !== prev);
+    const pick = pool[Math.floor(rng() * pool.length)];
+    prev = pick.idx;
+    return pick;
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCORING — exact from the proof, no timing term inside a drink.
+     +10 per pour in a served drink
+     +20 if that drink was made with no wrong tap
+   A drink still being poured when the clock hits zero scores nothing.
+   The 60-second clock is the speed pressure; the proof records each
+   serve time so the verifier can check the pace was humanly possible.
+   ═══════════════════════════════════════════════════════════════ */
+const RUSH_MS    = 60000;
+const STUN_MS    = 1000;
+const SERVE_LOCK_MS = 300;   // cup flies out; the counter ignores taps meanwhile
+/* Taps closer together than this are dropped in live play AND assumed by the
+   verifier, so a real run can never fail the pace check. 30ms is faster than
+   two thumbs alternating; it only ever catches key autorepeat and scripts. */
+const MIN_TAP_MS = 30;
+const PTS_UNIT = 10, PTS_CLEAN = 20;
+function drinkPoints(order, wrong){ return PTS_UNIT * order.units + (wrong === 0 ? PTS_CLEAN : 0); }
+
+/* ---------- Game state ---------- */
+const S = {
+  mode:'solo',            // 'solo' | 'race'
+  show:'display',         // 'display' | 'recall'
+  phase:'idle',           // 'idle' | 'count' | 'play' | 'over'
+  runId:0, seed:0, next:null, order:null, orderNo:0,
+  cup:{}, wrongThis:0,
+  served:0, clean:0, wrongTotal:0, score:0, moves:[],
+  t0:0, pausedAt:0, stunUntil:0, lastTapAt:-1e9, locked:false,
+  raf:0, endTimer:null, stunTimer:null
+};
+/* Online race state, kept apart from S — "my rush" vs "the shared room". */
+const M = {
+  code:null, pid:null, name:'', isHost:false, joined:false,
+  room:null, es:null, hb:null, lastKey:'', refTimer:null
+};
+
+/* ---------- Safe storage ---------- */
+const store = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+};
+const THEME_KEY = 'kopiRush_theme', SHOW_KEY = 'kopiRush_show';
+const PID_KEY = 'kopiRushPid', NAME_KEY = 'kopiRushName';
+const BEST_KEY = show => 'kopiRush_best_' + show;
+
+/* ---------- DOM helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+  document.body.classList.toggle('playing', id === 'screen-play' || id === 'screen-count');
+  window.scrollTo(0, 0);
+}
+let toastTimer = null;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+/* ---------- Theme — §2 ---------- */
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  $('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+}
+applyTheme(store.get(THEME_KEY) === 'light' ? 'light' : 'dark');
+$('theme-btn').addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  applyTheme(next); store.set(THEME_KEY, next);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   STATION ART — inline SVG, viewBox 0 0 64 64, comic outline like the
+   table game. Generic cans: no real brand on the milk tins.
+   ═══════════════════════════════════════════════════════════════ */
+const OL = 'stroke="#231c18" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"';
+const ART = {
+  coffee:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M21 44 C14 40 10 30 5 17" fill="none" stroke-width="5"/>
+    <path d="M21 44 C14 40 10 30 5 17" fill="none" stroke="#4a403c" stroke-width="2.2"/>
+    <path d="M20 17h24l3 39H17z" fill="#3b3330"/>
+    <path d="M25 22v29" stroke="#6b5f59" stroke-width="3"/>
+    <path d="M44 22c9 0 9 22 1 24" fill="none" stroke-width="4"/>
+    <rect x="22" y="11" width="20" height="7" rx="2" fill="#2a2421"/>
+    <path d="M5 17 q-1 4 1 6" fill="#3b1f10"/></g>
+    <path d="M27 8c-2-2 2-3 0-5M33 8c-2-2 2-3 0-5M39 8c-2-2 2-3 0-5" fill="none" stroke="#b9a693" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  tea:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M21 44 C14 40 10 30 5 17" fill="none" stroke-width="5"/>
+    <path d="M21 44 C14 40 10 30 5 17" fill="none" stroke="#4a403c" stroke-width="2.2"/>
+    <path d="M20 17h24l3 39H17z" fill="#4a403c"/>
+    <path d="M44 22c9 0 9 22 1 24" fill="none" stroke-width="4"/>
+    <path d="M24 6 c-2 6 2 8 0 13 h16 c-2-5 2-7 0-13z" fill="#e9d9bb"/>
+    <path d="M21 17 h22 v3 c-2 4-3 5-4 9 c-1-4-3-5-5-6 c-1 5-2 8-4 10 c-1-6-3-8-5-10z" fill="#d9892f"/>
+    <path d="M5 17 q-1 4 1 6" fill="#d9892f"/></g></svg>`,
+  sugar:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M40 26 L52 8" stroke-width="3.2"/>
+    <path d="M14 30 C14 20 50 20 50 30z" fill="#ffffff"/>
+    <path d="M8 30h48c0 14-10 24-24 24S8 44 8 30z" fill="#eef3fb"/>
+    <path d="M14 38c4 3 8-3 12 0s8-3 12 0 8-3 12 0" fill="none" stroke="#2f5fb0" stroke-width="2"/>
+    <path d="M20 47c3 2 6-2 9 0s6-2 9 0" fill="none" stroke="#2f5fb0" stroke-width="1.8"/></g>
+    <circle cx="24" cy="26" r="1.3" fill="#c9d3e3"/><circle cx="33" cy="24" r="1.3" fill="#c9d3e3"/><circle cx="41" cy="27" r="1.3" fill="#c9d3e3"/></svg>`,
+  water:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <rect x="16" y="8" width="32" height="20" rx="4" fill="#f1f1ef"/>
+    <rect x="28" y="28" width="9" height="8" fill="#d9d9d6"/>
+    <path d="M37 18 l11 -9 l3 4 l-11 9z" fill="#d23b2a"/>
+    <path d="M28 36h9v4h-9z" fill="#bdbdba"/></g>
+    <path d="M32.5 42 v10 M30 56 q2.5 4 5 0" fill="none" stroke="#3aa0e8" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 60h17" stroke="#3aa0e8" stroke-width="2" stroke-linecap="round" opacity=".6"/></svg>`,
+  ice:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M12 26h40l-5 30H17z" fill="#e8ecef"/>
+    <path d="M14 34h36" stroke="#b9c3cb" stroke-width="2"/></g>
+    <g stroke="#2b6f9e" stroke-width="1.6" fill="#8fd0f5">
+    <rect x="13" y="16" width="11" height="11" rx="3" transform="rotate(-12 18 21)"/>
+    <rect x="25" y="12" width="11" height="11" rx="3" transform="rotate(10 30 17)"/>
+    <rect x="37" y="15" width="11" height="11" rx="3" transform="rotate(-6 42 20)"/>
+    <rect x="19" y="21" width="11" height="10" rx="3"/><rect x="32" y="21" width="11" height="10" rx="3" transform="rotate(8 37 26)"/></g>
+    <path d="M17 19l3-1M29 15l3 1M40 18l3-1" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  evap:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M14 18v34c0 4 36 4 36 0V18" fill="#f6eedd"/>
+    <path d="M14 26h36v14H14z" fill="#c8332b"/>
+    <ellipse cx="32" cy="18" rx="18" ry="5" fill="#cfd3d6"/>
+    <path d="M22 16 c-6-6-12-4-14 0 c5 0 9 1 14 3z" fill="#e4e7e9"/></g>
+    <text x="32" y="37" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial">EVAP</text>
+    <path d="M18 46h28" stroke="#c8332b" stroke-width="2"/></svg>`,
+  cond:`<svg viewBox="0 0 64 64"><g ${OL}>
+    <path d="M14 18v34c0 4 36 4 36 0V18" fill="#fbfbfa"/>
+    <path d="M14 30h36v12H14z" fill="#2b6cb0"/>
+    <ellipse cx="32" cy="18" rx="18" ry="5" fill="#f2efe8"/></g>
+    <path d="M32 18 c0-2 4-2 4 0 s-3 3-6 2 s-4-4 0-5 s9 1 8 4 s-8 4-12 2" fill="none" stroke="#231c18" stroke-width="1.6" stroke-linecap="round"/>
+    <text x="32" y="39.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial">COND</text></svg>`
+};
+
+/* Recipe chip: icon + ×n, or progress dots when `have` is given. */
+function rchip(k, need, have){
+  const dots = have === undefined ? `×${need}`
+    : `<span class="dots">${Array.from({length:need}, (_, i) => `<i class="${i < have ? 'on' : ''}"></i>`).join('')}</span>`;
+  const done = have !== undefined && have >= need;
+  return `<span class="rchip${done ? ' done' : ''}" title="${ST[k].en}">${ART[k]}${ST[k].short}${have === undefined ? ' ' : ''}${dots}</span>`;
+}
+function recipeChips(recipe){
+  return STATIONS.filter(s => recipe[s.k]).map(s => rchip(s.k, recipe[s.k])).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   THE CUP — top-down, like the table game. Colour is a weighted mix of
+   what has been poured; the liquid widens as the cup fills.
+   ═══════════════════════════════════════════════════════════════ */
+const LIQ = {                        // [r,g,b, weight]
+  coffee:[43,24,14,1], tea:[140,52,14,1],
+  cond:[232,196,150,1.3], evap:[240,224,196,1.1], water:[150,100,60,.35]
+};
+function liquidColor(cup){
+  let r = 0, g = 0, b = 0, w = 0;
+  for(const k in LIQ){
+    const n = cup[k] || 0; if(!n) continue;
+    const c = LIQ[k]; r += c[0]*c[3]*n; g += c[1]*c[3]*n; b += c[2]*c[3]*n; w += c[3]*n;
+  }
+  return w ? `rgb(${Math.round(r/w)},${Math.round(g/w)},${Math.round(b/w)})` : null;
+}
+/* fixed scatter so the cubes and grains don't jump around on every repaint */
+const ICE_SPOTS = [[86,84,-12],[112,92,15],[96,112,6],[78,108,-20],[118,72,24],[104,70,-8]];
+const SUGAR_SPOTS = [[90,96],[108,104],[98,86],[116,98],[84,112],[102,118],[94,104],[110,84],[120,112],[80,94],[106,94],[96,124]];
+
+function cupSVG(){
+  const o = S.order, cup = S.cup;
+  const total = o ? o.units : 1;
+  const poured = STATIONS.reduce((n, s) => n + (cup[s.k] || 0), 0);
+  const col = liquidColor(cup);
+  const frac = Math.min(1, poured / total);
+  const r = col ? 26 + 30 * frac : 0;
+  let ice = '', sugar = '';
+  for(let i = 0; i < Math.min(ICE_SPOTS.length, (cup.ice || 0) * 3); i++){
+    const [x, y, a] = ICE_SPOTS[i];
+    ice += `<rect x="${x-8}" y="${y-8}" width="16" height="16" rx="4" transform="rotate(${a} ${x} ${y})" fill="rgba(200,236,255,.85)" stroke="#5aa6d6" stroke-width="1.5"/>`;
+  }
+  for(let i = 0; i < Math.min(SUGAR_SPOTS.length, (cup.sugar || 0) * 4); i++){
+    const [x, y] = SUGAR_SPOTS[i];
+    sugar += `<circle cx="${x}" cy="${y}" r="2.6" fill="#fff" stroke="#c9b9a3" stroke-width=".8"/>`;
+  }
+  return `<svg viewBox="0 0 200 200" aria-hidden="true">
+    <circle cx="100" cy="104" r="92" fill="#f2f0ec" stroke="#231c18" stroke-width="4"/>
+    <circle cx="100" cy="104" r="80" fill="none" stroke="#dcd8d1" stroke-width="3"/>
+    <rect x="128" y="12" width="20" height="40" rx="9" transform="rotate(32 138 32)" fill="#fff" stroke="#231c18" stroke-width="5"/>
+    <circle cx="100" cy="100" r="66" fill="#fff" stroke="#231c18" stroke-width="6"/>
+    ${col ? `<circle cx="100" cy="100" r="${r.toFixed(1)}" fill="${col}"/>
+    <ellipse cx="${(100 - r*.35).toFixed(1)}" cy="${(100 - r*.4).toFixed(1)}" rx="${(r*.28).toFixed(1)}" ry="${(r*.12).toFixed(1)}" fill="rgba(255,255,255,.22)" transform="rotate(-30 100 100)"/>` : ''}
+    ${sugar}${ice}
+  </svg>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MENU SCREEN
+   ═══════════════════════════════════════════════════════════════ */
+function setShow(show){
+  S.show = show === 'recall' ? 'recall' : 'display';
+  store.set(SHOW_KEY, S.show);
+  document.querySelectorAll('#showPills .pill').forEach(p => p.classList.toggle('active', p.dataset.show === S.show));
+}
+/* ?mode=recall|display — the hub's per-board Play link opens in that mode */
+setShow(new URLSearchParams(location.search).get('mode') || store.get(SHOW_KEY) || 'display');
+$('showPills').addEventListener('click', e => { const p = e.target.closest('.pill'); if(p) setShow(p.dataset.show); });
+
+const getBest = show => parseInt(store.get(BEST_KEY(show)), 10) || 0;
+function refreshBest(){
+  $('bestGrid').innerHTML = ['display', 'recall'].map(sh => {
+    const b = getBest(sh);
+    return `<div class="stat-box"><div class="v">${b || '—'}</div><div class="l">${sh === 'display' ? 'Display 显示' : 'Recall 记忆'}</div></div>`;
+  }).join('');
+}
+
+/* Full rules + menu board — reachable mid-menu; return to where we were */
+let helpReturn = 'screen-menu';
+function openScreen(id){
+  const here = document.querySelector('.screen.active');
+  if(here && here.id !== 'screen-howto' && here.id !== 'screen-board') helpReturn = here.id;
+  showScreen(id);
+}
+$('btnHelp').addEventListener('click', () => openScreen('screen-howto'));
+$('btnHowtoOpen').addEventListener('click', () => openScreen('screen-howto'));
+$('btnHowtoBack').addEventListener('click', () => showScreen(helpReturn));
+$('btnBoard').addEventListener('click', () => openScreen('screen-board'));
+$('btnHowtoBoard').addEventListener('click', () => openScreen('screen-board'));
+$('btnBoardBack').addEventListener('click', () => showScreen(helpReturn));
+
+function buildBoard(){
+  const groups = [
+    ['kopi',   'Kopi 咖啡 — condensed milk'], ['kopi-o', 'Kopi O 咖啡乌 — black, with sugar'],
+    ['kopi-c', 'Kopi C 咖啡西 — evaporated milk + sugar'], ['teh', 'Teh 茶 — condensed milk'],
+    ['teh-o',  'Teh O 茶乌 — black, with sugar'], ['teh-c', 'Teh C 茶西 — evaporated milk + sugar'],
+    ['cham',   'Cham 鸳鸯 — coffee + tea']
+  ];
+  $('boardList').innerHTML = groups.map(([fam, title]) => `
+    <div class="board-group"><div class="section-title">${title}</div>
+    ${MENU.filter(m => m.family === fam).map(m => `
+      <div class="board-row"><div class="board-name"><b>${m.en}</b><small>${m.zh}</small></div>
+      <div class="board-recipe">${recipeChips(m.recipe)}</div></div>`).join('')}
+    </div>`).join('');
+  $('boardCount').textContent = `(${MENU.length} drinks)`;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   STATIONS — built once
+   ═══════════════════════════════════════════════════════════════ */
+function buildStations(){
+  $('stations').innerHTML = STATIONS.map((s, i) => `
+    <button class="station" data-k="${s.k}" aria-label="${s.en}">
+      <span class="key">${i + 1}</span><span class="badge"></span>
+      ${ART[s.k]}<span class="name">${s.en}</span>
+    </button>`).join('');
+  $('stations').querySelectorAll('.station').forEach(b => {
+    /* pointerdown, not click: a rush is all rapid taps, and click waits for the
+       finger to lift. Keyboard activation (Enter/Space on a focused button)
+       arrives as a click with detail 0 and is handled there instead. */
+    b.addEventListener('pointerdown', e => { e.preventDefault(); tapStation(b.dataset.k); });
+    b.addEventListener('click', e => { if(e.detail === 0) tapStation(b.dataset.k); });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   A RUSH
+   ═══════════════════════════════════════════════════════════════ */
+$('btnSolo').addEventListener('click', () => { S.mode = 'solo'; startRush(newSeed(), S.show); });
+
+function startRush(seed, show){
+  hubReportPlay();                                    // §12 — once per rush
+  S.runId++;
+  const run = S.runId;
+  S.seed = seed | 0; S.show = show; S.next = orderStream(S.seed);
+  S.served = 0; S.clean = 0; S.wrongTotal = 0; S.score = 0; S.moves = [];
+  S.orderNo = 0; S.order = null; S.cup = {}; S.wrongThis = 0;
+  S.pausedAt = 0; S.stunUntil = 0; S.lastTapAt = -1e9; S.locked = false;
+  $('rivals').hidden = S.mode !== 'race';
+  $('screen-play').classList.toggle('show-qty', show === 'display');
+  $('tkMode').textContent = show === 'display' ? 'Display 显示' : 'Recall 记忆';
+  S.phase = 'count';
+  showScreen('screen-count');
+  $('countSub').textContent = show === 'display' ? 'Display — quantities on the ticket' : 'Recall — from memory';
+  const seq = ['3', '2', '1', '开工!'];
+  let i = 0;
+  const el = $('countNum');
+  const shownum = () => { el.textContent = seq[i]; el.style.animation = 'none'; void el.offsetWidth; el.style.animation = 'pop .5s ease'; };
+  shownum();
+  const tick = () => {
+    if(run !== S.runId) return;
+    i++;
+    if(i < seq.length){ shownum(); setTimeout(tick, i === seq.length - 1 ? 550 : 700); }
+    else beginPlay(run);
+  };
+  setTimeout(tick, 700);
+}
+
+function beginPlay(run){
+  if(run !== S.runId) return;
+  S.phase = 'play';
+  showScreen('screen-play');
+  $('screen-play').classList.remove('paused');
+  S.t0 = performance.now();
+  nextOrder(true);
+  paintHud();
+  cancelAnimationFrame(S.raf);
+  const loop = () => { if(S.phase !== 'play' || run !== S.runId) return; paintClock(); S.raf = requestAnimationFrame(loop); };
+  S.raf = requestAnimationFrame(loop);
+  /* rAF stops in a background tab; this backstop still ends a race rush on
+     time so the room isn't left waiting on a hidden phone. */
+  clearInterval(S.endTimer);
+  S.endTimer = setInterval(() => { if(S.phase === 'play' && run === S.runId) paintClock(); }, 250);
+  /* the countdown ran out while the tab was in the background */
+  if(document.hidden) pauseWithModal();
+}
+
+const elapsed = () => (S.pausedAt || performance.now()) - S.t0;
+const remaining = () => Math.max(0, RUSH_MS - elapsed());
+
+function paintClock(){
+  const left = remaining();
+  const el = $('hudTimer');
+  el.textContent = (left / 1000).toFixed(2);
+  el.classList.toggle('warn', left <= 10000 && left > 5000);
+  el.classList.toggle('danger', left <= 5000);
+  if(left <= 0 && !S.pausedAt) endRush();
+}
+function paintHud(){
+  $('hudServed').textContent = '×' + S.served;
+  $('hudScore').textContent = S.score;
+}
+
+function nextOrder(first){
+  S.order = S.next();
+  S.orderNo++;
+  S.cup = {}; S.wrongThis = 0;
+  $('tkNo').textContent = 'Order #' + S.orderNo;
+  $('tkName').textContent = S.order.en;
+  $('tkZh').textContent = S.order.zh;
+  const tk = $('ticket'); tk.classList.remove('flash'); void tk.offsetWidth; tk.classList.add('flash');
+  const cw = $('cupWrap');
+  cw.className = 'cup-wrap'; cw.style.transform = ''; void cw.offsetWidth;
+  if(!first) cw.classList.add('enter');
+  paintOrder();
+}
+
+const isComplete = () => STATIONS.every(s => (S.cup[s.k] || 0) === (S.order.recipe[s.k] || 0));
+
+function paintOrder(){
+  const o = S.order, cup = S.cup, display = S.show === 'display';
+  $('tkRecipe').innerHTML = display
+    ? STATIONS.filter(s => o.recipe[s.k]).map(s => rchip(s.k, o.recipe[s.k], cup[s.k] || 0)).join('')
+    : `<div class="ticket-recall">From memory — no quantities shown</div>`;
+  /* Recall keeps a tally of what YOU have poured — that is working memory of
+     your own taps, not the recipe, so it gives nothing away. */
+  $('tally').innerHTML = display ? ''
+    : STATIONS.filter(s => cup[s.k]).map(s => rchip(s.k, cup[s.k])).join('');
+  $('stations').querySelectorAll('.station').forEach(b => {
+    const k = b.dataset.k, need = o.recipe[k] || 0, have = cup[k] || 0;
+    const badge = b.querySelector('.badge');
+    badge.classList.toggle('on', display && need > 0 && have >= need);
+    badge.textContent = '✓';
+  });
+  $('cupWrap').innerHTML = cupSVG();
+  const ready = isComplete();
+  $('lane').classList.toggle('ready', ready);
+  $('laneHint').textContent = ready ? '▲ Swipe up to serve 上推出餐' : 'Pour the order…';
+}
+
+/* ---------- Pouring ---------- */
+function tapStation(k){
+  if(S.phase !== 'play' || S.locked || S.pausedAt || !S.order) return;
+  const now = performance.now();
+  if(now < S.stunUntil || now - S.lastTapAt < MIN_TAP_MS) return;
+  S.lastTapAt = now;
+  const need = S.order.recipe[k] || 0, have = S.cup[k] || 0;
+  const btn = $('stations').querySelector(`[data-k="${k}"]`);
+  if(have < need){
+    S.cup[k] = have + 1;
+    btn.classList.remove('hit'); void btn.offsetWidth; btn.classList.add('hit');
+    setTimeout(() => btn.classList.remove('hit'), 120);
+    const cw = $('cupWrap'); cw.classList.remove('bump', 'enter'); void cw.offsetWidth; cw.classList.add('bump');
+    paintOrder();
+    return;
+  }
+  stun(k, need);
+}
+
+/* A wrong tap: nothing lands, the counter locks for STUN_MS. The message
+   says WHY, which is how Recall players learn the rules. */
+function stun(k, need){
+  S.wrongThis++; S.wrongTotal++;
+  S.stunUntil = performance.now() + STUN_MS;
+  $('stunMsg').innerHTML = need === 0
+    ? `😵 No ${longEn(k)} in this one<small>${esc(S.order.en)} doesn't take ${longEn(k)}</small>`
+    : `😵 Enough ${longEn(k)} already<small>${esc(S.order.en)} takes ${need}</small>`;
+  const stunEl = $('stun'); stunEl.classList.add('on');
+  const bar = $('stunBar');
+  bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth;
+  bar.style.transition = `width ${STUN_MS}ms linear`; bar.style.width = '0%';
+  const btn = $('stations').querySelector(`[data-k="${k}"]`);
+  btn.classList.remove('bad'); void btn.offsetWidth; btn.classList.add('bad');
+  if(navigator.vibrate) try{ navigator.vibrate(120); }catch(e){}
+  clearTimeout(S.stunTimer);
+  armStunClear(STUN_MS);
+}
+function armStunClear(ms){
+  clearTimeout(S.stunTimer);
+  S.stunTimer = setTimeout(() => {
+    $('stun').classList.remove('on');
+    $('stations').querySelectorAll('.station.bad').forEach(b => b.classList.remove('bad'));
+  }, ms);
+}
+
+/* ---------- Serving ---------- */
+function tryServe(){
+  if(S.phase !== 'play' || S.locked || S.pausedAt || !S.order) return false;
+  if(performance.now() < S.stunUntil) return false;      // a stun locks the whole counter
+  if(!isComplete()){
+    const cw = $('cupWrap'); cw.classList.remove('nope', 'bump', 'enter'); void cw.offsetWidth; cw.classList.add('nope');
+    toast('Not done yet — something is still missing');
+    return false;
+  }
+  const t = Math.round(elapsed());
+  const wrong = S.wrongThis;
+  const gain = drinkPoints(S.order, wrong);
+  S.score += gain; S.served++;
+  if(wrong === 0) S.clean++;
+  /* Replay proof: serve time (ms into the rush) and wrong taps on this drink.
+     Capped so a very long log can't produce an unbounded payload. */
+  if(S.moves.length < 400) S.moves.push(t + ':' + wrong);
+  paintHud();
+  popWell(gain, wrong === 0);
+  if(S.mode === 'race') pushProgress(false);
+
+  S.locked = true;
+  const run = S.runId;
+  const cw = $('cupWrap'); cw.style.transform = ''; cw.classList.remove('bump', 'enter', 'nope'); cw.classList.add('fly');
+  $('lane').classList.remove('ready');
+  setTimeout(() => {
+    if(run !== S.runId || S.phase !== 'play') return;
+    S.locked = false;
+    nextOrder(false);
+  }, SERVE_LOCK_MS);
+  return true;
+}
+function popWell(gain, clean){
+  const p = $('pop');
+  p.innerHTML = (clean ? 'WELL DONE!' : 'SERVED!') + `<small>${clean ? '真棒!' : '好了!'} +${gain}</small>`;
+  p.classList.remove('show'); void p.offsetWidth; p.classList.add('show');
+}
+
+/* Swipe up on the lane — touch or mouse drag. The cup follows the finger;
+   past the threshold it serves, otherwise it springs back. */
+(function wireSwipe(){
+  const lane = $('lane');
+  let startY = 0, dy = 0, dragging = false, pid = null;
+  lane.addEventListener('pointerdown', e => {
+    if(S.phase !== 'play' || S.locked || S.pausedAt) return;
+    dragging = true; pid = e.pointerId; startY = e.clientY; dy = 0;
+    try{ lane.setPointerCapture(pid); }catch(_){}
+  });
+  lane.addEventListener('pointermove', e => {
+    if(!dragging || e.pointerId !== pid) return;
+    dy = Math.min(0, e.clientY - startY);
+    /* an unfinished cup drags heavily — it's not going anywhere */
+    const shown = isComplete() ? dy : dy * 0.25;
+    $('cupWrap').style.transform = `translateX(-50%) translateY(${shown}px)`;
+  });
+  const end = e => {
+    if(!dragging || (e && e.pointerId !== pid)) return;
+    dragging = false;
+    const cw = $('cupWrap');
+    if(dy < -55){ if(tryServe()) return; }
+    cw.style.transform = '';
+  };
+  lane.addEventListener('pointerup', end);
+  lane.addEventListener('pointercancel', end);
+})();
+
+/* Desktop: 1–7 pour, ↑ / Space / Enter serve */
+document.addEventListener('keydown', e => {
+  if(!$('screen-play').classList.contains('active') || document.querySelector('.overlay.active')) return;
+  if(e.repeat){ e.preventDefault(); return; }       // holding a key is not pouring
+  const n = parseInt(e.key, 10);
+  if(n >= 1 && n <= STATIONS.length){ e.preventDefault(); tapStation(STATIONS[n - 1].k); return; }
+  if(e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Enter'){
+    if(e.target && e.target.classList && e.target.classList.contains('station') && e.key !== 'ArrowUp') return;
+    e.preventDefault(); tryServe();
+  }
+});
+
+/* ---------- Pause (solo only) ----------
+   A race clock never pauses — it is shared. In solo the clock, the stun and
+   the board all freeze, and the order is hidden so a pause can't be used to
+   look up a recipe. */
+function pauseRush(){
+  if(S.phase !== 'play' || S.pausedAt || S.mode !== 'solo') return false;
+  S.pausedAt = performance.now();
+  clearTimeout(S.stunTimer);
+  $('screen-play').classList.add('paused');
+  return true;
+}
+function resumeRush(){
+  if(!S.pausedAt) return;
+  const d = performance.now() - S.pausedAt;
+  S.t0 += d; S.lastTapAt += d;
+  if(S.stunUntil > S.pausedAt){ S.stunUntil += d; armStunClear(S.stunUntil - performance.now()); }
+  S.pausedAt = 0;
+  $('screen-play').classList.remove('paused');
+}
+async function pauseWithModal(){
+  if(!pauseRush()) return;
+  const quit = await askConfirm('Paused', 'The clock is stopped. Ready to carry on?', 'Quit', 'Resume');
+  if(quit) exitToMenu(); else resumeRush();
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden) pauseWithModal(); });
+$('btnQuit').addEventListener('click', async () => {
+  if(S.phase !== 'play') return;
+  if(S.mode === 'race'){
+    const leave = await askConfirm('Leave the race?', 'The clock keeps running while you decide. Leaving drops you out of this race.', 'Leave');
+    if(leave) leaveRoom();
+    return;
+  }
+  pauseRush();
+  const quit = await askConfirm('Quit this rush?', 'Your score for this rush will be lost.', 'Quit');
+  if(quit) exitToMenu(); else resumeRush();
+});
+
+/* ---------- Time's up ---------- */
+function endRush(){
+  if(S.phase !== 'play') return;
+  S.phase = 'over';
+  const run = S.runId;
+  cancelAnimationFrame(S.raf); clearInterval(S.endTimer); clearTimeout(S.stunTimer);
+  $('hudTimer').textContent = '0.00';
+  $('stun').classList.remove('on');
+  $('timesup').classList.add('on');
+  if(S.mode === 'race') pushProgress(true);
+  setTimeout(() => {
+    $('timesup').classList.remove('on');
+    if(run !== S.runId) return;
+    if(S.mode !== 'race') showSummary();
+    /* the room may already be over (we were last to finish, or were marked
+       done) — never paint "waiting" over the final standings */
+    else if(M.room && M.room.phase === 'over') paintRaceFinal();
+    else paintRaceWaiting();
+  }, 1300);
+}
+
+function exitToMenu(){
+  S.runId++; S.phase = 'idle';
+  cancelAnimationFrame(S.raf); clearInterval(S.endTimer); clearTimeout(S.stunTimer);
+  $('stun').classList.remove('on'); $('timesup').classList.remove('on');
+  $('screen-play').classList.remove('paused');
+  if(S.mode === 'race'){ leaveRoom(); return; }
+  showScreen('screen-menu'); refreshBest();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SUMMARY (solo)
+   ═══════════════════════════════════════════════════════════════ */
+function statBoxes(list){
+  $('sumStats').innerHTML = list.map(([l, v]) => `<div class="stat-box"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+}
+function showSummary(){
+  showScreen('screen-summary');
+  const label = S.show === 'display' ? 'Display' : 'Recall';
+  $('sumTitle').innerHTML = `Rush <span class="m2">Over</span>`;
+  $('sumScore').textContent = S.score;
+  $('sumScoreLabel').textContent = `${label} · total score`;
+  const prev = getBest(S.show);
+  const isBest = S.score > prev && S.score > 0;
+  if(isBest) store.set(BEST_KEY(S.show), String(S.score));
+  $('sumBestFlag').style.display = isBest ? '' : 'none';
+  statBoxes([['Drinks served', S.served], ['Clean drinks', S.clean], ['Wrong taps', S.wrongTotal],
+             ['Per drink', S.served ? (60 / S.served).toFixed(1) + 's' : '—']]);
+  $('sumBestLine').innerHTML = `Best ${label} rush: <b style="color:var(--accent)">${Math.max(prev, S.score)} pts</b>`;
+  $('btnPlayAgain').hidden = false;
+  $('btnPlayAgain').textContent = 'Play again';
+  $('btnSumMenu').textContent = 'Back to menu';
+  handleLeaderboard();
+}
+/* One handler that dispatches on mode — the summary is shared by solo and
+   race, and a rebind would leave both wired. */
+$('btnPlayAgain').addEventListener('click', () => {
+  if(S.mode === 'race'){ if(M.isHost && M.room) hostRematch(); return; }
+  startRush(newSeed(), S.show);
+});
+$('btnSumMenu').addEventListener('click', () => {
+  if(S.mode === 'race') leaveRoom(); else { showScreen('screen-menu'); refreshBest(); }
+});
+
+/* ---------- Confirm modal — §15, promise-based ---------- */
+function askConfirm(title, msg, okLabel, cancelLabel){
+  return new Promise(resolve => {
+    $('exitTitle').textContent = title;
+    $('exitMsg').textContent = msg;
+    $('btnExitConfirm').textContent = okLabel || 'Quit';
+    $('btnExitCancel').textContent = cancelLabel || 'Stay';
+    $('exitOverlay').classList.add('active');
+    const done = v => {
+      $('exitOverlay').classList.remove('active');
+      $('btnExitCancel').onclick = null; $('btnExitConfirm').onclick = null;
+      resolve(v);
+    };
+    $('btnExitCancel').onclick  = () => done(false);
+    $('btnExitConfirm').onclick = () => done(true);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LEADERBOARDS — /leaderboard/kopi-rush-display/{playerId}
+                  /leaderboard/kopi-rush-recall/{playerId}
+   Two boards because a rush with the quantities on the ticket isn't
+   comparable to one poured from memory. One slot per player per board,
+   holding their best; a lower score never overwrites a higher one.
+   Honest limits, same as the rest of the suite: playerId is per BROWSER,
+   and the proof makes cheating expensive, not impossible (a forged log
+   can still claim zero wrong taps).
+   ═══════════════════════════════════════════════════════════════ */
+const LB_BOARD = show => show === 'recall' ? 'kopi-rush-recall' : 'kopi-rush-display';
+const LB_PROOF_V = 1;      // bump with any change to MENU, the rules, the queue or scoring
+const lbApi = p => `${HUB_DB}/${p}.json`;
+
+function playerId(){
+  let id = store.get(PID_KEY);
+  if(!id){ id = 'u' + Math.random().toString(36).slice(2,10) + Date.now().toString(36); store.set(PID_KEY, id); }
+  return id;
+}
+const playerName = () => store.get(NAME_KEY) || '';
+
+async function lbFetchAll(board){
+  try{
+    const r = await fetch(lbApi('leaderboard/' + board));
+    if(!r.ok) return {};
+    const d = await r.json();
+    return (d && typeof d === 'object' && !d.error) ? d : {};
+  }catch(e){ return {}; }
+}
+function lbRank(all, score){
+  const better = Object.values(all).filter(e => e && Number(e.score) > score).length;
+  return { rank: better + 1, total: Object.keys(all).length };
+}
+async function lbSubmit(board, name){
+  const entry = {
+    name: String(name).slice(0, 20),
+    score: S.score, served: S.served, mode: S.show,
+    at: Date.now(), v: LB_PROOF_V, seed: S.seed, moves: S.moves.join(',')
+  };
+  try{
+    const r = await fetch(lbApi('leaderboard/' + board + '/' + playerId()), { method:'PUT', body: JSON.stringify(entry) });
+    if(!r.ok) return false;
+    const body = await r.json().catch(() => null);
+    return !(body && body.error);       // rules can answer 200 with {"error":…}
+  }catch(e){ return false; }
+}
+
+async function handleLeaderboard(){
+  const line = $('lbLine'), share = $('btnShare');
+  const board = LB_BOARD(S.show), label = S.show === 'display' ? 'Display' : 'Recall';
+  share.hidden = true;
+  $('lbPanel').hidden = false;
+  $('lbTitle').textContent = `Leaderboard · ${label}`;
+  line.textContent = 'Checking the leaderboard…';
+  const run = S.runId;
+
+  const all = await lbFetchAll(board);
+  if(run !== S.runId) return;
+  const mine = all[playerId()];
+  const prevBest = mine ? Number(mine.score) || 0 : 0;
+
+  if(S.score <= prevBest || S.score === 0){
+    if(prevBest){
+      const { rank, total } = lbRank(all, prevBest);
+      line.innerHTML = `Your best is still <b style="color:var(--accent)">${prevBest}</b> — #${rank} of ${total}.`;
+      showShare(prevBest, rank);
+    }else line.textContent = 'Serve a drink to get on the board.';
+    return;
+  }
+
+  let name = playerName();
+  if(!name){
+    const entered = await askName();
+    if(entered === null){
+      line.textContent = 'Not submitted. Play again to join the board.';
+      showShare(S.score, null);
+      return;
+    }
+    name = entered; store.set(NAME_KEY, name);
+  }
+  line.textContent = 'Submitting…';
+  const ok = await lbSubmit(board, name);
+  if(run !== S.runId) return;
+  if(!ok){
+    line.textContent = 'Could not reach the leaderboard — your score is safe locally.';
+    showShare(S.score, null);
+    return;
+  }
+  const after = await lbFetchAll(board);
+  if(run !== S.runId) return;
+  const { rank, total } = lbRank(after, S.score);
+  line.innerHTML = prevBest
+    ? `New personal best — you're <b style="color:var(--accent)">#${rank}</b> of ${total}.`
+    : `You're on the board at <b style="color:var(--accent)">#${rank}</b> of ${total}.`;
+  showShare(S.score, rank);
+}
+
+function askName(){
+  return new Promise(resolve => {
+    const ov = $('nameOverlay'), input = $('inLbName');
+    input.value = playerName();
+    ov.classList.add('active');
+    setTimeout(() => input.focus(), 50);
+    const done = v => {
+      ov.classList.remove('active');
+      $('btnNameOk').onclick = null; $('btnNameSkip').onclick = null; input.onkeydown = null;
+      resolve(v);
+    };
+    const ok = () => { const n = input.value.trim(); if(n) done(n); };
+    $('btnNameOk').onclick = ok;
+    $('btnNameSkip').onclick = () => done(null);
+    input.onkeydown = e => { if(e.key === 'Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ---------- */
+const SHARE_HOME = 'https://arcade.kenmemorize.com/';
+function shareUrl(){
+  if(location.protocol === 'file:' || location.origin === 'null') return SHARE_HOME;
+  return location.origin + location.pathname.replace(/\/games\/[^/]*$/, '/');
+}
+function showShare(score, rank){
+  const b = $('btnShare'); b.hidden = false;
+  b.onclick = () => shareScore(score, rank);
+}
+async function shareScore(score, rank){
+  const label = S.show === 'display' ? 'Display' : 'Recall';
+  const text = `I scored ${score} on Kopi Rush (${label})${rank ? ` — #${rank} on the board` : ''}. ${shareUrl()}`;
+  try{ if(navigator.share){ await navigator.share({ title:'Kopi Rush', text }); return; } }
+  catch(e){ if(e && e.name === 'AbortError') return; }
+  try{
+    if(navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      $('lbLine').innerHTML += ' <span style="color:var(--correct)">Copied.</span>';
+      return;
+    }
+  }catch(e){}
+  $('shareText').value = text;
+  $('shareOverlay').classList.add('active');
+}
+$('btnShareClose').addEventListener('click', () => $('shareOverlay').classList.remove('active'));
+
+/* ═══════════════════════════════════════════════════════════════
+   ONLINE RACE  —  /rooms/{code}
+   ───────────────────────────────────────────────────────────────
+   Same database and /rooms path as the other races, so no rules change.
+   The host deals ONE seed; every phone runs orderStream(seed), so all
+   queues are identical. Each phone runs its own 60-second clock from when
+   it sees the deal — device clocks are never compared — and reports its
+   count after every serve, which feeds the ×N strip like the table game.
+   Most points at the bell wins. Races are never ranked.
+   ═══════════════════════════════════════════════════════════════ */
+const MAX_PLAYERS = 4;
+const api = p => `${HUB_DB}/${p}.json`;
+const net = {
+  get:  p     => fetch(api(p)).then(r => r.json()),
+  put:  (p,v) => fetch(api(p), {method:'PUT',   body:JSON.stringify(v)}),
+  patch:(p,v) => fetch(api(p), {method:'PATCH', body:JSON.stringify(v)}),
+  del:  p     => fetch(api(p), {method:'DELETE'})
+};
+
+function subscribe(path, onChange, onError){
+  let mirror = null;
+  const es = new EventSource(api(path));
+  const walk = (obj, segs) => {
+    let o = obj;
+    for(let i = 0; i < segs.length - 1; i++){ if(!o[segs[i]] || typeof o[segs[i]] !== 'object') o[segs[i]] = {}; o = o[segs[i]]; }
+    return o;
+  };
+  const applyPut = (p, d) => {
+    if(p === '/'){ mirror = d; return; }
+    const segs = p.split('/').filter(Boolean);
+    if(!mirror) mirror = {};
+    const parent = walk(mirror, segs), key = segs[segs.length - 1];
+    if(d === null) delete parent[key]; else parent[key] = d;
+  };
+  es.addEventListener('put', e => { const m = JSON.parse(e.data); applyPut(m.path, m.data); onChange(mirror); });
+  es.addEventListener('patch', e => {
+    const m = JSON.parse(e.data), base = m.path === '/' ? '' : m.path;
+    for(const k in m.data) applyPut((base + '/' + k).replace('//','/'), m.data[k]);
+    onChange(mirror);
+  });
+  es.addEventListener('error', () => onError && onError());
+  return es;
+}
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I/O — they read as 1/0 on a phone
+const newCode = () => Array.from({length:4}, () => CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)]).join('');
+const newPid  = () => 'p' + Math.random().toString(36).slice(2,9);
+const P = () => (M.room && M.room.players) || {};
+const freshPlayer = name => ({ name, score:0, served:0, done:false, hb:Date.now() });
+function raceErr(msg){ $('roomErr').textContent = msg || ''; }
+
+$('btnOnline').addEventListener('click', () => {
+  $('inName').value = playerName();
+  raceErr(''); showScreen('screen-rooms');
+});
+$('btnRoomsBack').addEventListener('click', () => showScreen('screen-menu'));
+$('inCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+
+async function createRoom(){
+  const name = $('inName').value.trim();
+  if(!name) return raceErr('Type a name first.');
+  raceErr('Creating…');
+  M.name = name; M.pid = newPid(); M.isHost = true;
+  store.set(NAME_KEY, name);
+  let code, tries = 0;
+  try{ do { code = newCode(); } while(await net.get('rooms/' + code) && ++tries < 6); }
+  catch(e){ return raceErr('Could not reach the database.'); }
+  M.code = code;
+  /* `game` tags the room: every arcade game shares /rooms, so another game's
+     code typed in here must be refused rather than joined */
+  const ok = await net.put('rooms/' + code, {
+    game: HUB_ID, host: M.pid, phase:'lobby', show: S.show, createdAt: Date.now(),
+    players: { [M.pid]: freshPlayer(name) }
+  }).catch(() => null);
+  if(!ok || !ok.ok) return raceErr('Could not reach the database. Online play needs a "rooms" rule.');
+  watchRoom();
+}
+
+async function joinRoom(){
+  const name = $('inName').value.trim();
+  const code = $('inCode').value.trim().toUpperCase();
+  if(!name) return raceErr('Type a name first.');
+  if(code.length !== 4) return raceErr('Room codes are 4 letters.');
+  raceErr('Joining…');
+  const room = await net.get('rooms/' + code).catch(() => null);
+  if(!room || room.error) return raceErr('No room with that code.');
+  if(room.game !== HUB_ID) return raceErr('That code belongs to a different game.');
+  if(room.phase !== 'lobby') return raceErr('That race has already started.');
+  if(Object.keys(room.players || {}).length >= MAX_PLAYERS) return raceErr('That room is full.');
+  M.name = name; M.pid = newPid(); M.isHost = false; M.code = code;
+  store.set(NAME_KEY, name);
+  await net.put(`rooms/${code}/players/${M.pid}`, freshPlayer(name)).catch(() => null);
+  watchRoom();
+}
+
+function watchRoom(){
+  raceErr('');
+  M.joined = true; M.lastKey = '';
+  S.mode = 'race';
+  if(M.es) M.es.close();
+  M.es = subscribe('rooms/' + M.code, onRoom, () => raceErr('Connection dropped.'));
+  clearInterval(M.hb);
+  M.hb = setInterval(() => { if(M.joined) net.patch(`rooms/${M.code}/players/${M.pid}`, { hb: Date.now() }).catch(() => {}); }, 5000);
+  clearInterval(M.refTimer);
+  /* the host re-checks on a timer too — a silent room sends no events */
+  M.refTimer = setInterval(() => { if(M.isHost && M.room) hostReferee(); }, 3000);
+  showScreen('screen-lobby');
+}
+
+function leaveRoom(){
+  S.runId++; S.phase = 'idle';
+  cancelAnimationFrame(S.raf); clearInterval(S.endTimer); clearTimeout(S.stunTimer);
+  $('stun').classList.remove('on'); $('timesup').classList.remove('on');
+  if(M.code && M.pid) net.del(`rooms/${M.code}/players/${M.pid}`).catch(() => {});
+  if(M.isHost && M.code) net.del('rooms/' + M.code).catch(() => {});
+  if(M.es) M.es.close();
+  clearInterval(M.hb); clearInterval(M.refTimer);
+  M.joined = false; M.code = null; M.room = null;
+  S.mode = 'solo';
+  setShow(store.get(SHOW_KEY) || 'display');
+  showScreen('screen-menu'); refreshBest();
+}
+
+/* ---- the single reactive entry point ---- */
+function onRoom(room){
+  if(!room){ if(M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  M.room = room;
+  if(room.phase === 'lobby'){ M.lastKey = ''; paintLobby(); return; }
+  if(room.phase === 'over'){ paintRaceFinal(); return; }
+  if(room.phase === 'playing' && room.race){
+    const key = 'race:' + room.race.n;
+    if(key !== M.lastKey){
+      M.lastKey = key;
+      S.mode = 'race';                               // startRush counts the play (§12)
+      startRush(room.race.seed, room.show === 'recall' ? 'recall' : 'display');
+    }
+    paintRivals();
+    if(S.phase === 'over' && $('screen-summary').classList.contains('active')) paintRaceWaiting();
+    if(M.isHost) hostReferee();
+  }
+}
+
+function paintLobby(){
+  if(S.phase === 'play' || S.phase === 'count'){ S.runId++; S.phase = 'idle'; cancelAnimationFrame(S.raf); clearInterval(S.endTimer); }
+  showScreen('screen-lobby');
+  $('lobbyCode').textContent = M.code;
+  const ps = Object.entries(P());
+  $('lobbyCount').textContent = `(${ps.length}/${MAX_PLAYERS})`;
+  $('lobbyList').innerHTML = ps.map(([id, p]) =>
+    `<div class="prow"><span>${esc(p.name)}</span>` +
+    `${id === M.room.host ? '<span class="badge">Host</span>' : ''}` +
+    `${id === M.pid && id !== M.room.host ? '<span class="badge">You</span>' : ''}</div>`).join('');
+  const show = M.room.show === 'recall' ? 'recall' : 'display';
+  document.querySelectorAll('#lobbyPills .pill').forEach(p => {
+    p.classList.toggle('active', p.dataset.show === show);
+    p.disabled = !M.isHost;
+  });
+  $('lobbyModeNote').textContent = M.isHost ? '— you choose' : '— the host chooses';
+  $('btnLaunch').hidden = !M.isHost;
+  $('btnLaunch').disabled = ps.length < 2;
+  $('lobbyWait').textContent = M.isHost
+    ? (ps.length < 2 ? 'Waiting for at least one more player…' : '')
+    : 'Waiting for the host to start…';
+}
+$('lobbyPills').addEventListener('click', e => {
+  const p = e.target.closest('.pill');
+  if(!p || !M.isHost || !M.code) return;
+  net.patch('rooms/' + M.code, { show: p.dataset.show }).catch(() => {});
+});
+
+async function launchRace(){
+  if(!M.isHost || Object.keys(P()).length < 2) return;
+  const reset = {};
+  for(const [id, p] of Object.entries(P())) reset[id] = { ...p, score:0, served:0, done:false, hb:Date.now() };
+  const n = ((M.room.race && M.room.race.n) || 0) + 1;
+  await net.patch('rooms/' + M.code, {
+    race: { n, seed: newSeed(), dealtAt: Date.now() },
+    players: reset, phase:'playing'
+  }).catch(() => raceErr('Could not reach the database.'));
+}
+
+function pushProgress(done){
+  if(S.mode !== 'race' || !M.code) return;
+  const patch = { score: S.score, served: S.served, hb: Date.now() };
+  if(done) patch.done = true;
+  net.patch(`rooms/${M.code}/players/${M.pid}`, patch).catch(() => {});
+}
+
+/* Host referees the end: everyone done, or anyone who stopped heartbeating
+   is marked done so one dead phone can't stall the room. A hard backstop
+   closes the race well after the clock would have run out anyway. */
+async function hostReferee(){
+  const room = M.room;
+  if(!room || room.phase !== 'playing' || !room.race) return;
+  const now = Date.now(), entries = Object.entries(P());
+  const overdue = now - (room.race.dealtAt || now) > RUSH_MS + 20000;
+  for(const [id, p] of entries)
+    if(!p.done && (overdue || (p.hb && now - p.hb > 25000)))
+      await net.patch(`rooms/${M.code}/players/${id}`, { done:true }).catch(() => {});
+  if(!entries.every(([, p]) => p.done) && !overdue) return;
+  await net.patch('rooms/' + M.code, { phase:'over' }).catch(() => {});
+}
+
+function standings(){
+  return Object.entries(P())
+    .map(([id, p]) => ({ id, name:p.name, score:p.score || 0, served:p.served || 0, done:!!p.done }))
+    .sort((a, b) => b.score - a.score || b.served - a.served);
+}
+function paintRivals(){
+  if(S.mode !== 'race') return;
+  $('rivals').innerHTML = standings().map(r =>
+    `<span class="rival ${r.id === M.pid ? 'me' : ''} ${r.done ? 'done' : ''}">${esc(r.name)} <b>×${r.served}</b> · ${r.score}</span>`).join('');
+}
+function raceRows(){
+  return standings().map((r, n) =>
+    `<div class="stat-line"><span><span class="rk">${n + 1}</span>${esc(r.name)}${r.id === M.pid ? ' (you)' : ''}${r.done ? '' : ' <i style="opacity:.7">· still pouring</i>'}</span><b>×${r.served} · ${r.score}</b></div>`).join('');
+}
+function paintRaceWaiting(){
+  showScreen('screen-summary');
+  $('lbPanel').hidden = true;                     // races are never ranked
+  $('sumTitle').innerHTML = `Time's <span class="m2">Up</span>`;
+  $('sumScore').textContent = S.score;
+  $('sumScoreLabel').textContent = 'Your score · waiting for the others';
+  $('sumBestFlag').style.display = 'none';
+  statBoxes([['Drinks served', S.served], ['Clean drinks', S.clean]]);
+  $('sumBestLine').innerHTML = raceRows();
+  $('btnPlayAgain').hidden = true;
+  $('btnSumMenu').textContent = 'Leave room';
+}
+function paintRaceFinal(){
+  if(S.phase === 'play' || S.phase === 'count'){ S.runId++; S.phase = 'over'; cancelAnimationFrame(S.raf); clearInterval(S.endTimer); }
+  const rows = standings();
+  const i = rows.findIndex(r => r.id === M.pid);
+  showScreen('screen-summary');
+  $('lbPanel').hidden = true;
+  $('sumTitle').innerHTML = i === 0 ? 'You <span class="m2">Won</span>' : 'Race <span class="m2">Over</span>';
+  $('sumScore').textContent = i >= 0 ? rows[i].score : 0;
+  $('sumScoreLabel').textContent = `Final score · ${M.room.show === 'recall' ? 'Recall' : 'Display'}`;
+  $('sumBestFlag').style.display = 'none';
+  $('sumStats').innerHTML = '';
+  $('sumBestLine').innerHTML = raceRows();
+  $('btnPlayAgain').hidden = !M.isHost;
+  $('btnPlayAgain').textContent = 'Rematch';
+  $('btnSumMenu').textContent = 'Leave room';
+  if(!M.isHost) $('sumBestLine').innerHTML += '<div class="wait-line">The host can start a rematch.</div>';
+}
+async function hostRematch(){
+  const reset = {};
+  for(const [id, p] of Object.entries(P())) reset[id] = { ...p, score:0, served:0, done:false, hb:Date.now() };
+  await net.patch('rooms/' + M.code, { phase:'lobby', players: reset }).catch(() => {});
+}
+
+$('btnCreate').addEventListener('click', createRoom);
+$('btnJoin').addEventListener('click', joinRoom);
+$('btnLeave').addEventListener('click', leaveRoom);
+$('btnLaunch').addEventListener('click', launchRace);
+
+/* ═══════════════════════════════════════════════════════════════
+   REPLAY-PROOF EXPORT — admin.html's verifier loads this file in a
+   hidden iframe and calls window.KopiRush, so verification runs the
+   game's REAL queue and scoring rather than a copy that can drift.
+
+   The proof is "t:w" per served drink: t = ms into the rush when it was
+   served, w = wrong taps on that drink. The score replays EXACTLY. The
+   pace check proves each drink was possible under the live rules: after
+   the previous serve's lock, its pours are at least MIN_TAP_MS apart, and
+   each wrong tap freezes everything (pouring AND serving) for STUN_MS —
+   so a drink spans at least lock + (pours−1)·MIN_TAP_MS + wrong·STUN_MS.
+   Live play enforces all three, so a genuine run always passes.
+   ═══════════════════════════════════════════════════════════════ */
+window.KopiRush = {
+  PROOF_V: LB_PROOF_V,
+  RUSH_MS, STUN_MS, SERVE_LOCK_MS, MIN_TAP_MS, PTS_UNIT, PTS_CLEAN,
+  MENU, STATIONS, parseSpec, recipeFor, orderStream, drinkPoints,
+  verify(seed, movesStr, claimedScore){
+    const moves = String(movesStr || '').split(',').filter(Boolean).map(s => s.split(':').map(Number));
+    if(!moves.length) return { ok:false, reason:'No drinks recorded', served:0, score:0 };
+    const next = orderStream(seed | 0);
+    let score = 0, prevT = 0, clean = 0;
+    for(let i = 0; i < moves.length; i++){
+      const [t, w] = moves[i];
+      if(!Number.isInteger(t) || !Number.isInteger(w) || t < 0 || w < 0)
+        return { ok:false, reason:`Drink ${i+1}: malformed entry`, served:i, score };
+      if(t > RUSH_MS + 250)
+        return { ok:false, reason:`Drink ${i+1} served at ${t}ms, after the 60s bell`, served:i, score };
+      const order = next();
+      const minGap = (i ? SERVE_LOCK_MS : 0) + (order.units - 1) * MIN_TAP_MS + w * STUN_MS;
+      if(t - prevT < minGap)
+        return { ok:false, reason:`Drink ${i+1} (${order.en}) came ${t - prevT}ms after the last — it needs at least ${minGap}ms`, served:i, score };
+      score += drinkPoints(order, w);
+      if(w === 0) clean++;
+      prevT = t;
+    }
+    const ok = score === (claimedScore | 0);
+    return {
+      ok, served: moves.length, clean, score,
+      reason: ok ? 'Score reproduced exactly' : `Claimed ${claimedScore}, but these drinks score ${score}`
+    };
+  }
+};
+
+/* init */
+buildStations();
+buildBoard();
+refreshBest();
+</script>
+</body>
+</html>

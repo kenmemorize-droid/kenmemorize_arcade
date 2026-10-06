@@ -296,6 +296,10 @@ const CATEGORIES = [
    so every url is "games/<file>.html". No "../" anywhere.
    ========================================================= */
 const BUILTIN_GAMES = [
+  /* Kopi Rush, added 2026-10-06 — recreated from a kopitiam "make the kopi"
+     table game. It keeps TWO leaderboards (see SUB_BOARDS below), so its id
+     is the play-count key only, never a board path. */
+  { id:"kopi-rush",        name:"Kopi Rush",          skill:"logic",    blurb:"Read the kopitiam order, pour the right number of each ingredient and swipe it out — a 60-second ranked rush (quantities shown, or from memory), or an online race",  url:"games/kopi_rush.html",          icon:"☕" },
   /* Lock In, added 2026-09-29 — replicated from a reel of a 3D "memorise the
      room, answer at the wall, wrong = spike pit" game. Never shipped before
      this, so every id and key is named for the title from day one. */
@@ -421,8 +425,21 @@ function cardTemplate(game, stats, catColor){
 const FEATURED = "cart-recall";     // the default selection, not the only board
 const LB_TOP = 10;
 
-/* Every game that writes to /leaderboard/{id}. Order here = chip order. */
-const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in"];
+/* Every board under /leaderboard/{id}. Order here = chip order. */
+const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in",
+                "kopi-rush-recall", "kopi-rush-display"];
+
+/* A board id is normally the game's own id. A game with more than one board
+   maps each of its boards here to { game, tag } — Kopi Rush keeps rushes with
+   the quantities shown apart from rushes poured from memory, because the two
+   scores aren't comparable. The tag is appended to the chip and card name;
+   `query` is added to Play so the game opens in that board's mode. */
+const SUB_BOARDS = {
+  "kopi-rush-recall":  { game:"kopi-rush", tag:"Recall",  query:"mode=recall"  },
+  "kopi-rush-display": { game:"kopi-rush", tag:"Display", query:"mode=display" }
+};
+const boardGame = id => (SUB_BOARDS[id] && SUB_BOARDS[id].game) || id;
+const boardTag  = id => (SUB_BOARDS[id] && SUB_BOARDS[id].tag) || "";
 
 /* Each game keeps its own player id under its own localStorage key. Same
    origin, so the hub can read it and highlight the visitor's own row —
@@ -432,7 +449,9 @@ const PID_KEYS = {
   "memomath":     "memomathPid",
   "tidal-recall": "tidalDriftPid",  // key follows the NEW name; the id does not
   "blind-snap":   "blindSnapPid",
-  "lock-in":      "lockInPid"
+  "lock-in":      "lockInPid",
+  "kopi-rush-recall":  "kopiRushPid",   // one id per player, shared by both boards
+  "kopi-rush-display": "kopiRushPid"
 };
 
 let SELECTED = FEATURED;
@@ -458,7 +477,7 @@ function myPlayerId(id){
 /* Which ranked ids actually exist in the live roster. A game removed via
    admin.html must not leave a chip pointing at nothing. */
 function rankedIds(){
-  return RANKED.filter(id => GAMES.some(g => g.id === id));
+  return RANKED.filter(id => GAMES.some(g => g.id === boardGame(id)));
 }
 
 function renderRanked(stats){
@@ -467,8 +486,9 @@ function renderRanked(stats){
   if(!ids.length) return;                  // no ranked game in the roster — skip silently
   if(!ids.includes(SELECTED)) SELECTED = ids[0];
 
-  const game = GAMES.find(g => g.id === SELECTED);
+  const game = GAMES.find(g => g.id === boardGame(SELECTED));
   if(!game) return;
+  const tag = boardTag(SELECTED);
 
   sec.hidden = false;
   document.getElementById("moreHead").hidden = false;
@@ -484,16 +504,17 @@ function renderRanked(stats){
   pick.hidden = ids.length < 2;
   pick.innerHTML = ids.length < 2 ? "" :
     `<span class="lbl">Board</span>` + ids.map(id => {
-      const g = GAMES.find(x => x.id === id);
+      const g = GAMES.find(x => x.id === boardGame(id));
       const c = (CATEGORIES.find(k => k.key === g.skill) || {}).color || "var(--marquee)";
-      return `<button type="button" data-lb="${id}" style="--sel-c:${c}" aria-pressed="${id === SELECTED}">${g.icon} ${esc(g.name)}</button>`;
+      const t = boardTag(id);
+      return `<button type="button" data-lb="${id}" style="--sel-c:${c}" aria-pressed="${id === SELECTED}">${g.icon} ${esc(g.name)}${t ? " · " + esc(t) : ""}</button>`;
     }).join("");
 
   const card = document.getElementById("featCard");
-  card.href = game.url;
+  card.href = SUB_BOARDS[SELECTED] ? `${game.url}?${SUB_BOARDS[SELECTED].query}` : game.url;
   document.getElementById("featBadge").textContent = game.id === FEATURED ? "Featured" : "Ranked";
   document.getElementById("featIcon").textContent = game.icon;
-  document.getElementById("featName").textContent = game.name;
+  document.getElementById("featName").textContent = tag ? `${game.name} · ${tag}` : game.name;
   document.getElementById("featBlurb").textContent = game.blurb;
 
   const rows = Object.entries(BOARDS[SELECTED] || {})
@@ -507,7 +528,7 @@ function renderRanked(stats){
   const myIndex = rows.findIndex(([id]) => id === meId);
 
   /* Real figures instead of blank space in the tall card. */
-  const plays = (stats[SELECTED]?.totalPlays) || 0;
+  const plays = (stats[game.id]?.totalPlays) || 0;   // plays are per game, not per board
   const top   = rows.length ? Number(rows[0][1].score) : null;
   const mine  = myIndex >= 0 ? Number(rows[myIndex][1].score) : null;
   document.getElementById("featStats").innerHTML = [
@@ -572,7 +593,7 @@ async function render(){
 
   /* Every ranked game is promoted above the grid, so none is listed twice. */
   renderRanked(stats);
-  const promoted = new Set(rankedIds());
+  const promoted = new Set(rankedIds().map(boardGame));
   GRID_GAMES = GAMES.filter(g => !promoted.has(g.id));
   const gridGames = GRID_GAMES;
 
