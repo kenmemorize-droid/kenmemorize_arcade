@@ -189,7 +189,15 @@
     background:var(--panel); border:2px solid var(--chip-border); border-radius:20px;
     padding:20px 22px; display:flex; flex-direction:column;
   }
-  .lb-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
+  .lb-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+  /* Mode switch — only for a game that keeps more than one board (Kopi Rush:
+     Recall vs Display). Sits between the title and the player count. */
+  .lb-modes{ display:inline-flex; margin-left:auto; padding:3px; gap:3px; border-radius:999px;
+    background:var(--chip-bg); border:1.5px solid var(--chip-border); }
+  .lb-modes button{ cursor:pointer; font-family:inherit; font-size:0.72rem; font-weight:800; letter-spacing:.03em;
+    padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--dim); transition:all .15s ease; }
+  .lb-modes button[aria-pressed="true"]{ color:var(--text);
+    background:color-mix(in srgb, var(--feat-c, var(--marquee)) 28%, var(--chip-bg)); }
   .lb-head h2{ margin:0; font-size:0.95rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--marquee); }
   .lb-sub{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.72rem; color:var(--dim); }
   .lb-list{ list-style:none; margin:0; padding:0; flex-grow:1; }
@@ -257,6 +265,7 @@
   <div class="lb-card">
     <div class="lb-head">
       <h2>Leaderboard</h2>
+      <div class="lb-modes" id="lbModes" role="group" aria-label="Leaderboard mode" hidden></div>
       <span class="lb-sub" id="lbCount"></span>
     </div>
     <ol class="lb-list" id="lbList"><li class="lb-empty">Loading…</li></ol>
@@ -297,8 +306,8 @@ const CATEGORIES = [
    ========================================================= */
 const BUILTIN_GAMES = [
   /* Kopi Rush, added 2026-10-06 — recreated from a kopitiam "make the kopi"
-     table game. It keeps TWO leaderboards (see SUB_BOARDS below), so its id
-     is the play-count key only, never a board path. */
+     table game. It keeps TWO leaderboards, one per mode (see MODE_BOARDS
+     below), so its id is the play-count key only, never a board path. */
   { id:"kopi-rush",        name:"Kopi Rush",          skill:"logic",    blurb:"Read the kopitiam order, pour the right number of each ingredient and swipe it out — a 60-second ranked rush (quantities shown, or from memory), or an online race",  url:"games/kopi_rush.html",          icon:"☕" },
   /* Lock In, added 2026-09-29 — replicated from a reel of a 3D "memorise the
      room, answer at the wall, wrong = spike pit" game. Never shipped before
@@ -425,21 +434,24 @@ function cardTemplate(game, stats, catColor){
 const FEATURED = "cart-recall";     // the default selection, not the only board
 const LB_TOP = 10;
 
-/* Every board under /leaderboard/{id}. Order here = chip order. */
-const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in",
-                "kopi-rush-recall", "kopi-rush-display"];
+/* Every ranked game — one chip each. Order here = chip order. */
+const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in", "kopi-rush"];
 
-/* A board id is normally the game's own id. A game with more than one board
-   maps each of its boards here to { game, tag } — Kopi Rush keeps rushes with
-   the quantities shown apart from rushes poured from memory, because the two
-   scores aren't comparable. The tag is appended to the chip and card name;
-   `query` is added to Play so the game opens in that board's mode. */
-const SUB_BOARDS = {
-  "kopi-rush-recall":  { game:"kopi-rush", tag:"Recall",  query:"mode=recall"  },
-  "kopi-rush-display": { game:"kopi-rush", tag:"Display", query:"mode=display" }
+/* A ranked game normally writes one board, /leaderboard/{its id}. A game with
+   several modes whose scores aren't comparable keeps one board per mode and
+   lists them here; its chip stays single and the leaderboard card gets a
+   mode switch, in this order left to right. `default` marks the mode shown
+   first. `query` is added to Play so the game opens in the mode shown. */
+const MODE_BOARDS = {
+  "kopi-rush": [
+    { board:"kopi-rush-display", tag:"Display", query:"mode=display" },
+    { board:"kopi-rush-recall",  tag:"Recall",  query:"mode=recall", default:true }
+  ]
 };
-const boardGame = id => (SUB_BOARDS[id] && SUB_BOARDS[id].game) || id;
-const boardTag  = id => (SUB_BOARDS[id] && SUB_BOARDS[id].tag) || "";
+const boardsOf = id => MODE_BOARDS[id] || [{ board:id }];
+let MODE_SEL = {};     // game id → index of the mode shown on its card
+const defaultMode = id => Math.max(0, boardsOf(id).findIndex(m => m.default));
+const activeMode  = id => boardsOf(id)[MODE_SEL[id] ?? defaultMode(id)];
 
 /* Each game keeps its own player id under its own localStorage key. Same
    origin, so the hub can read it and highlight the visitor's own row —
@@ -450,9 +462,10 @@ const PID_KEYS = {
   "tidal-recall": "tidalDriftPid",  // key follows the NEW name; the id does not
   "blind-snap":   "blindSnapPid",
   "lock-in":      "lockInPid",
-  "kopi-rush-recall":  "kopiRushPid",   // one id per player, shared by both boards
-  "kopi-rush-display": "kopiRushPid"
+  "kopi-rush":    "kopiRushPid"     // one id per player, shared by both mode boards
 };
+
+const BOARD_IDS = RANKED.flatMap(id => boardsOf(id).map(m => m.board));   // BOARDS is keyed by these
 
 let SELECTED = FEATURED;
 let BOARDS = {};
@@ -477,7 +490,7 @@ function myPlayerId(id){
 /* Which ranked ids actually exist in the live roster. A game removed via
    admin.html must not leave a chip pointing at nothing. */
 function rankedIds(){
-  return RANKED.filter(id => GAMES.some(g => g.id === boardGame(id)));
+  return RANKED.filter(id => GAMES.some(g => g.id === id));
 }
 
 function renderRanked(stats){
@@ -486,9 +499,9 @@ function renderRanked(stats){
   if(!ids.length) return;                  // no ranked game in the roster — skip silently
   if(!ids.includes(SELECTED)) SELECTED = ids[0];
 
-  const game = GAMES.find(g => g.id === boardGame(SELECTED));
+  const game = GAMES.find(g => g.id === SELECTED);
   if(!game) return;
-  const tag = boardTag(SELECTED);
+  const modes = boardsOf(SELECTED), mode = activeMode(SELECTED);
 
   sec.hidden = false;
   document.getElementById("moreHead").hidden = false;
@@ -504,20 +517,25 @@ function renderRanked(stats){
   pick.hidden = ids.length < 2;
   pick.innerHTML = ids.length < 2 ? "" :
     `<span class="lbl">Board</span>` + ids.map(id => {
-      const g = GAMES.find(x => x.id === boardGame(id));
+      const g = GAMES.find(x => x.id === id);
       const c = (CATEGORIES.find(k => k.key === g.skill) || {}).color || "var(--marquee)";
-      const t = boardTag(id);
-      return `<button type="button" data-lb="${id}" style="--sel-c:${c}" aria-pressed="${id === SELECTED}">${g.icon} ${esc(g.name)}${t ? " · " + esc(t) : ""}</button>`;
+      return `<button type="button" data-lb="${id}" style="--sel-c:${c}" aria-pressed="${id === SELECTED}">${g.icon} ${esc(g.name)}</button>`;
     }).join("");
 
   const card = document.getElementById("featCard");
-  card.href = SUB_BOARDS[SELECTED] ? `${game.url}?${SUB_BOARDS[SELECTED].query}` : game.url;
+  card.href = mode.query ? `${game.url}?${mode.query}` : game.url;
   document.getElementById("featBadge").textContent = game.id === FEATURED ? "Featured" : "Ranked";
   document.getElementById("featIcon").textContent = game.icon;
-  document.getElementById("featName").textContent = tag ? `${game.name} · ${tag}` : game.name;
+  document.getElementById("featName").textContent = game.name;
   document.getElementById("featBlurb").textContent = game.blurb;
 
-  const rows = Object.entries(BOARDS[SELECTED] || {})
+  /* The mode switch: only drawn for a game with more than one board. */
+  const modesEl = document.getElementById("lbModes");
+  modesEl.hidden = modes.length < 2;
+  modesEl.innerHTML = modes.length < 2 ? "" : modes.map((m, i) =>
+    `<button type="button" data-mode="${i}" aria-pressed="${m === mode}">${esc(m.tag)}</button>`).join("");
+
+  const rows = Object.entries(BOARDS[mode.board] || {})
     .filter(([,e]) => e && typeof e.score === "number")
     .sort((a,b) => b[1].score - a[1].score);
 
@@ -584,16 +602,16 @@ async function render(){
   const emptyNote  = document.getElementById("emptyNote");
 
   const [stats, overlay, ...boards] = await Promise.all([
-    fetchGlobalStats(), fetchGamesOverlay(), ...RANKED.map(fetchBoard)
+    fetchGlobalStats(), fetchGamesOverlay(), ...BOARD_IDS.map(fetchBoard)
   ]);
-  RANKED.forEach((id, i) => { BOARDS[id] = boards[i]; });
+  BOARD_IDS.forEach((id, i) => { BOARDS[id] = boards[i]; });
   STATS = stats;
   GAMES = mergeGames(overlay);
   if(GAMES.length === 0){ emptyNote.style.display = "block"; return; }
 
   /* Every ranked game is promoted above the grid, so none is listed twice. */
   renderRanked(stats);
-  const promoted = new Set(rankedIds().map(boardGame));
+  const promoted = new Set(rankedIds());
   GRID_GAMES = GAMES.filter(g => !promoted.has(g.id));
   const gridGames = GRID_GAMES;
 
@@ -657,6 +675,13 @@ document.getElementById("lbPick").addEventListener("click", e => {
   const b = e.target.closest("button[data-lb]");
   if(!b) return;
   SELECTED = b.getAttribute("data-lb");
+  renderRanked(STATS);
+});
+
+document.getElementById("lbModes").addEventListener("click", e => {
+  const b = e.target.closest("button[data-mode]");
+  if(!b) return;
+  MODE_SEL[SELECTED] = Number(b.getAttribute("data-mode"));
   renderRanked(STATS);
 });
 
