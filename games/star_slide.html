@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Star Slide</title>
+<meta name="description" content="A two-player sliding strategy game on a 5x5 board. Slide your counters, set up a blocker, and stop your star on the centre square first.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Kalam:wght@700&display=swap">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──
+   Dark is the default (<html data-theme="dark">); the toggle switches to the
+   light tokens on bare :root. The paper board and counters keep the same
+   colours in both themes, like the orange card in the reel.
+   Layout: the paper board is the hero on the left; a slim column of settings, score, move list and rules sits to its right and drops below it on phones. */
+:root{
+  --bg:#E4E9EF; --surface:#F6F8FA; --ink:#1A2030; --muted:#566174; --line:#CAD2DC;
+  --danger:#B42318; --shadow:0 1px 2px rgba(20,24,36,.10), 0 14px 32px -8px rgba(20,24,36,.28);
+  /* Board objects: the same in both themes, because the paper is orange either way */
+  --paper:#F39B41; --paper-hi:#FAB565; --paper-lo:#DC7C22; --marker:#33304C; --marker-red:#C41E2A;
+  --red:#E3262F; --red-hi:#FF8C7E; --red-lo:#8C0E15;
+  --green:#A3C83F; --green-hi:#EAF8A6; --green-lo:#567612;
+  --sticker-hi:#FFFFFF; --sticker-lo:#B9C0CB; --threat:#7E0A10; --cast:rgba(96,40,0,.45);
+  --font-display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --font-body:'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-hand:'Kalam', 'Segoe Print', 'Comic Sans MS', cursive;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#10141C; --surface:#1A202B; --ink:#E9EDF3; --muted:#9AA4B5; --line:#2C3443;
+  --danger:#FF8A7A; --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -10px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{ box-sizing:border-box; }
+[hidden]{ display:none !important; }
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  padding-inline:16px; padding-block:24px 48px;
+}
+button{ font:inherit; color:inherit; }
+h1,h2,h3,p,ul,ol{ margin:0; }
+
+.wrap{ max-width:940px; margin:0 auto; display:grid; gap:22px; }
+.top{ display:grid; gap:6px; }
+h1{
+  font-family:var(--font-display); font-weight:800; font-size:clamp(2.1rem, 7vw, 3.1rem);
+  letter-spacing:-0.025em; line-height:1; display:flex; align-items:center; gap:.28em; text-wrap:balance;
+}
+.logo{
+  width:.78em; height:.78em; border-radius:50%; flex:none; display:grid; place-items:center;
+  background:radial-gradient(circle at 34% 28%, var(--red-hi) 0 10%, var(--red) 48%, var(--red-lo) 100%);
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,.25), 0 3px 6px -2px var(--cast);
+}
+.logo svg{ width:58%; fill:var(--sticker-hi); }
+.tagline{ color:var(--muted); max-width:52ch; font-size:1rem; }
+
+.layout{ display:grid; grid-template-columns:minmax(0, 560px) minmax(0, 1fr); gap:20px 36px; align-items:start; }
+@media (max-width:860px){ .layout{ grid-template-columns:minmax(0, 1fr); } .play{ justify-self:center; } }
+.play{ display:grid; gap:14px; width:100%; max-width:560px; min-width:0; }
+
+/* ---------- status ---------- */
+.status{ display:flex; align-items:center; gap:12px; min-height:58px; }
+.turn-disc{
+  width:32px; height:32px; flex:none; border-radius:50%;
+  background:radial-gradient(circle at 34% 28%, var(--hi) 0 10%, var(--base) 48%, var(--lo) 100%);
+  box-shadow:inset 0 -3px 6px rgba(0,0,0,.22), 0 3px 6px -2px var(--cast);
+  transition:background .2s;
+}
+.status-text{ display:grid; min-width:0; }
+.status-main{ font-family:var(--font-display); font-weight:700; font-size:1.4rem; line-height:1.15; letter-spacing:-0.01em; }
+.status-sub{ color:var(--muted); font-size:.92rem; }
+.status-sub.danger{ color:var(--danger); font-weight:600; }
+
+/* ---------- paper board ---------- */
+.paper{
+  position:relative; width:100%; max-width:100%; aspect-ratio:1/1; border-radius:4px;
+  background:
+    radial-gradient(130% 100% at 25% 15%, var(--paper-hi) 0%, var(--paper) 48%, var(--paper-lo) 115%);
+  box-shadow:var(--shadow), inset 0 0 0 1px rgba(120,50,0,.15);
+  user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
+}
+.grid{ position:absolute; left:10%; right:6%; top:6%; bottom:10%; }
+.lines, .trail{ position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
+.lines line{ stroke:var(--marker); stroke-width:2.6px; stroke-linecap:round; opacity:.88; }
+.lines .centre{ fill:none; stroke:var(--marker-red); stroke-width:3px; transition:fill .3s, stroke-width .3s; }
+.lines .centre-star{ fill:var(--marker-red); opacity:.22; }
+.lines.lit .centre{ fill:rgba(255,255,255,.28); stroke-width:5px; }
+.trail line{ stroke-width:3px; stroke-dasharray:2 7; stroke-linecap:round; opacity:.75; }
+.trail circle{ fill:none; stroke-width:2.5px; opacity:.75; }
+.trail .red{ stroke:var(--red-lo); } .trail .green{ stroke:var(--green-lo); }
+
+.ranks, .files{ position:absolute; display:grid; font-family:var(--font-hand); font-weight:700; color:var(--marker); opacity:.72; font-size:clamp(13px, 2.8vw, 19px); pointer-events:none; }
+.ranks{ left:0; width:10%; top:6%; bottom:10%; grid-template-rows:repeat(5, 1fr); place-items:center; padding-right:2%; }
+.files{ left:10%; right:6%; bottom:0; height:10%; grid-template-columns:repeat(5, 1fr); place-items:center; padding-bottom:2%; }
+
+.pieces, .targets{ position:absolute; inset:0; pointer-events:none; }
+.piece, .target{
+  position:absolute; left:0; top:0; width:20%; height:20%; padding:0; border:0; background:none;
+  display:grid; place-items:center; pointer-events:auto;
+  transform:translate(calc(var(--c, 0) * 100%), calc(var(--r, 0) * 100%));
+}
+.piece{
+  --base:var(--red); --hi:var(--red-hi); --lo:var(--red-lo);
+  transition:transform var(--dur, 220ms) cubic-bezier(.2, .8, .25, 1);
+  cursor:default; touch-action:none; outline:none;
+}
+.piece.green, .target.green, .turn-disc.green, .mini.green{ --base:var(--green); --hi:var(--green-hi); --lo:var(--green-lo); }
+.target.red, .turn-disc.red, .mini.red{ --base:var(--red); --hi:var(--red-hi); --lo:var(--red-lo); }
+.piece.movable{ cursor:grab; }
+.disc{
+  position:relative; width:70%; aspect-ratio:1/1; border-radius:50%; display:grid; place-items:center;
+  background:radial-gradient(circle at 34% 28%, var(--hi) 0 10%, var(--base) 48%, var(--lo) 100%);
+  box-shadow:inset 0 -4px 8px rgba(0,0,0,.22), inset 0 3px 4px rgba(255,255,255,.35), 0 5px 7px -2px var(--cast);
+  transition:transform .16s ease, box-shadow .16s ease;
+}
+.disc::after{ content:""; position:absolute; inset:9% 20% 52% 20%; border-radius:50%; background:linear-gradient(rgba(255,255,255,.55), rgba(255,255,255,0)); pointer-events:none; }
+.piece.star .disc::before{
+  content:""; position:absolute; inset:15%; border-radius:50%;
+  background:radial-gradient(circle at 40% 32%, var(--sticker-hi) 0 35%, var(--sticker-lo) 110%);
+  box-shadow:inset 0 0 0 1.5px rgba(0,0,0,.14), 0 1px 2px rgba(0,0,0,.25);
+}
+.star-mark{ position:relative; z-index:1; width:50%; fill:var(--lo); }
+.piece.movable:hover .disc{ transform:translateY(-2px); }
+.piece.selected .disc{
+  transform:translateY(-4px) scale(1.08);
+  box-shadow:inset 0 -4px 8px rgba(0,0,0,.22), inset 0 3px 4px rgba(255,255,255,.35), 0 10px 12px -3px var(--cast), 0 0 0 3px var(--paper), 0 0 0 6px var(--marker);
+}
+.piece:focus-visible .disc{ outline:3px solid var(--marker); outline-offset:4px; }
+.piece.threat::after{
+  content:""; position:absolute; inset:4%; border-radius:50%; border:3px dashed var(--threat);
+  animation:spin 8s linear infinite; pointer-events:none;
+}
+.piece.won .disc{ animation:pop .7s cubic-bezier(.3, 1.6, .5, 1) 2; }
+.piece.nope .disc{ animation:nope .32s ease; }
+
+.target{ cursor:pointer; -webkit-tap-highlight-color:transparent; outline:none; animation:appear .16s ease-out; }
+.ghost{
+  width:50%; aspect-ratio:1/1; border-radius:50%; display:grid; place-items:center;
+  border:2.5px dashed var(--marker); background:color-mix(in srgb, var(--base) 38%, transparent);
+  color:var(--marker); font-weight:800; font-size:clamp(14px, 3.4vw, 22px); line-height:1;
+  transition:transform .12s ease, background .12s ease;
+}
+.target:hover .ghost, .target:focus-visible .ghost{ transform:scale(1.14); background:color-mix(in srgb, var(--base) 65%, transparent); }
+.target:focus-visible .ghost{ outline:3px solid var(--marker); outline-offset:3px; }
+.target.winning .ghost{ border-style:solid; border-width:3px; background:color-mix(in srgb, var(--sticker-hi) 70%, transparent); width:60%; }
+
+.result{
+  position:absolute; inset:0; display:grid; place-items:center; padding:8%;
+  background:color-mix(in srgb, var(--paper-lo) 45%, transparent); border-radius:inherit; animation:appear .25s ease-out;
+}
+.result-card{ background:var(--surface); color:var(--ink); border-radius:16px; padding:22px 24px 20px; box-shadow:var(--shadow); text-align:center; display:grid; gap:8px; max-width:330px; }
+.result-title{ font-family:var(--font-display); font-weight:800; font-size:clamp(1.6rem, 6vw, 2.1rem); letter-spacing:-0.02em; line-height:1.05; }
+.result-sub{ color:var(--muted); }
+.result-actions{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+
+/* ---------- buttons & controls ---------- */
+.actions{ display:flex; gap:10px; flex-wrap:wrap; }
+.btn{
+  height:42px; padding:0 18px; border-radius:999px; border:1.5px solid var(--line); background:var(--surface);
+  font-weight:700; font-size:.92rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+  transition:border-color .15s, background .15s, transform .1s;
+}
+.btn:hover{ border-color:var(--ink); }
+.btn:active{ transform:translateY(1px); }
+.btn:disabled{ opacity:.45; cursor:not-allowed; border-color:var(--line); }
+.btn.primary{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.btn:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+.btn .kbd{ font-size:.72rem; font-weight:600; opacity:.6; }
+.link-btn{ background:none; border:0; padding:0; color:var(--muted); font-size:.82rem; font-weight:600; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.link-btn:hover{ color:var(--ink); }
+
+.side{ display:grid; min-width:0; }
+.panel{ display:grid; gap:10px; padding-block:18px; border-top:1px solid var(--line); min-width:0; }
+.panel:first-child{ border-top:0; padding-top:4px; }
+.panel h2{ font-size:.72rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.field{ display:grid; gap:6px; }
+.field-label{ font-size:.85rem; font-weight:600; }
+.caption{ font-size:.82rem; color:var(--muted); }
+.seg{ display:inline-flex; flex-wrap:wrap; justify-self:start; background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:3px; gap:3px; max-width:100%; }
+.seg input{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+.seg label{ padding:7px 12px; border-radius:8px; font-weight:600; font-size:.88rem; color:var(--muted); cursor:pointer; white-space:nowrap; transition:background .15s, color .15s; }
+.seg label:hover{ color:var(--ink); }
+.seg input:checked + label{ background:var(--ink); color:var(--bg); }
+.seg input:focus-visible + label{ outline:2px solid var(--ink); outline-offset:2px; }
+.check{ display:flex; gap:10px; align-items:flex-start; font-size:.88rem; cursor:pointer; }
+.check input{ width:18px; height:18px; margin:1px 0 0; accent-color:var(--ink); flex:none; }
+
+.score{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.tally{ display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 12px; min-width:0; }
+.tally-name{ font-size:.85rem; font-weight:600; color:var(--muted); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tally-num{ font-family:var(--font-display); font-weight:800; font-size:1.6rem; line-height:1; font-variant-numeric:tabular-nums; }
+
+.mini{
+  width:16px; height:16px; border-radius:50%; flex:none; display:inline-grid; place-items:center;
+  background:radial-gradient(circle at 34% 28%, var(--hi) 0 10%, var(--base) 48%, var(--lo) 100%);
+  box-shadow:inset 0 -2px 3px rgba(0,0,0,.22);
+}
+.mini svg{ width:66%; fill:var(--sticker-hi); }
+.log{ list-style:none; padding:0; max-height:220px; overflow:auto; counter-reset:mv; display:grid; gap:1px; font-variant-numeric:tabular-nums; }
+.log li{ display:flex; align-items:center; gap:9px; padding:4px 2px; font-size:.9rem; counter-increment:mv; }
+.log li::before{ content:counter(mv) "."; color:var(--muted); font-size:.8rem; min-width:2.2em; text-align:right; }
+.log li.empty{ color:var(--muted); counter-increment:none; }
+.log li.empty::before{ content:none; }
+.log .win-tag{ font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--danger); }
+
+.rules{ padding-left:1.1em; display:grid; gap:7px; font-size:.92rem; max-width:62ch; }
+.rules li::marker{ color:var(--muted); }
+.tip{ font-size:.88rem; color:var(--muted); border-left:3px solid var(--paper); padding-left:10px; max-width:62ch; }
+
+/* ── THEME TOGGLE — §2 ── */
+.theme-toggle{
+  position:fixed; top:calc(16px + env(safe-area-inset-top, 0px)); right:16px; z-index:60;
+  background:var(--surface); border:1px solid var(--line); border-radius:50px; padding:6px 14px;
+  cursor:pointer; display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted);
+  font-family:'Consolas','Courier New',monospace; user-select:none; transition:all .15s;
+}
+.theme-toggle:hover{ border-color:var(--ink); color:var(--ink); }
+.theme-toggle:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+.theme-toggle .toggle-icon{ display:inline-flex; }
+.theme-toggle .icon-moon{ display:none; }
+:root[data-theme="light"] .theme-toggle .icon-sun{ display:none; }
+:root[data-theme="light"] .theme-toggle .icon-moon{ display:inline-flex; }
+@media (max-width:520px){ .theme-toggle{ font-size:12px; padding:5px 11px; } }
+
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes pop{ 0%{ transform:scale(1); } 40%{ transform:scale(1.25) translateY(-6px); } 100%{ transform:scale(1); } }
+@keyframes nope{ 0%,100%{ transform:translateX(0); } 25%{ transform:translateX(-5px); } 75%{ transform:translateX(5px); } }
+@keyframes appear{ from{ opacity:0; } to{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){
+  .piece, .disc, .ghost, .btn, .theme-toggle{ transition:none !important; }
+  .piece.threat::after, .piece.won .disc, .piece.nope .disc, .target, .result{ animation:none !important; }
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" type="button" aria-label="Toggle color theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="wrap">
+  <header class="top">
+    <h1><span class="logo" aria-hidden="true"><svg viewBox="0 0 100 100"><polygon points="50,8 60.6,37.4 91.8,38.4 67.1,57.6 75.9,87.6 50,70 24.1,87.6 32.9,57.6 8.2,38.4 39.4,37.4"/></svg></span>Star Slide</h1>
+    <p class="tagline">Slide your counters across the board and stop your star on the centre square before your opponent does.</p>
+  </header>
+
+  <main class="layout">
+    <section class="play" aria-label="Game">
+      <div class="status">
+        <span class="turn-disc red" id="turnDisc" aria-hidden="true"></span>
+        <div class="status-text" aria-live="polite">
+          <span class="status-main" id="statusMain">Your move</span>
+          <span class="status-sub" id="statusSub">Tap one of your counters, or swipe it in a direction.</span>
+        </div>
+      </div>
+
+      <div class="paper" id="paper">
+        <div class="ranks" id="ranks" aria-hidden="true"></div>
+        <div class="files" id="files" aria-hidden="true"></div>
+        <div class="grid" id="grid" role="group" aria-label="Board, 5 by 5. Centre square is c3.">
+          <svg class="lines" id="lines" viewBox="0 0 5 5" aria-hidden="true"></svg>
+          <svg class="trail" id="trail" viewBox="0 0 5 5" aria-hidden="true"></svg>
+          <div class="targets" id="targets"></div>
+          <div class="pieces" id="pieces"></div>
+        </div>
+        <div class="result" id="result" hidden>
+          <div class="result-card" role="dialog" aria-labelledby="resultTitle">
+            <div class="result-title" id="resultTitle">Red wins</div>
+            <p class="result-sub" id="resultSub"></p>
+            <div class="result-actions">
+              <button class="btn primary" id="againBtn" type="button">Play again</button>
+              <button class="btn" id="viewBtn" type="button">See the board</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="newBtn" type="button">New game</button>
+        <button class="btn" id="undoBtn" type="button">Undo</button>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel" aria-labelledby="setupHead">
+        <h2 id="setupHead">Game setup</h2>
+        <div class="field">
+          <span class="field-label" id="modeLabel">Opponent</span>
+          <div class="seg" role="radiogroup" aria-labelledby="modeLabel">
+            <input type="radio" name="mode" id="modeCpu" value="cpu"><label for="modeCpu">Computer</label>
+            <input type="radio" name="mode" id="modePvp" value="pvp"><label for="modePvp">Friend on this device</label>
+          </div>
+        </div>
+        <div class="field" id="levelField">
+          <span class="field-label" id="levelLabel">Difficulty</span>
+          <div class="seg" role="radiogroup" aria-labelledby="levelLabel">
+            <input type="radio" name="level" id="levelEasy" value="easy"><label for="levelEasy">Easy</label>
+            <input type="radio" name="level" id="levelMedium" value="medium"><label for="levelMedium">Medium</label>
+            <input type="radio" name="level" id="levelHard" value="hard"><label for="levelHard">Hard</label>
+          </div>
+          <span class="caption" id="levelCaption"></span>
+        </div>
+        <div class="field" id="colourField">
+          <span class="field-label" id="colourLabel">You play</span>
+          <div class="seg" role="radiogroup" aria-labelledby="colourLabel">
+            <input type="radio" name="colour" id="colourRed" value="0"><label for="colourRed">Red, moves first</label>
+            <input type="radio" name="colour" id="colourGreen" value="1"><label for="colourGreen">Green</label>
+          </div>
+        </div>
+        <label class="check"><input type="checkbox" id="warnToggle"> Warn me when the other star can reach the centre next turn</label>
+      </section>
+
+      <section class="panel" aria-labelledby="scoreHead">
+        <h2 id="scoreHead">Score <button class="link-btn" id="resetScore" type="button">Reset</button></h2>
+        <div class="score">
+          <div class="tally"><span class="mini red" id="tallyDiscA"></span><span class="tally-name" id="tallyNameA">You</span><span class="tally-num" id="tallyA">0</span></div>
+          <div class="tally"><span class="mini green" id="tallyDiscB"></span><span class="tally-name" id="tallyNameB">Computer</span><span class="tally-num" id="tallyB">0</span></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="movesHead">
+        <h2 id="movesHead">Moves</h2>
+        <ol class="log" id="log"></ol>
+      </section>
+
+      <section class="panel" aria-labelledby="rulesHead">
+        <h2 id="rulesHead">How to play</h2>
+        <ul class="rules">
+          <li>Each side starts with five counters on its home row. The middle counter carries the star.</li>
+          <li>Red moves first. On your turn, slide one of your own counters up, down, left or right.</li>
+          <li>A counter keeps sliding until it hits the edge of the board or another counter. It can't stop early or jump over anything.</li>
+          <li>Stop your star on the centre square, c3, to win. Any counter can stop there, so the centre can be blocked too.</li>
+        </ul>
+        <p class="tip">A star only stops when something is in its way. Park a counter right next to the centre, then slide your star in from the opposite side.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Feeds the PLAYS figure on the Kenmemorize Arcade hub.
+   This block is intentionally self-contained and portable: to add it
+   to another game, copy it verbatim and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID  = 'star-slide';
+const HUB_DB  = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start.
+   Read-then-write is racy under heavy concurrency, but these are display
+   counters, not currency; an occasional lost increment is acceptable and
+   far simpler than a transaction. Never awaited, never surfaced to the user. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+// ENGINE START ---------------------------------------------------------------
+// Squares are numbered 0..24, row by row from Green's home row (row 0) down to
+// Red's home row (row 4). Piece ids 0-4 are Red, 5-9 are Green; 2 and 7 are stars.
+const CENTER = 12;
+const RED = 0, GREEN = 1;
+const STAR_ID = [2, 7];
+const DR = [-1, 1, 0, 0], DC = [0, 0, -1, 1]; // up, down, left, right
+const WIN = 100000;
+const NEXT_TO_CENTER = [7, 11, 13, 17];
+
+const ownerOf = id => (id < 5 ? RED : GREEN);
+const isStar = id => id === 2 || id === 7;
+const manhattan = (a, b) => Math.abs(((a / 5) | 0) - ((b / 5) | 0)) + Math.abs((a % 5) - (b % 5));
+
+function initialPositions() {
+  const pos = [];
+  for (let c = 0; c < 5; c++) pos[c] = 20 + c;   // Red, bottom row
+  for (let c = 0; c < 5; c++) pos[5 + c] = c;    // Green, top row
+  return pos;
+}
+
+function occupancy(pos) {
+  const occ = new Int8Array(25).fill(-1);
+  for (let id = 0; id < pos.length; id++) occ[pos[id]] = id;
+  return occ;
+}
+
+// Where a piece on `from` ends up if pushed in direction d; -1 if it can't move.
+function slide(occ, from, d) {
+  let r = (from / 5) | 0, c = from - r * 5;
+  const dr = DR[d], dc = DC[d];
+  for (;;) {
+    const nr = r + dr, nc = c + dc;
+    if (nr < 0 || nr > 4 || nc < 0 || nc > 4 || occ[nr * 5 + nc] !== -1) break;
+    r = nr; c = nc;
+  }
+  const to = r * 5 + c;
+  return to === from ? -1 : to;
+}
+
+function genMoves(occ, pos, player) {
+  const moves = [];
+  for (let id = player * 5; id < player * 5 + 5; id++) {
+    const from = pos[id];
+    for (let d = 0; d < 4; d++) {
+      const to = slide(occ, from, d);
+      if (to >= 0) moves.push({ id, from, to, d, o: 0, score: 0 });
+    }
+  }
+  return moves;
+}
+
+const bfsDist = new Int8Array(25), bfsQueue = new Int8Array(25);
+// Fewest star-only slides needed to stop on the centre, with every other piece
+// frozen. Returns maxD + 1 when it takes longer than maxD (or can't be done).
+function starDist(occ, pos, player, maxD) {
+  const id = STAR_ID[player], start = pos[id];
+  if (start === CENTER) return 0;
+  occ[start] = -1;
+  bfsDist.fill(-1);
+  bfsDist[start] = 0;
+  let head = 0, tail = 0, result = maxD + 1;
+  bfsQueue[tail++] = start;
+  search: while (head < tail) {
+    const p = bfsQueue[head++], dp = bfsDist[p];
+    if (dp >= maxD) break;
+    for (let d = 0; d < 4; d++) {
+      const to = slide(occ, p, d);
+      if (to < 0 || bfsDist[to] !== -1) continue;
+      bfsDist[to] = dp + 1;
+      if (to === CENTER) { result = dp + 1; break search; }
+      bfsQueue[tail++] = to;
+    }
+  }
+  occ[start] = id;
+  return result;
+}
+
+function shape(pos, player) {
+  let s = 0;
+  for (let id = player * 5; id < player * 5 + 5; id++) {
+    const q = pos[id];
+    if (isStar(id)) s -= 8 * manhattan(q, CENTER);
+    else if (q === CENTER) s -= 10;
+    else if (NEXT_TO_CENTER.includes(q)) s += 10;
+  }
+  return s;
+}
+
+// Score from the point of view of `stm`, the side about to move.
+function evaluate(occ, pos, stm, ply) {
+  const opp = 1 - stm;
+  const mine = starDist(occ, pos, stm, 3);
+  if (mine === 1) return WIN - ply;
+  const theirs = starDist(occ, pos, opp, 3);
+  let s = (theirs - mine) * 70;
+  if (theirs === 1) s -= 350;
+  return s + shape(pos, stm) - shape(pos, opp);
+}
+
+const posKey = (pos, turn) => pos.join('.') + '/' + turn;
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// cfg: { depth, time (ms), random (chance of a random move) }
+// seen: Map of position keys already played this game, to steer away from repeats.
+function chooseMove(pos0, player, cfg, seen) {
+  const pos = pos0.slice(), occ = occupancy(pos);
+  const deadline = performance.now() + cfg.time;
+  let nodes = 0, aborted = false;
+  const make = m => { occ[m.from] = -1; occ[m.to] = m.id; pos[m.id] = m.to; };
+  const unmake = m => { occ[m.to] = -1; occ[m.from] = m.id; pos[m.id] = m.from; };
+  const order = ms => {
+    for (const m of ms) {
+      let o = -manhattan(m.to, CENTER);
+      if (isStar(m.id)) { o += 20; if (m.to === CENTER) o += 10000; }
+      if (NEXT_TO_CENTER.includes(m.to)) o += 8;
+      m.o = o;
+    }
+    return ms.sort((a, b) => b.o - a.o);
+  };
+  const wins = m => m.to === CENTER && isStar(m.id);
+
+  function negamax(depth, alpha, beta, p, ply) {
+    if ((++nodes & 1023) === 0 && performance.now() > deadline) aborted = true;
+    if (aborted) return 0;
+    if (depth === 0) return evaluate(occ, pos, p, ply);
+    const ms = order(genMoves(occ, pos, p));
+    if (!ms.length) return -negamax(depth - 1, -beta, -alpha, 1 - p, ply + 1);
+    if (wins(ms[0])) return WIN - ply;
+    let best = -Infinity;
+    for (const m of ms) {
+      make(m);
+      const sc = -negamax(depth - 1, -beta, -alpha, 1 - p, ply + 1);
+      unmake(m);
+      if (aborted) return 0;
+      if (sc > best) { best = sc; if (sc > alpha) { alpha = sc; if (alpha >= beta) break; } }
+    }
+    return best;
+  }
+
+  const root = order(shuffle(genMoves(occ, pos, player)));
+  if (!root.length) return null;
+  if (wins(root[0])) return root[0];
+  if (cfg.random && Math.random() < cfg.random) return root[Math.floor(Math.random() * root.length)];
+
+  let best = root[0];
+  for (let depth = 1; depth <= cfg.depth; depth++) {
+    let alpha = -Infinity, iterBest = null;
+    for (const m of root) {
+      make(m);
+      let sc = -negamax(depth - 1, -Infinity, -alpha, 1 - player, 1);
+      const reps = seen.get(posKey(pos, 1 - player)) || 0;
+      unmake(m);
+      if (aborted) break;
+      if (reps && Math.abs(sc) < WIN - 1000) sc -= 30 * reps;
+      m.score = sc;
+      if (!iterBest || sc > iterBest.score) iterBest = m;
+      if (sc > alpha) alpha = sc;
+    }
+    if (aborted || !iterBest) break;
+    best = iterBest;
+    root.sort((a, b) => b.score - a.score);
+    if (Math.abs(best.score) >= WIN - 1000) break;
+  }
+  return best;
+}
+// ENGINE END -----------------------------------------------------------------
+
+const NAMES = ['Red', 'Green'];
+const FILES = 'abcde';
+const ARROWS = ['↑', '↓', '←', '→'];
+const FLIPDIR = [1, 0, 3, 2];
+const STAR_POINTS = '50,8 60.6,37.4 91.8,38.4 67.1,57.6 75.9,87.6 50,70 24.1,87.6 32.9,57.6 8.2,38.4 39.4,37.4';
+const STAR_SVG = `<svg viewBox="0 0 100 100" class="star-mark" aria-hidden="true"><polygon points="${STAR_POINTS}"/></svg>`;
+const LEVELS = {
+  easy:   { depth: 1, time: 200,  random: 0.35, caption: 'Plays loosely and misses things.' },
+  medium: { depth: 2, time: 500,  random: 0,    caption: 'Always blocks a star that can reach the centre.' },
+  hard:   { depth: 9, time: 1100, random: 0,    caption: 'Searches several turns ahead.' },
+};
+const STORE_KEY = 'starSlide_settings';
+const THEME_KEY = 'starSlide_theme';
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+
+const $ = id => document.getElementById(id);
+const els = {
+  grid: $('grid'), lines: $('lines'), trail: $('trail'), targets: $('targets'), pieces: $('pieces'),
+  ranks: $('ranks'), files: $('files'), result: $('result'), resultTitle: $('resultTitle'), resultSub: $('resultSub'),
+  turnDisc: $('turnDisc'), statusMain: $('statusMain'), statusSub: $('statusSub'),
+  undo: $('undoBtn'), log: $('log'), levelField: $('levelField'), colourField: $('colourField'),
+  levelCaption: $('levelCaption'), warn: $('warnToggle'),
+  tallyA: $('tallyA'), tallyB: $('tallyB'), tallyNameA: $('tallyNameA'), tallyNameB: $('tallyNameB'),
+  tallyDiscA: $('tallyDiscA'), tallyDiscB: $('tallyDiscB'),
+};
+
+const sq = i => FILES[i % 5] + (5 - ((i / 5) | 0));
+
+let S;                 // game + settings state (snapshotted for hot reload)
+let selected = null;   // selected piece id
+let thinking = false;
+let aiToken = 0;
+let resultDismissed = false;
+let suppressClickUntil = 0;
+const pieceEls = [];
+
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+}
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({ mode: S.mode, level: S.level, human: S.human, warn: S.warn, score: S.score }));
+  } catch (e) { /* storage unavailable: settings just won't persist */ }
+}
+
+function freshState(prev) {
+  return {
+    mode: prev.mode === 'pvp' ? 'pvp' : 'cpu',
+    level: LEVELS[prev.level] ? prev.level : 'medium',
+    human: prev.human === GREEN ? GREEN : RED,
+    warn: prev.warn !== false,
+    score: prev.score && prev.score.pvp && prev.score.cpu ? prev.score : { pvp: [0, 0], cpu: [0, 0] },
+    pos: initialPositions(), turn: RED, winner: null, moves: [], undo: [], passNote: '', counted: false,
+  };
+}
+
+const flipped = () => S.mode === 'cpu' && S.human === GREEN;
+const isHumanTurn = () => S.mode === 'pvp' || S.turn === S.human;
+const moveDuration = dist => 110 + 70 * dist;
+const who = p => (S.mode === 'cpu' ? (p === S.human ? 'Your' : "The computer's") : NAMES[p] + "'s");
+
+function hasMove(id, occ) {
+  for (let d = 0; d < 4; d++) if (slide(occ, S.pos[id], d) >= 0) return true;
+  return false;
+}
+function canControl(id, occ = occupancy(S.pos)) {
+  return S.winner === null && !thinking && isHumanTurn() && ownerOf(id) === S.turn && hasMove(id, occ);
+}
+function canUndo() {
+  if (S.mode === 'pvp') return S.undo.length > 0;
+  return S.moves.some(m => ownerOf(m.id) === S.human);
+}
+// Star of the side NOT to move, if it could slide onto the centre right now.
+function threatId() {
+  if (!S.warn || S.winner !== null || !isHumanTurn()) return null;
+  const opp = 1 - S.turn;
+  return starDist(occupancy(S.pos), S.pos, opp, 1) === 1 ? STAR_ID[opp] : null;
+}
+
+function bumpScore(delta) {
+  const w = S.winner;
+  if (S.mode === 'pvp') S.score.pvp[w] = Math.max(0, S.score.pvp[w] + delta);
+  else { const k = w === S.human ? 0 : 1; S.score.cpu[k] = Math.max(0, S.score.cpu[k] + delta); }
+}
+
+// ---------- actions ----------
+function doMove(id, to) {
+  if (!S.counted && isHumanTurn()) { S.counted = true; hubReportPlay(); }   // §12 — one play per game started
+  const from = S.pos[id];
+  S.undo.push({ pos: S.pos.slice(), turn: S.turn, pass: S.passNote });
+  S.pos[id] = to;
+  S.moves.push({ id, from, to });
+  S.passNote = '';
+  selected = null;
+  if (isStar(id) && to === CENTER) {
+    S.winner = ownerOf(id);
+    resultDismissed = false;
+    bumpScore(1);
+  } else {
+    S.turn = 1 - S.turn;
+    if (!genMoves(occupancy(S.pos), S.pos, S.turn).length) {
+      S.passNote = NAMES[S.turn] + ' had no legal move and passed.';
+      S.turn = 1 - S.turn;
+    }
+  }
+  const dist = manhattan(from, to);
+  render({ moved: id, dist });
+  save();
+  maybeAI(dist);
+}
+
+function tryMove(id, d) {
+  const to = slide(occupancy(S.pos), S.pos[id], d);
+  if (to < 0) {
+    const el = pieceEls[id];
+    el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope');
+    return;
+  }
+  doMove(id, to);
+}
+
+function maybeAI(lastDist = 0) {
+  if (S.winner !== null || S.mode !== 'cpu' || S.turn === S.human) { thinking = false; return; }
+  thinking = true;
+  render();
+  const token = ++aiToken;
+  const wait = (reduceMotion ? 0 : moveDuration(lastDist)) + 300;
+  setTimeout(() => {
+    if (token !== aiToken) return;
+    const seen = new Map();
+    for (const s of S.undo) { const k = posKey(s.pos, s.turn); seen.set(k, (seen.get(k) || 0) + 1); }
+    const m = chooseMove(S.pos, S.turn, LEVELS[S.level], seen);
+    if (token !== aiToken) return;
+    thinking = false;
+    if (m) doMove(m.id, m.to);
+    else render();
+  }, wait);
+}
+
+function newGame() {
+  aiToken++;
+  thinking = false;
+  selected = null;
+  resultDismissed = false;
+  Object.assign(S, { pos: initialPositions(), turn: RED, winner: null, moves: [], undo: [], passNote: '', counted: false });
+  render();
+  save();
+  maybeAI();
+}
+
+function undo() {
+  if (!canUndo()) return;
+  aiToken++;
+  thinking = false;
+  if (S.winner !== null) bumpScore(-1);
+  do {
+    const snap = S.undo.pop();
+    S.pos = snap.pos; S.turn = snap.turn; S.passNote = snap.pass; S.winner = null;
+    S.moves.pop();
+  } while (S.undo.length && S.mode === 'cpu' && S.turn !== S.human);
+  selected = null;
+  render();
+  save();
+  maybeAI();
+}
+
+// ---------- rendering ----------
+function drawLines() {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const j = () => ((rnd() - 0.5) * 0.05).toFixed(3);
+  let s = '';
+  for (let i = 0; i <= 5; i++) {
+    s += `<line x1="${-0.09 + +j()}" y1="${i + +j()}" x2="${5.09 + +j()}" y2="${i + +j()}" vector-effect="non-scaling-stroke"/>`;
+    s += `<line x1="${i + +j()}" y1="${-0.09 + +j()}" x2="${i + +j()}" y2="${5.09 + +j()}" vector-effect="non-scaling-stroke"/>`;
+  }
+  s += `<polygon class="centre-star" points="${STAR_POINTS}" transform="translate(2.22 2.22) scale(.0056)"/>`;
+  s += `<rect class="centre" x="2.09" y="2.09" width=".82" height=".82" rx=".04" vector-effect="non-scaling-stroke"/>`;
+  els.lines.innerHTML = s;
+}
+
+function buildPieces() {
+  for (let id = 0; id < 10; id++) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'piece ' + (ownerOf(id) === RED ? 'red' : 'green') + (isStar(id) ? ' star' : '');
+    el.dataset.id = id;
+    el.innerHTML = `<span class="disc">${isStar(id) ? STAR_SVG : ''}</span>`;
+    el.addEventListener('animationend', () => el.classList.remove('nope'));
+
+    let drag = null;
+    el.addEventListener('pointerdown', e => {
+      if (!canControl(id) || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      drag = { x: e.clientX, y: e.clientY, pid: e.pointerId, done: false };
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    el.addEventListener('pointermove', e => {
+      if (!drag || drag.pid !== e.pointerId || drag.done) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.hypot(dx, dy) < 24) return;
+      drag.done = true;
+      suppressClickUntil = performance.now() + 450;
+      const sd = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 3 : 2) : (dy > 0 ? 1 : 0);
+      tryMove(id, flipped() ? FLIPDIR[sd] : sd);
+    });
+    const endDrag = () => { drag = null; };
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      if (performance.now() < suppressClickUntil) return;
+      if (!canControl(id)) { if (selected !== null) { selected = null; render(); } return; }
+      selected = selected === id ? null : id;
+      render();
+    });
+    els.pieces.appendChild(el);
+    pieceEls[id] = el;
+  }
+}
+
+function render(opts = {}) {
+  const occ = occupancy(S.pos);
+  if (selected !== null && !canControl(selected, occ)) selected = null;
+  const flip = flipped();
+  const threat = threatId();
+
+  // labels
+  els.files.innerHTML = [...FILES].map((f, i) => `<span>${flip ? FILES[4 - i] : f}</span>`).join('');
+  els.ranks.innerHTML = [0, 1, 2, 3, 4].map(i => `<span>${flip ? i + 1 : 5 - i}</span>`).join('');
+
+  // pieces
+  for (let id = 0; id < 10; id++) {
+    const el = pieceEls[id];
+    const p = S.pos[id], r = (p / 5) | 0, c = p % 5;
+    const dur = reduceMotion ? 0 : (id === opts.moved ? moveDuration(opts.dist) : 240);
+    el.style.setProperty('--dur', dur + 'ms');
+    el.style.setProperty('--r', flip ? 4 - r : r);
+    el.style.setProperty('--c', flip ? 4 - c : c);
+    const ctl = canControl(id, occ);
+    el.classList.toggle('movable', ctl);
+    el.classList.toggle('selected', selected === id);
+    el.classList.toggle('threat', threat === id);
+    el.classList.toggle('won', S.winner !== null && id === STAR_ID[S.winner]);
+    el.tabIndex = ctl ? 0 : -1;
+    el.setAttribute('aria-label', `${NAMES[ownerOf(id)]} ${isStar(id) ? 'star' : 'counter'} on ${sq(p)}${ctl ? (selected === id ? ', selected' : '') : ''}`);
+  }
+
+  // destination rings for the selected piece
+  els.targets.innerHTML = '';
+  if (selected !== null) {
+    const id = selected, from = S.pos[id];
+    for (let d = 0; d < 4; d++) {
+      const to = slide(occ, from, d);
+      if (to < 0) continue;
+      const r = (to / 5) | 0, c = to % 5, sd = flip ? FLIPDIR[d] : d;
+      const winning = isStar(id) && to === CENTER;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'target ' + (ownerOf(id) === RED ? 'red' : 'green') + (winning ? ' winning' : '');
+      btn.style.setProperty('--r', flip ? 4 - r : r);
+      btn.style.setProperty('--c', flip ? 4 - c : c);
+      btn.innerHTML = `<span class="ghost">${winning ? '★' : ARROWS[sd]}</span>`;
+      btn.setAttribute('aria-label', `Slide from ${sq(from)} to ${sq(to)}${winning ? ', winning move' : ''}`);
+      btn.addEventListener('click', e => { e.stopPropagation(); doMove(id, to); });
+      els.targets.appendChild(btn);
+    }
+  }
+
+  // last-move trail
+  const last = S.moves[S.moves.length - 1];
+  if (last) {
+    const pt = i => { const r = (i / 5) | 0, c = i % 5; return [(flip ? 4 - c : c) + 0.5, (flip ? 4 - r : r) + 0.5]; };
+    const [x1, y1] = pt(last.from), [x2, y2] = pt(last.to);
+    const cls = ownerOf(last.id) === RED ? 'red' : 'green';
+    els.trail.innerHTML = `<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" vector-effect="non-scaling-stroke"/>` +
+      `<circle class="${cls}" cx="${x1}" cy="${y1}" r=".13" vector-effect="non-scaling-stroke"/>`;
+  } else {
+    els.trail.innerHTML = '';
+  }
+  els.lines.classList.toggle('lit', S.winner !== null);
+
+  // status
+  const side = S.winner !== null ? S.winner : S.turn;
+  els.turnDisc.className = 'turn-disc ' + (side === RED ? 'red' : 'green');
+  let main, sub, danger = false;
+  if (S.winner !== null) {
+    main = S.mode === 'cpu' ? (S.winner === S.human ? 'You win!' : 'The computer wins') : `${NAMES[S.winner]} wins!`;
+    sub = `${who(S.winner)} star stopped on c3 after ${S.moves.length} moves.`;
+  } else if (thinking) {
+    main = 'Computer is thinking…';
+    sub = `It plays ${NAMES[S.turn]}.`;
+  } else {
+    main = S.mode === 'cpu' ? 'Your move' : `${NAMES[S.turn]} to move`;
+    if (threat !== null) {
+      danger = true;
+      sub = `Watch out: ${S.mode === 'cpu' ? "the computer's" : NAMES[1 - S.turn] + "'s"} star can reach c3 next turn.`;
+    } else if (selected !== null) {
+      sub = coarsePointer ? 'Tap a ring to slide there, or swipe the counter.' : 'Click a ring to slide there, or use the arrow keys.';
+    } else {
+      sub = (S.mode === 'cpu' ? `You are ${NAMES[S.human]}. ` : '') + (coarsePointer ? 'Tap a counter, or swipe it.' : 'Click a counter to see where it can slide.');
+    }
+    if (S.passNote) sub = S.passNote + ' ' + sub;
+  }
+  els.statusMain.textContent = main;
+  els.statusSub.textContent = sub;
+  els.statusSub.classList.toggle('danger', danger);
+
+  // result card
+  const showResult = S.winner !== null && !resultDismissed;
+  els.result.hidden = !showResult;
+  if (showResult) {
+    els.resultTitle.textContent = main;
+    els.resultSub.textContent = sub;
+  }
+
+  // move list
+  const star = `<svg viewBox="0 0 100 100" aria-hidden="true"><polygon points="${STAR_POINTS}"/></svg>`;
+  els.log.innerHTML = S.moves.length
+    ? S.moves.map(m => `<li><span class="mini ${ownerOf(m.id) === RED ? 'red' : 'green'}">${isStar(m.id) ? star : ''}</span>` +
+        `<span>${sq(m.from)} → ${sq(m.to)}</span>${isStar(m.id) && m.to === CENTER ? '<span class="win-tag">wins</span>' : ''}</li>`).join('')
+    : '<li class="empty">No moves yet. Red moves first.</li>';
+  els.log.scrollTop = els.log.scrollHeight;
+
+  // controls
+  els.undo.disabled = !canUndo();
+  $(S.mode === 'cpu' ? 'modeCpu' : 'modePvp').checked = true;
+  $('level' + S.level[0].toUpperCase() + S.level.slice(1)).checked = true;
+  $(S.human === RED ? 'colourRed' : 'colourGreen').checked = true;
+  els.warn.checked = S.warn;
+  els.levelField.hidden = S.mode !== 'cpu';
+  els.colourField.hidden = S.mode !== 'cpu';
+  els.levelCaption.textContent = LEVELS[S.level].caption;
+
+  // score
+  if (S.mode === 'cpu') {
+    els.tallyNameA.textContent = 'You';
+    els.tallyNameB.textContent = 'Computer';
+    els.tallyDiscA.className = 'mini ' + (S.human === RED ? 'red' : 'green');
+    els.tallyDiscB.className = 'mini ' + (S.human === RED ? 'green' : 'red');
+    els.tallyA.textContent = S.score.cpu[0];
+    els.tallyB.textContent = S.score.cpu[1];
+  } else {
+    els.tallyNameA.textContent = 'Red';
+    els.tallyNameB.textContent = 'Green';
+    els.tallyDiscA.className = 'mini red';
+    els.tallyDiscB.className = 'mini green';
+    els.tallyA.textContent = S.score.pvp[0];
+    els.tallyB.textContent = S.score.pvp[1];
+  }
+}
+
+// ---------- theme — §2 ----------
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  $('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+}
+function storedTheme() {
+  try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+}
+
+// ---------- wiring ----------
+function wire() {
+  $('theme-btn').addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* theme just won't persist */ }
+  });
+  $('newBtn').addEventListener('click', newGame);
+  $('againBtn').addEventListener('click', newGame);
+  $('viewBtn').addEventListener('click', () => { resultDismissed = true; render(); });
+  els.undo.addEventListener('click', undo);
+  $('resetScore').addEventListener('click', () => { S.score = { pvp: [0, 0], cpu: [0, 0] }; save(); render(); });
+  document.querySelectorAll('input[name="mode"]').forEach(inp => inp.addEventListener('change', () => { S.mode = inp.value; newGame(); }));
+  document.querySelectorAll('input[name="colour"]').forEach(inp => inp.addEventListener('change', () => { S.human = +inp.value; newGame(); }));
+  document.querySelectorAll('input[name="level"]').forEach(inp => inp.addEventListener('change', () => { S.level = inp.value; save(); render(); }));
+  els.warn.addEventListener('change', () => { S.warn = els.warn.checked; save(); render(); });
+
+  els.grid.addEventListener('click', () => { if (selected !== null) { selected = null; render(); } });
+
+  document.addEventListener('keydown', e => {
+    const t = e.target;
+    if (t && t.closest && t.closest('input, select, textarea')) return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const sd = { ArrowUp: 0, ArrowDown: 1, ArrowLeft: 2, ArrowRight: 3 }[e.key];
+    if (sd !== undefined) {
+      let id = selected;
+      if (id === null && t && t.classList && t.classList.contains('piece')) id = +t.dataset.id;
+      if (id === null || !canControl(id)) return;
+      e.preventDefault();
+      tryMove(id, flipped() ? FLIPDIR[sd] : sd);
+    } else if (e.key === 'Escape' && selected !== null) {
+      selected = null;
+      render();
+    }
+  });
+}
+
+function start() {
+  applyTheme(storedTheme() === 'light' ? 'light' : 'dark');
+  S = freshState(loadSaved());
+  drawLines();
+  buildPieces();
+  wire();
+  render({ moved: null });
+  maybeAI();
+}
+
+start();
+})();
+</script>
+</body>
+</html>

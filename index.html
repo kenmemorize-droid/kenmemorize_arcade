@@ -305,6 +305,11 @@ const CATEGORIES = [
    so every url is "games/<file>.html". No "../" anywhere.
    ========================================================= */
 const BUILTIN_GAMES = [
+  /* Star Slide, added 2026-10-06 — recreated from a reel of a paper 5×5 board
+     game: slide a counter until it hits something, first star to stop on the
+     centre wins. Two players on one device, or vs the computer. No
+     leaderboard, so it is not in RANKED. */
+  { id:"star-slide",       name:"Star Slide",         skill:"logic",    blurb:"Slide counters until they hit something and stop your star on the centre first. Pass-and-play PvP, or vs the computer.",  url:"games/star_slide.html",         icon:"⭐" },
   /* Kopi Rush, added 2026-10-06 — recreated from a kopitiam "make the kopi"
      table game. It keeps TWO leaderboards, one per mode (see MODE_BOARDS
      below), so its id is the play-count key only, never a board path. */
