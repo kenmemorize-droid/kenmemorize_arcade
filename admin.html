@@ -118,7 +118,7 @@
 
   <div class="toolbar">
     <button class="btn" onclick="openForm()">+ Add game</button>
-    <button class="btn secondary" id="seedBtn" onclick="seedFromHub()">Import starter roster from hub</button>
+    <button class="btn secondary" id="seedBtn" onclick="seedFromHub()">Import new games from hub</button>
   </div>
   <div class="status" id="status">Loading…</div>
 
@@ -466,18 +466,22 @@ async function deleteGame(id){
   }
 }
 
-/* One-time convenience: pull the hub's hardcoded BUILTIN_GAMES array
-   into Firebase so the original roster becomes editable/deletable too.
-   Safe to click more than once — skips ids already present. */
+/* Pull the hub's hardcoded BUILTIN_GAMES array into Firebase so built-in
+   games become editable/deletable here too. Safe to click more than once —
+   skips ids already present — so re-run it after a game is added to the hub
+   (e.g. Star Slide) to bring just the new one in.
+   The hub moved to index.html in the 2026-08-21 restructure; this fetch still
+   read game-hub.html and 404'd, so every import failed until 2026-10-06. */
 async function seedFromHub(){
   const btn = document.getElementById("seedBtn");
   btn.disabled = true;
-  setStatus("Reading starter roster from game-hub.html…");
+  setStatus("Reading starter roster from index.html…");
   try{
-    const res = await fetch("game-hub.html");
+    const res = await fetch("index.html");
+    if(!res.ok) throw new Error(`index.html returned HTTP ${res.status}`);
     const text = await res.text();
     const match = text.match(/const BUILTIN_GAMES = (\[[\s\S]*?\n\]);/);
-    if(!match) throw new Error("Could not find BUILTIN_GAMES in game-hub.html");
+    if(!match) throw new Error("Could not find BUILTIN_GAMES in index.html");
     const builtin = new Function(`return ${match[1]};`)();
     let added = 0, order = 0;
     for(const g of builtin){
