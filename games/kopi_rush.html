@@ -266,17 +266,17 @@ h1 .m2{color:var(--accent);}
   transition:transform .08s, border-color .15s, opacity .15s; touch-action:manipulation;
 }
 .station svg{width:46px; height:46px; display:block; pointer-events:none;}
-.station .zh{font-size:12px; font-weight:800; line-height:1.1;}
-.station .en{font-size:10px; color:var(--muted); line-height:1.1; text-transform:uppercase; letter-spacing:.3px; text-align:center;}
+.station .name{font-size:12px; font-weight:800; line-height:1.15; text-align:center; padding:0 2px;}
 .station:active, .station.hit{transform:scale(.93);}
 .station.hit{border-color:var(--correct);}
 .station.bad{border-color:var(--wrong); background:rgba(239,71,111,.18); animation:nope2 .3s ease;}
 @keyframes nope2{25%,75%{transform:translateX(-4px);} 50%{transform:translateX(4px);}}
+/* Display mode only: a tick once an ingredient is fully poured. No counts on
+   the buttons — the quantities live on the ticket. */
 .station .badge{
-  position:absolute; top:4px; right:5px; min-width:20px; height:20px; border-radius:10px; padding:0 5px;
-  background:var(--accent); color:var(--on-accent); font-size:12px; font-weight:900; display:none; align-items:center; justify-content:center;
+  position:absolute; top:4px; right:5px; width:20px; height:20px; border-radius:10px;
+  background:var(--correct); color:#fff; font-size:12px; font-weight:900; display:none; align-items:center; justify-content:center;
 }
-.station .badge.ok{background:var(--correct);}
 .show-qty .station .badge.on{display:flex;}
 .station .key{position:absolute; top:4px; left:6px; font-size:10px; color:var(--muted); font-family:'Consolas','Courier New',monospace; display:none;}
 @media (hover:hover) and (pointer:fine){ .station .key{display:block;} }
@@ -362,7 +362,7 @@ h1 .m2{color:var(--accent);}
 @media (max-width:380px){
   h1{letter-spacing:.5px;}
   .theme-toggle,.help-fab{padding:5px 9px; gap:5px;}
-  .station .en{font-size:9px;}
+  .station .name{font-size:11px;}
   .hud-chip{padding:5px 9px;}
   .hud-chip.timer{font-size:19px;}
   .board-name{flex-basis:42%;}
@@ -666,18 +666,19 @@ function newSeed(){ return (Date.now() ^ (Math.random() * 0xFFFFFFFF)) | 0; }
    `k` is the recipe key. Order here is left-to-right on screen and
    the 1–7 keyboard shortcut.
    ═══════════════════════════════════════════════════════════════ */
+/* Ingredient text is English only (drink names keep their Chinese). `en` is
+   the button label; `short` fits the recipe chips. */
 const STATIONS = [
-  { k:'coffee', en:'Coffee',      zh:'咖啡' },
-  { k:'tea',    en:'Tea',         zh:'茶'   },
-  { k:'sugar',  en:'Sugar',       zh:'糖'   },
-  { k:'water',  en:'Hot water',   zh:'热水' },
-  { k:'ice',    en:'Ice',         zh:'冰'   },
-  { k:'evap',   en:'Evap. milk',  zh:'淡奶' },
-  { k:'cond',   en:'Condensed',   zh:'炼乳' }
+  { k:'coffee', en:'Coffee',          short:'Coffee'     },
+  { k:'tea',    en:'Tea',             short:'Tea'        },
+  { k:'sugar',  en:'Sugar',           short:'Sugar'      },
+  { k:'water',  en:'Hot water',       short:'Hot water'  },
+  { k:'ice',    en:'Ice',             short:'Ice'        },
+  { k:'evap',   en:'Evaporated milk', short:'Evap. milk' },
+  { k:'cond',   en:'Condensed milk',  short:'Cond. milk' }
 ];
 const ST = Object.fromEntries(STATIONS.map(s => [s.k, s]));
-const LONG_EN = { evap:'evaporated milk', cond:'condensed milk', water:'hot water' };
-const longEn = k => LONG_EN[k] || ST[k].en.toLowerCase();
+const longEn = k => ST[k].en.toLowerCase();
 
 /* ═══════════════════════════════════════════════════════════════
    RECIPE RULES — one grammar, so Recall mode tests the kopi lingo
@@ -918,7 +919,7 @@ const ART = {
     <path d="M14 30h36v12H14z" fill="#2b6cb0"/>
     <ellipse cx="32" cy="18" rx="18" ry="5" fill="#f2efe8"/></g>
     <path d="M32 18 c0-2 4-2 4 0 s-3 3-6 2 s-4-4 0-5 s9 1 8 4 s-8 4-12 2" fill="none" stroke="#231c18" stroke-width="1.6" stroke-linecap="round"/>
-    <text x="32" y="39.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial">炼乳</text></svg>`
+    <text x="32" y="39.5" text-anchor="middle" font-size="9" font-weight="900" fill="#fff" font-family="Arial">COND</text></svg>`
 };
 
 /* Recipe chip: icon + ×n, or progress dots when `have` is given. */
@@ -926,7 +927,7 @@ function rchip(k, need, have){
   const dots = have === undefined ? `×${need}`
     : `<span class="dots">${Array.from({length:need}, (_, i) => `<i class="${i < have ? 'on' : ''}"></i>`).join('')}</span>`;
   const done = have !== undefined && have >= need;
-  return `<span class="rchip${done ? ' done' : ''}" title="${ST[k].en}">${ART[k]}${ST[k].zh}${have === undefined ? ' ' : ''}${dots}</span>`;
+  return `<span class="rchip${done ? ' done' : ''}" title="${ST[k].en}">${ART[k]}${ST[k].short}${have === undefined ? ' ' : ''}${dots}</span>`;
 }
 function recipeChips(recipe){
   return STATIONS.filter(s => recipe[s.k]).map(s => rchip(s.k, recipe[s.k])).join('');
@@ -1034,9 +1035,9 @@ function buildBoard(){
    ═══════════════════════════════════════════════════════════════ */
 function buildStations(){
   $('stations').innerHTML = STATIONS.map((s, i) => `
-    <button class="station" data-k="${s.k}" aria-label="${s.en} ${s.zh}">
+    <button class="station" data-k="${s.k}" aria-label="${s.en}">
       <span class="key">${i + 1}</span><span class="badge"></span>
-      ${ART[s.k]}<span class="zh">${s.zh}</span><span class="en">${s.en}</span>
+      ${ART[s.k]}<span class="name">${s.en}</span>
     </button>`).join('');
   $('stations').querySelectorAll('.station').forEach(b => {
     /* pointerdown, not click: a rush is all rapid taps, and click waits for the
@@ -1143,9 +1144,8 @@ function paintOrder(){
   $('stations').querySelectorAll('.station').forEach(b => {
     const k = b.dataset.k, need = o.recipe[k] || 0, have = cup[k] || 0;
     const badge = b.querySelector('.badge');
-    badge.classList.toggle('on', display && need > 0);
-    badge.classList.toggle('ok', have >= need);
-    badge.textContent = have >= need ? '✓' : String(need - have);
+    badge.classList.toggle('on', display && need > 0 && have >= need);
+    badge.textContent = '✓';
   });
   $('cupWrap').innerHTML = cupSVG();
   const ready = isComplete();
@@ -1177,10 +1177,9 @@ function tapStation(k){
 function stun(k, need){
   S.wrongThis++; S.wrongTotal++;
   S.stunUntil = performance.now() + STUN_MS;
-  const s = ST[k];
   $('stunMsg').innerHTML = need === 0
-    ? `😵 No ${s.zh} ${longEn(k)} in this one<small>${esc(S.order.en)} doesn't take ${longEn(k)}</small>`
-    : `😵 Enough ${s.zh} ${longEn(k)} already<small>${esc(S.order.en)} takes ${need}</small>`;
+    ? `😵 No ${longEn(k)} in this one<small>${esc(S.order.en)} doesn't take ${longEn(k)}</small>`
+    : `😵 Enough ${longEn(k)} already<small>${esc(S.order.en)} takes ${need}</small>`;
   const stunEl = $('stun'); stunEl.classList.add('on');
   const bar = $('stunBar');
   bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth;
