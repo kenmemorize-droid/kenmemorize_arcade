@@ -1299,7 +1299,7 @@ function joinRoom(){
 
 function watchRoom(){
   raceErr('');
-  M.joined=true; M.lastKey=''; M.refereedDown=0; M.playReported=false;
+  M.joined=true; M.lastKey=''; M.refereedDown=0; M.dealt=0; M.playReported=false;
   M.es=subscribe('rooms/'+M.code,onRoom,function(){ raceErr('Connection dropped.'); });
   clearInterval(M.hb);
   M.hb=setInterval(function(){
@@ -1321,7 +1321,10 @@ function leaveRoom(){
 
 /* ---- the single reactive entry point ---- */
 function onRoom(room){
-  if(!room){ if(M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  /* an update already in flight when we left must not repaint the race
+     screens over wherever the player went next */
+  if(!M.joined) return;
+  if(!room){ toast('Room closed'); leaveRoom(); return; }
   M.room=room;
 
   if(room.phase==='lobby'){ M.playReported=false; paintLobby(); return; }
@@ -1359,6 +1362,11 @@ function paintLobby(){
 }
 
 function hostDealDown(n){
+  /* Exactly one deal per down, in order, never past the last. A double-tap on
+     NEXT used to deal the same down again with a fresh seed, resetting
+     everyone's `done`. */
+  if(!M.isHost || n!==M.dealt+1 || n>RACE_DOWNS) return;
+  M.dealt=n;
   var reset={}, ids=Object.keys(P());
   for(var i=0;i<ids.length;i++){
     var p=P()[ids[i]];
@@ -1496,7 +1504,10 @@ function paintRaceFinal(){
           '</span><b>'+rows[i].total+'</b></div>';
   $('resultRows').innerHTML=html;
   $('btnShare').hidden=true;
-  $('btnAgain').textContent='Back to menu';
+  /* The two buttons must do different things: this one starts a NEW race
+     (the finished room is closed), btnMenu goes home. Relabelling it "Back to
+     menu" left two buttons that both just left the room. */
+  $('btnAgain').textContent='New race';
   show('result');
 }
 
@@ -1613,7 +1624,7 @@ $('btnOnline').onclick=function(){
   raceErr(''); show('rooms');
 };
 $('btnAgain').onclick=function(){
-  if(S.mode==='race'){ leaveRoom(); return; }
+  if(S.mode==='race'){ leaveRoom(); $('inName').value=playerName(); raceErr(''); show('rooms'); return; }
   startSolo();
 };
 $('btnMenu').onclick=function(){

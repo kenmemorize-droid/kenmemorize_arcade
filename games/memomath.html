@@ -27,6 +27,9 @@
   --shadow:rgba(20,30,60,.12);
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+/* .big-btn sets display:block, which beats the browser's own [hidden] rule —
+   without this, guests saw the host-only START / NEXT ROUND buttons */
+[hidden]{display:none !important;}
 html,body{margin:0;}
 button{touch-action:manipulation; font-family:inherit;}
 body{
@@ -1031,7 +1034,9 @@ function endSession(){
    race, and a rebind leaves both wired, firing startSolo and leaveRoom on the
    same click. */
 $('btnPlayAgain').addEventListener('click', () => {
-  if(G.mode === 'race') leaveRoom(); else startSolo();
+  if(G.mode === 'race'){
+    leaveRoom(); $('inName').value = store.get('memomathName') || ''; raceErr(''); showScreen('screen-rooms');
+  } else startSolo();
 });
 $('btnSumMenu').addEventListener('click', () => {
   if(G.mode === 'race') leaveRoom(); else backToMenu();
@@ -1359,7 +1364,7 @@ async function joinRoom(){
 
 function watchRoom(){
   raceErr('');
-  M.joined = true; M.lastKey = ''; M.refereedRound = 0; M.playReported = false;
+  M.joined = true; M.lastKey = ''; M.refereedRound = 0; M.dealt = 0; M.playReported = false;
   G.mode = 'race';
   M.es = subscribe('rooms/' + M.code, onRoom, () => raceErr('Connection dropped.'));
   clearInterval(M.hb);
@@ -1378,7 +1383,10 @@ function leaveRoom(){
 
 /* ---- the single reactive entry point ---- */
 function onRoom(room){
-  if(!room){ if(M.joined){ raceErr('Room closed.'); leaveRoom(); } return; }
+  /* an update already in flight when we left must not repaint the race
+     screens over wherever the player went next */
+  if(!M.joined) return;
+  if(!room){ raceErr('Room closed.'); leaveRoom(); return; }
   M.room = room;
 
   if(room.phase === 'lobby'){ M.playReported = false; paintLobby(); return; }
@@ -1416,6 +1424,11 @@ async function launchRace(){
 }
 
 async function hostDealRound(n){
+  /* Exactly one deal per round, in order, never past the last. A double-tap on
+     NEXT, or a guest tapping START, used to deal the same round again with a
+     fresh seed, resetting everyone's `done`. */
+  if(!M.isHost || n !== M.dealt + 1 || n > RACE_ROUNDS) return;
+  M.dealt = n;
   const reset = {};
   for(const [id,p] of Object.entries(P()))
     reset[id] = { ...p, done:false, correct:false, finishedAt:0 };
@@ -1501,8 +1514,12 @@ function paintFinal(){
   $('sumStats').innerHTML = '';
   $('sumBestLine').innerHTML = rows.map((r,n) =>
     `<div class="stat-line"><span><span class="rk">${n+1}</span>${esc(r.name)}</span><b>${r.total}</b></div>`).join('');
-  $('btnPlayAgain').textContent = 'Back to menu';   // behaviour comes from the
-  $('btnSumMenu').textContent   = 'Leave room';     // mode dispatch, not a rebind
+  /* The two buttons must do different things: one starts a NEW race (the
+     finished room is closed), the other goes home. They used to read "Back
+     to menu" and "Leave room" and both just left the room. Behaviour comes
+     from the mode dispatch, not a rebind. */
+  $('btnPlayAgain').textContent = 'New race';
+  $('btnSumMenu').textContent   = 'Back to menu';
 }
 
 /* ---- rivals strip ---- */

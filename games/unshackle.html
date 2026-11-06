@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5116537956642384"
+     crossorigin="anonymous"></script>
+<meta charset="UTF-8">
+<title>Unshackle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<style>
+/* ── THEME TOKENS — STYLE_GUIDE.md §1 ──────────────────────────────────
+   UI roles follow Lock In's names. The LOCK itself (mahogany frame, black
+   shackle, the wood and glass blocks, the brass key) is an object, not UI:
+   its colours are fixed in the SVG and render identically in both themes. */
+:root, :root[data-theme="dark"]{
+  --bg1:#0b0908; --bg2:#241915; --panel:#171210; --panel2:#1d1714;
+  --tile2:#241c18;
+  --text:#f3ede6; --muted:#b3a79b; --accent:#e0b25a; --accent2:#f08a3c;
+  --accent-dim:rgba(224,178,90,.14); --on-accent:#1d1206;
+  --correct:#3ddc84; --wrong:#ff5a5f; --warning:#ffc043;
+  --line:#3a2d27; --shadow:rgba(0,0,0,.5);
+}
+:root[data-theme="light"]{
+  --bg1:#f6f1ea; --bg2:#e4d8c9; --panel:#ffffff; --panel2:#faf6f0;
+  --tile2:#f3ede5;
+  --text:#1e1612; --muted:#65584d; --accent:#8f600c; --accent2:#b9501a;
+  --accent-dim:#f6ecd8; --on-accent:#1d1206;
+  --correct:#1f9d52; --wrong:#d6293f; --warning:#b7791f;
+  --line:#ddd1c2; --shadow:rgba(60,40,20,.15);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{
+  margin:0; min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
+  background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 65%);
+  background-attachment:fixed; overflow-x:hidden;
+  color:var(--text); display:flex; justify-content:center;
+  padding:14px 12px calc(20px + env(safe-area-inset-bottom));
+  transition:background .3s,color .3s;
+}
+/* §5 — the menu reads at the shared 720px; play and result keep 520px. */
+.app{width:100%; max-width:720px; position:relative;}
+#screen-count, #screen-play, #screen-result{max-width:520px; margin:0 auto;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);}}
+
+h1{text-align:center; margin:2px 0 2px; font-size:28px; letter-spacing:1px; font-weight:800;}
+.subtitle{text-align:center; color:var(--muted); margin:0 0 16px; font-size:14px;}
+
+/* ── LOGO BLOCK — §3 (icon → h1 → subtitle) ── */
+.logo{text-align:center; margin-bottom:16px;}
+.logo-icon{display:flex; align-items:center; justify-content:center; width:32px; height:32px;
+  margin:0 auto 6px; color:var(--accent);}
+.logo .subtitle{margin:6px 0 0;}
+
+/* ── HOW TO PLAY — §3, always visible ── */
+.howto-box{background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  padding:18px 20px; margin:16px 0 12px; box-shadow:0 2px 12px var(--shadow); text-align:left;}
+.howto-box .howto-title{font-size:11px; text-transform:uppercase; letter-spacing:1.6px;
+  color:var(--accent2); font-weight:800; margin:0 0 10px;}
+.howto-box p{margin:0 0 9px; font-size:13px; line-height:1.6; color:var(--muted);}
+.howto-box p:last-child{margin-bottom:0;}
+.howto-box b{color:var(--text);}
+
+.panel{background:linear-gradient(160deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+  border-radius:16px; padding:16px; box-shadow:0 8px 22px var(--shadow);}
+.panel + .panel{margin-top:12px;}
+.section-title{font-size:11px; text-transform:uppercase; letter-spacing:1.6px; color:var(--accent2);
+  margin:0 0 10px; font-weight:800;}
+.stat-line{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:10px 12px; border-radius:10px; background:var(--tile2); border:1px solid var(--line);
+  margin-bottom:7px; font-size:14px;}
+.stat-line:last-child{margin-bottom:0;}
+.stat-line b{color:var(--accent); font-weight:800; text-align:right;}
+
+/* ── LEADERBOARD LIST (this game's board is not on the hub yet, so it
+   is shown here — on the menu and after a solve) ── */
+.board{list-style:none; margin:0; padding:0;}
+.board li{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
+  background:var(--tile2); border:1px solid var(--line); margin-bottom:6px; font-size:14px;}
+.board li:last-child{margin-bottom:0;}
+.board li.me{border-color:var(--accent); background:var(--accent-dim);}
+.board li.empty{justify-content:center; color:var(--muted); font-size:13px;}
+.board .rk{display:inline-flex; align-items:center; justify-content:center; flex:0 0 24px; width:24px; height:24px;
+  border-radius:50%; background:var(--line); color:var(--text); font-size:12px; font-weight:800;}
+.board li:nth-child(1) .rk{background:#d4a72c; color:#1d1206;}
+.board li:nth-child(2) .rk{background:#a9b1bb; color:#15181c;}
+.board li:nth-child(3) .rk{background:#b9733a; color:#1d1206;}
+.board .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600;}
+.board .sc{white-space:nowrap; font-family:'Consolas','Courier New',monospace; font-size:13px; color:var(--accent); font-weight:800;}
+
+/* ── THEME TOGGLE — §2 ── */
+.theme-toggle{position:fixed; top:16px; right:16px; z-index:60; display:flex; align-items:center; gap:7px;
+  min-height:46px; padding:6px 16px; border-radius:50px; border:1px solid var(--line); background:var(--panel);
+  color:var(--muted); font-size:13px; font-family:'Consolas','Courier New',monospace; cursor:pointer;
+  user-select:none; box-shadow:0 4px 12px var(--shadow); transition:border-color .15s, color .15s;}
+.theme-toggle:hover{border-color:var(--accent); color:var(--accent);}
+.theme-toggle .toggle-icon{display:inline-flex;}
+.theme-toggle .icon-moon{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-sun{display:none;}
+:root[data-theme="light"] .theme-toggle .icon-moon{display:inline-flex;}
+
+/* ── BUTTONS — §6, sized per §9b (≥46px) ── */
+.big-btn{display:block; width:100%; margin-top:12px; padding:15px; min-height:46px; border-radius:14px; border:none;
+  background:linear-gradient(135deg,#f0c36a,#b07a26); color:var(--on-accent); font-size:16px;
+  font-weight:900; letter-spacing:.6px; cursor:pointer; box-shadow:0 8px 18px var(--shadow);
+  font-family:inherit; transition:filter .15s, transform .1s;}
+.big-btn:hover{filter:brightness(1.08); transform:translateY(-1px);}
+.big-btn:active{transform:translateY(1px);}
+.big-btn:disabled{opacity:.45; cursor:default; transform:none; filter:none;}
+.ghost-btn{padding:10px 16px; border-radius:10px; border:1px solid var(--line); background:var(--tile2);
+  color:var(--muted); cursor:pointer; font-size:14px; font-family:inherit; font-weight:600;
+  min-height:46px; transition:border-color .15s, color .15s;}
+.ghost-btn:hover{border-color:var(--accent); color:var(--accent);}
+.ghost-btn:disabled{opacity:.45; cursor:default;}
+.ghost-btn:disabled:hover{border-color:var(--line); color:var(--muted);}
+.danger-btn{border-color:var(--wrong); color:var(--wrong);}
+.btn-row{display:flex; gap:8px; margin-top:12px;}
+.btn-row .ghost-btn{flex:1;}
+.ghost-btn:focus-visible, .big-btn:focus-visible, .icon-btn:focus-visible{outline:3px solid var(--accent2); outline-offset:3px;}
+
+/* §9b rule 3 — 16px inputs, or iOS zooms on focus */
+input[type=text], textarea{width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px;
+  border:1px solid var(--line); background:var(--tile2); color:var(--text); font-size:16px;
+  min-height:46px; font-family:inherit;}
+input[type=text]:focus, textarea:focus{outline:2px solid var(--accent); outline-offset:1px;}
+
+/* ── TOP BAR (play only) ── */
+.topbar{display:flex; align-items:center; gap:8px; margin-bottom:10px; max-width:520px; margin-left:auto; margin-right:auto;}
+.icon-btn{width:46px; height:46px; flex:0 0 46px; border-radius:50%; border:1px solid var(--line);
+  background:var(--panel); color:var(--text); cursor:pointer; display:flex; align-items:center;
+  justify-content:center; padding:0; transition:border-color .15s;}
+.icon-btn:hover{border-color:var(--accent);}
+.icon-btn svg{width:20px; height:20px;}
+.icon-btn .icon-moon{display:none;}
+:root[data-theme="light"] .icon-btn .icon-sun{display:none;}
+:root[data-theme="light"] .icon-btn .icon-moon{display:inline;}
+.status-pill{flex:1; min-width:0; height:46px; border-radius:23px; background:var(--panel); border:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:0 18px; font-weight:800;}
+.status-pill .mid{font-size:14px; color:var(--muted); letter-spacing:.3px; white-space:nowrap;}
+.status-pill .mid b{color:var(--text); font-variant-numeric:tabular-nums;}
+.status-pill .clock{font-size:19px; color:var(--accent2); font-variant-numeric:tabular-nums;
+  font-family:'Consolas','Courier New',monospace;}
+
+/* ── PLAY — the lock ──────────────────────────────────────────────────
+   One SVG, fixed viewBox, scaled as a whole: the lock is identical on every
+   device, only its size changes. Width is capped by the viewport height so
+   the Undo row stays on screen without scrolling. overflow:visible lets the
+   shackle lift slightly above the box when the lock springs open. */
+.stage{position:relative; margin:0 auto; aspect-ratio:410/530;
+  width:min(100%, max(240px, calc((100vh - 170px) * 0.7736)));}
+@supports (height:100svh){ .stage{width:min(100%, max(240px, calc((100svh - 170px) * 0.7736)));} }
+.stage svg{display:block; width:100%; height:100%; overflow:visible; touch-action:none;
+  user-select:none; -webkit-user-select:none;}
+.stage .veil{position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+  font-size:15px; font-weight:800; letter-spacing:2px; color:var(--muted); text-transform:uppercase;}
+.stage.paused svg{visibility:hidden;}
+.stage.paused .veil{display:flex;}
+
+.piece{cursor:grab; outline:none;}
+.piece.dragging{cursor:grabbing;}
+.piece .edge{fill:none; stroke:rgba(0,0,0,.55); stroke-width:1.6;}
+.piece .shine{fill:none; stroke:rgba(255,255,255,.16); stroke-width:3;}
+.piece.acrylic .edge{stroke:rgba(255,255,255,.9); stroke-width:2.4;}
+.piece.acrylic .shine{stroke:rgba(255,255,255,.22); stroke-width:7;}
+.piece.lift{filter:drop-shadow(0 6px 7px rgba(0,0,0,.55));}
+.piece:focus-visible .edge{stroke:#ffd98a; stroke-width:4;}
+.piece.bump{animation:bump .22s ease;}
+@keyframes bump{0%,100%{opacity:1;}50%{opacity:.55;}}
+.latch-arrow{fill:none; stroke:#e0b25a; stroke-width:3.5; stroke-linecap:round; stroke-linejoin:round;
+  animation:nudge 2.4s ease-in-out infinite;}
+@keyframes nudge{0%,100%{opacity:.65;}50%{opacity:1;}}
+.goal-mark{fill:none; stroke:#e0b25a; stroke-width:3; stroke-linecap:round; stroke-linejoin:round;}
+
+#shackle{transform-box:view-box; transform-origin:33px 0;}
+.opened #shackle{animation:shackleOpen 1.15s cubic-bezier(.3,.9,.3,1) forwards;}
+@keyframes shackleOpen{0%{transform:translateY(0);} 40%{transform:translateY(-22px);}
+  100%{transform:translateY(-22px) scaleX(.2);}}
+.opened .latch-arrow{stroke:#ffe3a3; animation:none;}
+#key{transform-box:view-box; transform-origin:359px 126px; animation:sway 5s ease-in-out infinite;}
+@keyframes sway{0%,100%{transform:rotate(-2.5deg);}50%{transform:rotate(2.5deg);}}
+.opened #key{animation:jingle 1.3s ease-out;}
+@keyframes jingle{0%{transform:rotate(0);}20%{transform:rotate(14deg);}40%{transform:rotate(-10deg);}
+  60%{transform:rotate(6deg);}80%{transform:rotate(-3deg);}100%{transform:rotate(0);}}
+
+.play-actions{display:flex; gap:8px; margin:10px auto 0; max-width:520px;}
+.play-actions .ghost-btn{flex:1;}
+
+/* ── COUNTDOWN (§14) ── */
+#screen-count{text-align:center; padding-top:22vh;}
+.count-num{font-size:118px; font-weight:900; color:var(--accent); text-shadow:0 0 40px rgba(224,178,90,.35); animation:pop .5s ease;}
+@keyframes pop{0%{transform:scale(.4); opacity:0;}50%{transform:scale(1.1);}100%{transform:scale(1); opacity:1;}}
+
+/* ── RESULT ── */
+#screen-result{text-align:center; padding-top:10px;}
+.result-badge{width:92px; height:92px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  margin:6px auto 16px; background:radial-gradient(circle at 40% 35%, #ffe3a3, #b07a26);
+  box-shadow:0 0 40px rgba(224,178,90,.35); color:#1d1206;}
+.result-badge svg{width:50px; height:50px;}
+.result-title{font-size:28px; font-weight:800; margin:0 0 6px;}
+.result-sub{color:var(--muted); font-size:15px; margin:0 0 16px; line-height:1.5;}
+.score-row{display:flex; gap:10px; justify-content:center; margin:0 auto 12px; max-width:400px;}
+.score-block{flex:1; min-width:0; background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:16px 10px;}
+.score-block .big{font-size:40px; font-weight:900; color:var(--accent2); font-variant-numeric:tabular-nums; line-height:1;
+  font-family:'Consolas','Courier New',monospace;}
+.score-block .lbl{font-size:12px; color:var(--muted); margin-top:6px; letter-spacing:1px;}
+.newbest{color:var(--correct); font-size:13px; font-weight:800; margin:0 0 12px;}
+.lb-line{font-size:14px; color:var(--muted); line-height:1.5;}
+.lb-line b{color:var(--text);}
+#lbPanel{text-align:left;}
+#lbPanel .board{margin-top:12px;}
+.result-actions{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
+
+/* ── MODALS — §6 / §15 (never native confirm/prompt) ── */
+.modal-back{position:fixed; inset:0; background:rgba(0,0,0,.82); display:none; align-items:center;
+  justify-content:center; z-index:80; padding:22px;}
+.modal-back.show{display:flex; animation:fadeIn .2s ease;}
+.modal{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px;
+  max-width:360px; width:100%; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.4);}
+.modal h3{margin:0 0 8px; font-size:18px; font-weight:800;}
+.modal p{margin:0 0 18px; font-size:14px; line-height:1.55; color:var(--muted);}
+.modal .sub{margin:0 0 13px; font-size:13px; color:var(--muted); line-height:1.5;}
+.modal textarea{min-height:90px; resize:vertical; line-height:1.5;}
+.modal-row{display:flex; gap:10px;}
+.modal-row button{flex:1;}
+
+.hint-toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); opacity:0;
+  background:var(--panel); border:1px solid var(--line); color:var(--text); padding:11px 18px; border-radius:12px;
+  font-size:14px; font-weight:600; pointer-events:none; transition:.25s; z-index:90; box-shadow:0 8px 20px var(--shadow);}
+.hint-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+.sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap;}
+
+@media (prefers-reduced-motion: reduce){
+  #key, .latch-arrow{animation:none;}
+  .opened #shackle{animation-duration:.4s;}
+}
+
+/* No hand-placed <ins> ad slot: §4 — the loader tag in <head> is the whole
+   integration and auto-ads inject their own units. */
+
+/* ── MOBILE — §9 ── */
+@media (max-width:520px){
+  body{padding-top:66px;}
+  body.playing{padding-top:12px;}
+  h1{font-size:22px;}
+  .subtitle{font-size:13px;}
+  .howto-box{padding:14px 16px;}
+  .howto-box p{font-size:12.5px;}
+  .panel{padding:14px;}
+  .count-num{font-size:92px;}
+  .stat-line{font-size:13px;}
+  .score-block .big{font-size:34px;}
+}
+@media (max-width:380px){
+  h1{font-size:19px; letter-spacing:.5px;}
+  .theme-toggle{top:10px; right:10px; padding:5px 12px; font-size:12px;}
+  .status-pill{padding:0 13px;}
+  .status-pill .mid{font-size:13px;}
+  .status-pill .clock{font-size:17px;}
+  .stat-line{padding:9px 10px;}
+  .board li{padding:8px 10px; gap:8px;}
+}
+</style>
+</head>
+<body>
+<!-- Theme Toggle — STYLE_GUIDE.md §2 -->
+<button class="theme-toggle" id="theme-btn" aria-label="Toggle colour theme">
+  <svg class="toggle-icon icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+  <svg class="toggle-icon icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  <span id="theme-label">Light</span>
+</button>
+
+<div class="app">
+
+  <!-- TOP BAR (play only) -->
+  <div class="topbar" id="topbar" style="display:none;">
+    <button class="icon-btn" id="btnExit" aria-label="Leave this lock">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <div class="status-pill">
+      <span class="mid">Moves <b id="movesNow">0</b></span>
+      <span class="clock" id="timeNow">0:00</span>
+    </div>
+    <button class="icon-btn" id="btnThemeTop" aria-label="Toggle colour theme">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    </button>
+    <button class="icon-btn" id="btnHelpPlay" aria-label="How to play">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 015.8 1c0 2-3 2.6-3 4.5"/><circle cx="12" cy="18.2" r=".6" fill="currentColor"/></svg>
+    </button>
+  </div>
+
+  <!-- ================= HOME ================= -->
+  <section class="screen active" id="screen-menu">
+    <div class="logo">
+      <!-- an OPEN padlock — Lock In's icon is a closed one, so the two read differently side by side -->
+      <span class="logo-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.2"/><path d="M8 11V6.8a4 4 0 017.6-1.7"/><path d="M12 14.6v2.6"/></svg></span>
+      <h1>UNSHACKLE</h1>
+      <p class="subtitle">Slide the blocks. Free the shackle</p>
+    </div>
+
+    <div class="howto-box">
+      <div class="howto-title">How to Play</div>
+      <p>The padlock is packed with <b>wooden and glass blocks</b>. Drag a block to slide it — it goes as far as the free space lets it, even around corners.</p>
+      <p>The shackle is caught by the <b>black hook</b> in the bottom-left corner. Clear a path and <b>push the hook all the way to the top</b> to spring the lock open.</p>
+      <p>Everyone gets <b>the same lock</b>. Fewest moves tops the board; time only breaks ties.</p>
+    </div>
+
+    <div class="panel">
+      <div class="section-title">Scoring</div>
+      <div class="stat-line"><span>One drag of one block</span><b>1 move</b></div>
+      <div class="stat-line"><span>Same block again, straight after</span><b>still 1 move</b></div>
+      <div class="stat-line"><span>Undo</span><b>takes the move back</b></div>
+      <div class="stat-line"><span>Same number of moves</span><b>faster time wins</b></div>
+    </div>
+
+    <button class="big-btn" id="btnStart">START</button>
+
+    <div class="panel" id="bestPanel" style="display:none; margin-top:18px;">
+      <div class="section-title">Your best</div>
+      <div id="bestText" class="lb-line" style="text-align:center; font-size:15px;"></div>
+    </div>
+
+    <div class="panel" id="boardPanel" style="display:none; margin-top:12px;">
+      <div class="section-title">Leaderboard &middot; top 10</div>
+      <ol class="board" id="menuBoard"></ol>
+    </div>
+  </section>
+
+  <!-- ================= COUNTDOWN (§14) ================= -->
+  <section class="screen" id="screen-count">
+    <div class="count-num" id="countNum">3</div>
+  </section>
+
+  <!-- ================= PLAY ================= -->
+  <section class="screen" id="screen-play">
+    <div class="stage" id="stage">
+      <svg id="lockSvg" viewBox="-6 0 410 530" role="application"
+           aria-label="The padlock. Drag a block to slide it, or press Tab to pick a block and use the arrow keys."></svg>
+      <div class="veil" id="veil">Paused</div>
+    </div>
+    <div class="play-actions">
+      <button class="ghost-btn" id="btnUndo" disabled>Undo</button>
+      <button class="ghost-btn" id="btnRestart">Start over</button>
+    </div>
+    <div class="sr-only" aria-live="polite" id="srLive"></div>
+  </section>
+
+  <!-- ================= RESULT ================= -->
+  <section class="screen" id="screen-result">
+    <div class="result-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2.2"/><path d="M8 11V6.8a4 4 0 017.6-1.7"/><path d="M12 14.6v2.6"/></svg>
+    </div>
+    <h2 class="result-title">Unlocked!</h2>
+    <p class="result-sub" id="resultSub"></p>
+    <div class="score-row">
+      <div class="score-block"><div class="big" id="resMoves">0</div><div class="lbl">MOVES</div></div>
+      <div class="score-block"><div class="big" id="resTime">0:00</div><div class="lbl">TIME</div></div>
+    </div>
+    <div class="newbest" id="resultNewBest" style="display:none;">New personal best!</div>
+    <div class="panel" id="lbPanel">
+      <div class="lb-line" id="lbLine">Checking the leaderboard…</div>
+      <ol class="board" id="lbList"></ol>
+    </div>
+    <div class="result-actions">
+      <button class="big-btn" id="btnAgain" style="margin-top:0;">PLAY AGAIN</button>
+      <button class="ghost-btn" id="btnShare" hidden>Share your score</button>
+      <button class="ghost-btn" id="btnMenu">Back to menu</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- CONFIRM / INFO MODAL (§15 — never native confirm()) -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <h3 id="modalTitle">Leave this lock?</h3>
+    <p id="modalText">Your moves and time won't be saved.</p>
+    <div class="modal-row">
+      <button class="ghost-btn" id="modalCancel">Stay</button>
+      <button class="ghost-btn danger-btn" id="modalConfirm">Leave</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME MODAL (§15 — never native prompt()) -->
+<div class="modal-back" id="nameBg">
+  <div class="modal">
+    <h3>Name for the board</h3>
+    <p class="sub">Shown on the global leaderboard. Up to 20 characters.</p>
+    <input type="text" id="inLbName" maxlength="20" placeholder="Your name" autocomplete="off">
+    <div class="modal-row" style="margin-top:13px;">
+      <button class="ghost-btn" id="btnNameSkip">Not now</button>
+      <button class="big-btn" id="btnNameOk" style="margin-top:0; flex:1;">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHARE SHEET (tier 3 — always works) -->
+<div class="modal-back" id="shareBg">
+  <div class="modal">
+    <h3>Copy your result</h3>
+    <p class="sub">Sharing isn't available here, so select the text below and copy it.</p>
+    <textarea id="shareText" readonly></textarea>
+    <div class="modal-row" style="margin-top:13px;">
+      <button class="ghost-btn" id="btnShareClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="hint-toast" id="toast"></div>
+
+<script>
+"use strict";
+(function(){
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB INTEGRATION — STYLE_GUIDE.md §12
+   Portable: copy verbatim into another game and change HUB_ID only.
+   ═══════════════════════════════════════════════════════════════ */
+const HUB_ID = 'unshackle';
+const HUB_DB = 'https://kenmemorize-arcade-default-rtdb.firebaseio.com';
+
+/* §12 — global play count. Fire-and-forget increment on game start. */
+function hubReportPlay(){
+  const url = `${HUB_DB}/globalStats/${HUB_ID}/totalPlays.json`;
+  fetch(url)
+    .then(r => r.ok ? r.json() : 0)
+    .then(n => fetch(url, { method:'PUT', body: JSON.stringify((Number(n) || 0) + 1) }))
+    .catch(() => {});   // offline is fine; the game must not care
+}
+
+/* ================= small helpers ================= */
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v===null?d:v;}catch(e){return d;}},
+  set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+};
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+const $=id=>document.getElementById(id);
+const DEBUG=/[?&]debug=1/.test(location.search);
+let REDUCED=false; try{ REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+function fmtTime(secs){ secs=Math.max(0,Math.floor(secs)); return Math.floor(secs/60)+':'+String(secs%60).padStart(2,'0'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   THE LOCK — one fixed layout, the same for every player
+   ───────────────────────────────────────────────────────────────
+   The window is a W×H grid of cells. Every block slides in four directions
+   (never rotates) through free cells, and one DRAG is one move however far
+   it goes — around corners included. The black HOOK sits in column 0 and
+   slides only up and down; the lock opens when the hook reaches row 0.
+
+   This layout was found by an exhaustive search: every position reachable
+   from it was enumerated (36,792 — or 18,396 if same-shaped blocks are
+   treated as interchangeable) and this start is the one furthest from any
+   solved position. MIN_MOVES is that distance, and it is re-checked by
+   breadth-first search in the test run, not assumed.
+
+   PIECES order is part of the proof format (a proof names blocks by
+   index). Never reorder or edit it: a different lock needs a new
+   LB_PROOF_V, or every existing board entry stops replaying.
+   ═══════════════════════════════════════════════════════════════ */
+const W=5, H=6;
+const HOOK_START=5;
+const MIN_MOVES=40;
+const MAX_RANKED=500;          // the score formula below only has room for 499 moves
+const PIECES=[
+  {mat:'acrylic', name:'Glass C-block',  cells:[[0,0],[1,0],[0,1],[0,2],[1,2]], x:1, y:0},
+  {mat:'orange',  name:'Orange T-block', cells:[[1,0],[0,1],[1,1],[1,2]],       x:2, y:0},
+  {mat:'black',   name:'Black bar',      cells:[[0,0],[0,1]],                   x:3, y:4},
+  {mat:'maple',   name:'Maple bar',      cells:[[0,0],[0,1]],                   x:0, y:2},
+  {mat:'black',   name:'Long black bar', cells:[[0,0],[0,1],[0,2]],             x:4, y:1},
+  {mat:'walnut',  name:'Walnut square',  cells:[[0,0],[1,0],[0,1],[1,1]],       x:1, y:3},
+  {mat:'maple',   name:'Maple cube',     cells:[[0,0]],                         x:3, y:3},
+  {mat:'teak',    name:'Teak bar',       cells:[[0,0],[0,1]],                   x:4, y:4},
+  {mat:'walnut',  name:'Walnut cube',    cells:[[0,0]],                         x:0, y:1},
+  {mat:'teak',    name:'Teak slab',      cells:[[0,0],[1,0]],                   x:1, y:5}
+];
+const HOOK=PIECES.length;     // the hook's index in every piece-indexed list
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+
+function newState(){ return { pos:PIECES.map(p=>({x:p.x, y:p.y})), hook:HOOK_START }; }
+function posOf(st,i){ return i===HOOK ? {x:0, y:st.hook} : st.pos[i]; }
+
+/* occupancy: 0 free, piece index + 1, or -1 for the hook. `skip` leaves one
+   piece out, which is how a piece's own cells stop blocking it. */
+function occupancy(st, skip){
+  const g=new Int8Array(W*H);
+  if(skip!==HOOK) g[st.hook*W]=-1;
+  for(let i=0;i<PIECES.length;i++){
+    if(i===skip) continue;
+    const p=st.pos[i];
+    for(const c of PIECES[i].cells) g[(p.y+c[1])*W+p.x+c[0]]=i+1;
+  }
+  return g;
+}
+function fits(g,i,x,y){
+  for(const c of PIECES[i].cells){
+    const cx=x+c[0], cy=y+c[1];
+    if(cx<0||cy<0||cx>=W||cy>=H||g[cy*W+cx]) return false;
+  }
+  return true;
+}
+/* Every anchor (top-left cell, as y*W+x) this piece can reach in ONE move,
+   including where it already is. The hook only travels its own column. */
+function reachable(st,i){
+  const g=occupancy(st,i), R=new Set();
+  if(i===HOOK){
+    R.add(st.hook*W);
+    for(let y=st.hook-1;y>=0&&!g[y*W];y--) R.add(y*W);
+    for(let y=st.hook+1;y<H&&!g[y*W];y++) R.add(y*W);
+    return R;
+  }
+  const p=st.pos[i], q=[[p.x,p.y]];
+  R.add(p.y*W+p.x);
+  while(q.length){
+    const [x,y]=q.pop();
+    for(const d of DIRS){
+      const nx=x+d[0], ny=y+d[1], k=ny*W+nx;
+      if(nx<0||ny<0||nx>=W||ny>=H||R.has(k)||!fits(g,i,nx,ny)) continue;
+      R.add(k); q.push([nx,ny]);
+    }
+  }
+  return R;
+}
+
+/* ONE function resolves a move, for live play and for the verifier alike
+   (Blind Snap's shape), so the two can never disagree. */
+function applyMove(st,i,x,y){
+  if(!(i===HOOK || (i>=0 && i<PIECES.length && i===Math.floor(i)))) return {legal:false, solved:false};
+  if(i===HOOK && x!==0) return {legal:false, solved:false};
+  const cur=posOf(st,i);
+  if(cur.x===x && cur.y===y) return {legal:false, solved:false};
+  if(!reachable(st,i).has(y*W+x)) return {legal:false, solved:false};
+  if(i===HOOK) st.hook=y; else st.pos[i]={x:x, y:y};
+  return {legal:true, solved:st.hook===0};
+}
+
+/* ── SCORE ────────────────────────────────────────────────────────
+   Fewest moves ranks first, time only breaks ties. The board sorts by one
+   number, and the Firebase rule only lets a row be replaced by a strictly
+   HIGHER score, so both are packed into one:
+
+       score = (500 − moves) × 1000  +  (999 − whole seconds, floored at 0)
+
+   The thousands are the moves — replayed and proven exactly. The last
+   three digits are the time — a claim the proof cannot check, exactly like
+   Cart Recall's speed bonus. It can only reorder players on equal moves. */
+function scoreFor(moves,secs){ return Math.max(0,MAX_RANKED-moves)*1000 + Math.max(0,999-Math.floor(secs)); }
+function decodeScore(s){ s=Math.max(0,Math.floor(Number(s)||0)); return { moves:MAX_RANKED-Math.floor(s/1000), secs:999-(s%1000) }; }
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAWING — one SVG in user units (1 cell = 60)
+   ═══════════════════════════════════════════════════════════════ */
+const C=60;
+const FL=18, GW=30, FR=24, FT=24, FB=28;     // frame left, hook groove, frame right/top/bottom
+const BY=114;                                // top edge of the lock body
+const WX=FL+GW, WY=BY+FT;                    // top-left of the window
+const BW=FL+GW+W*C+FR, BH=FT+H*C+FB;         // 372 × 412
+const INSET=2.5;                             // half the gap between blocks
+const SVGNS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){
+  const e=document.createElementNS(SVGNS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+
+/* Round the corners of a rectilinear polygon (points in order, clockwise
+   on screen). Reflex corners get a smaller radius so notches stay crisp. */
+function roundedPath(pts,r){
+  const n=pts.length; let d='';
+  for(let k=0;k<n;k++){
+    const a=pts[(k-1+n)%n], v=pts[k], b=pts[(k+1)%n];
+    const inx=Math.sign(v[0]-a[0]), iny=Math.sign(v[1]-a[1]);
+    const ox=Math.sign(b[0]-v[0]), oy=Math.sign(b[1]-v[1]);
+    const convex=(inx*oy-iny*ox)>0;
+    const lenIn=Math.hypot(v[0]-a[0],v[1]-a[1]), lenOut=Math.hypot(b[0]-v[0],b[1]-v[1]);
+    const rr=Math.min(convex?r:r*.5, lenIn/2, lenOut/2);
+    const p1=[v[0]-inx*rr, v[1]-iny*rr], p2=[v[0]+ox*rr, v[1]+oy*rr];
+    d+=(k===0?'M':'L')+p1[0].toFixed(2)+' '+p1[1].toFixed(2)+'Q'+v[0].toFixed(2)+' '+v[1].toFixed(2)+' '+p2[0].toFixed(2)+' '+p2[1].toFixed(2);
+  }
+  return d+'Z';
+}
+/* Outline of a polyomino, inset by INSET so neighbouring blocks show a gap.
+   Each exposed cell edge becomes a directed boundary edge (clockwise), the
+   edges are chained, collinear runs merged, then every vertex moves inward
+   by INSET along the sum of its two edges' inward normals — correct for
+   both convex and reflex corners of a rectilinear shape. */
+function polyominoPath(cells){
+  const has=new Set(cells.map(c=>c[0]+','+c[1]));
+  const next=new Map();
+  for(const [x,y] of cells){
+    if(!has.has(x+','+(y-1))) next.set(x+','+y,[x+1,y]);
+    if(!has.has((x+1)+','+y)) next.set((x+1)+','+y,[x+1,y+1]);
+    if(!has.has(x+','+(y+1))) next.set((x+1)+','+(y+1),[x,y+1]);
+    if(!has.has((x-1)+','+y)) next.set(x+','+(y+1),[x,y]);
+  }
+  const startKey=next.keys().next().value;
+  const loop=[]; let k=startKey;
+  do{ const [x,y]=k.split(',').map(Number); loop.push([x,y]); const nx=next.get(k); k=nx[0]+','+nx[1]; }while(k!==startKey && loop.length<200);
+  const corners=loop.filter((v,j)=>{
+    const a=loop[(j-1+loop.length)%loop.length], b=loop[(j+1)%loop.length];
+    return (v[0]-a[0])*(b[1]-v[1])-(v[1]-a[1])*(b[0]-v[0])!==0;
+  });
+  const pts=corners.map((v,j)=>{
+    const a=corners[(j-1+corners.length)%corners.length], b=corners[(j+1)%corners.length];
+    const din=[Math.sign(v[0]-a[0]),Math.sign(v[1]-a[1])], dout=[Math.sign(b[0]-v[0]),Math.sign(b[1]-v[1])];
+    return [v[0]*C+INSET*(-din[1]-dout[1]), v[1]*C+INSET*(din[0]+dout[0])];
+  });
+  return roundedPath(pts,8);
+}
+
+const G={svg:null, pieces:[], shackle:null, key:null};
+const MAT_FILL={acrylic:'url(#mAcrylic)', orange:'url(#mOrange)', black:'url(#mBlack)',
+                maple:'url(#mMaple)', walnut:'url(#mWalnut)', teak:'url(#mTeak)'};
+
+function buildLock(){
+  const svg=$('lockSvg'); G.svg=svg; svg.innerHTML='';
+  const defs=el('defs',{},svg);
+  function lin(id,stops,x2,y2){
+    const g=el('linearGradient',{id:id,x1:0,y1:0,x2:x2==null?1:x2,y2:y2==null?1:y2},defs);
+    stops.forEach(s=>el('stop',{offset:s[0],'stop-color':s[1],'stop-opacity':s[2]==null?1:s[2]},g));
+  }
+  lin('mFrame',[[0,'#7a2419'],[.45,'#551510'],[1,'#661c14']]);
+  lin('mShackle',[[0,'#3a3a3c'],[.35,'#1b1b1d'],[1,'#0c0c0d']],0,1);
+  lin('mBlack',[[0,'#343436'],[1,'#121213']]);
+  lin('mOrange',[[0,'#f59e4c'],[1,'#c4601b']]);
+  lin('mMaple',[[0,'#e3bd85'],[1,'#b8874e']]);
+  lin('mWalnut',[[0,'#6a4529'],[1,'#3d2615']]);
+  lin('mTeak',[[0,'#a86b37'],[1,'#77461f']]);
+  lin('mAcrylic',[[0,'#ffffff',.16],[.5,'#ffffff',.05],[1,'#ffffff',.11]]);
+  lin('mBrass',[[0,'#f3d27e'],[.5,'#c8963c'],[1,'#8a6122']]);
+  lin('mSheen',[[0,'#ffffff',.10],[.35,'#ffffff',0],[.7,'#ffffff',0],[1,'#ffffff',.05]]);
+  lin('mCavity',[[0,'#140807'],[1,'#2a100c']],0,1);
+  const grain=el('pattern',{id:'grain',width:140,height:13,patternUnits:'userSpaceOnUse'},defs);
+  el('path',{d:'M0 4 Q35 1 70 4 T140 4',fill:'none',stroke:'#000','stroke-opacity':.16,'stroke-width':1.1},grain);
+  el('path',{d:'M0 10 Q40 12.5 80 9.5 T140 10',fill:'none',stroke:'#000','stroke-opacity':.10,'stroke-width':.9},grain);
+
+  /* shackle — drawn first so the body hides its legs */
+  G.shackle=el('g',{id:'shackle'},svg);
+  const sh='M16 '+(BY+12)+'V60Q16 4 72 4H291Q347 4 347 60V'+(BY+12)+'H313V64Q313 38 287 38H76Q50 38 50 64V'+(BY+12)+'Z';
+  el('path',{d:sh,fill:'url(#mShackle)'},G.shackle);
+  el('path',{d:'M20 '+(BY+8)+'V62Q20 8 72 8H291',fill:'none',stroke:'#fff','stroke-opacity':.13,'stroke-width':2},G.shackle);
+
+  /* the cavity behind the blocks, the hook's groove, faint cell corners */
+  el('rect',{x:FL,y:WY,width:GW+W*C,height:H*C,fill:'url(#mCavity)'},svg);
+  el('rect',{x:FL,y:WY,width:GW,height:H*C,fill:'#0a0404'},svg);
+  el('line',{x1:FL+GW/2,y1:WY+8,x2:FL+GW/2,y2:WY+H*C-8,stroke:'#e0b25a','stroke-opacity':.22,'stroke-width':2,'stroke-dasharray':'4 9'},svg);
+  const dots=el('g',{fill:'#fff','fill-opacity':.07},svg);
+  for(let y=0;y<=H;y++) for(let x=0;x<=W;x++) el('circle',{cx:WX+x*C,cy:WY+y*C,r:1.7},dots);
+
+  /* Blocks live in their own layer, clipped to the cavity: a dragged block
+     is raised within this layer only, so it can never paint over the frame,
+     and the hook's bar vanishes under the top rail as it reaches row 0. */
+  const clip=el('clipPath',{id:'cavityClip'},defs);
+  el('rect',{x:FL,y:WY,width:GW+W*C,height:H*C},clip);
+  G.layer=el('g',{'clip-path':'url(#cavityClip)'},svg);
+
+  /* the hook: a bar in the groove plus a tooth into column 0 */
+  G.pieces=[];
+  const hookG=el('g',{class:'piece hook','data-piece':HOOK,tabindex:0,role:'button',
+    'aria-label':'Black hook — push it to the top to open the lock'},G.layer);
+  const hookD=roundedPath([[21,-40],[45,-40],[45,INSET],[WX+C-INSET,INSET],[WX+C-INSET,C-INSET],[21,C-INSET]],6);
+  el('path',{d:hookD,fill:'url(#mShackle)'},hookG);
+  el('path',{d:hookD,class:'shine'},hookG);
+  el('path',{d:hookD,class:'edge'},hookG);
+  el('path',{d:'M'+(WX+19)+' 36L'+(WX+30)+' 24L'+(WX+41)+' 36',class:'latch-arrow'},hookG);
+  G.pieces[HOOK]=hookG;
+
+  /* the blocks */
+  PIECES.forEach((p,i)=>{
+    const g=el('g',{class:'piece '+p.mat,'data-piece':i,tabindex:0,role:'button','aria-label':p.name},G.layer);
+    const d=polyominoPath(p.cells);
+    el('path',{d:d,fill:MAT_FILL[p.mat]},g);
+    if(p.mat!=='acrylic') el('path',{d:d,fill:'url(#grain)'},g);
+    el('path',{d:d,class:'shine'},g);
+    el('path',{d:d,class:'edge'},g);
+    G.pieces[i]=g;
+  });
+
+  /* the frame: body outline with the window cut out (evenodd), so the
+     window area never intercepts a drag */
+  const r=16, bx0=0, by0=BY, bx1=BW, by1=BY+BH;
+  const outer='M'+(bx0+r)+' '+by0+'H'+(bx1-r)+'Q'+bx1+' '+by0+' '+bx1+' '+(by0+r)+'V'+(by1-r)+'Q'+bx1+' '+by1+' '+(bx1-r)+' '+by1+
+              'H'+(bx0+r)+'Q'+bx0+' '+by1+' '+bx0+' '+(by1-r)+'V'+(by0+r)+'Q'+bx0+' '+by0+' '+(bx0+r)+' '+by0+'Z';
+  const hole='M'+FL+' '+WY+'H'+(WX+W*C)+'V'+(WY+H*C)+'H'+FL+'Z';
+  el('path',{d:outer+hole,fill:'url(#mFrame)','fill-rule':'evenodd'},svg);
+  el('path',{d:outer+hole,fill:'url(#grain)','fill-rule':'evenodd',opacity:.9},svg);
+  el('path',{d:hole,fill:'none',stroke:'#000','stroke-opacity':.55,'stroke-width':3,'pointer-events':'none'},svg);
+  el('path',{d:outer,fill:'none',stroke:'#2a0806','stroke-width':2,'pointer-events':'none'},svg);
+  /* the acrylic front plate's sheen */
+  el('path',{d:outer,fill:'url(#mSheen)','pointer-events':'none'},svg);
+  /* goal mark above the groove, screws, a brass nameplate */
+  el('path',{d:'M'+(FL+GW/2-8)+' '+(BY+17)+'L'+(FL+GW/2)+' '+(BY+8)+'L'+(FL+GW/2+8)+' '+(BY+17),class:'goal-mark'},svg);
+  [[12,BY+12],[BW-12,BY+12],[12,BY+BH-14],[BW-12,BY+BH-14]].forEach(s=>{
+    el('circle',{cx:s[0],cy:s[1],r:5.5,fill:'url(#mBrass)',stroke:'#4a3210','stroke-width':1},svg);
+    el('path',{d:'M'+(s[0]-3.2)+' '+(s[1]+1.6)+'L'+(s[0]+3.2)+' '+(s[1]-1.6),stroke:'#4a3210','stroke-width':1.3},svg);
+  });
+  const px=WX+W*C/2;
+  el('rect',{x:px-58,y:BY+BH-22,width:116,height:15,rx:3,fill:'url(#mBrass)',stroke:'#4a3210','stroke-width':1},svg);
+  const t=el('text',{x:px,y:BY+BH-11,'text-anchor':'middle','font-size':9.5,'letter-spacing':3.2,'font-weight':700,
+    fill:'#3b2508','font-family':"'Segoe UI',Arial,sans-serif"},svg);
+  t.textContent='UNSHACKLE';
+
+  /* the key, hung on the top-right screw — decoration only */
+  G.key=el('g',{id:'key','pointer-events':'none'},svg);
+  el('path',{d:'M'+(BW-12)+' '+(BY+12)+'C'+(BW+10)+' '+(BY+20)+' '+(BW+14)+' '+(BY+40)+' '+(BW+6)+' '+(BY+53),fill:'none',stroke:'#111','stroke-width':2.6,'stroke-linecap':'round'},G.key);
+  el('circle',{cx:BW+6,cy:BY+70,r:15,fill:'none',stroke:'url(#mBrass)','stroke-width':6},G.key);
+  el('circle',{cx:BW+6,cy:BY+70,r:5,fill:'none',stroke:'url(#mBrass)','stroke-width':3},G.key);
+  el('rect',{x:BW+2,y:BY+86,width:8,height:98,rx:2,fill:'url(#mBrass)'},G.key);
+  el('path',{d:'M'+(BW+10)+' '+(BY+158)+'h11v8h-5v6h6v8h-12Z',fill:'url(#mBrass)'},G.key);
+
+  G.svg.addEventListener('pointerdown',onPointerDown);
+  G.svg.addEventListener('pointermove',onPointerMove);
+  G.svg.addEventListener('pointerup',onPointerUp);
+  G.svg.addEventListener('pointercancel',onPointerUp);
+  G.svg.addEventListener('lostpointercapture',onPointerUp);
+}
+
+/* CSS transforms on SVG elements work in user units, which is what lets a
+   snap animate with a plain transition. */
+function place(i,P,animate){
+  const g=G.pieces[i]; if(!g) return;
+  g.style.transition=animate?'transform .14s ease':'none';
+  if(i===HOOK) g.style.transform='translate(0px,'+(WY+P.y*C)+'px)';
+  else g.style.transform='translate('+(WX+P.x*C)+'px,'+(WY+P.y*C)+'px)';
+}
+function placeAll(animate){ for(let i=0;i<=PIECES.length;i++) place(i,posOf(S.st,i),animate); }
+
+/* ═══════════════════════════════════════════════════════════════
+   DRAGGING — the block follows the finger along free corridors
+   ───────────────────────────────────────────────────────────────
+   The positions a block can reach in one move form a little graph (cells
+   joined to their free neighbours). While dragging, the block's continuous
+   position always lies on that graph — at a cell, or part-way along an edge
+   between two — so it slides and turns corners but can never pass through
+   another block. On release it settles on the nearer cell.
+   ═══════════════════════════════════════════════════════════════ */
+const EPS=1e-4;
+const D={active:false, i:-1, R:null, P:null, from:null, grab:null, pid:null};
+function isInt(v){ return Math.abs(v-Math.round(v))<EPS; }
+function inR(R,x,y){ return x>=0&&y>=0&&x<W&&y<H&&R.has(y*W+x); }
+function slide(P,T,R){
+  for(let it=0;it<40;it++){
+    const ix=isInt(P.x), iy=isInt(P.y);
+    if(ix) P.x=Math.round(P.x);
+    if(iy) P.y=Math.round(P.y);
+    if(ix&&iy){
+      let best=null, gain=0.001;
+      for(const d of DIRS){
+        if(!inR(R,P.x+d[0],P.y+d[1])) continue;
+        const g=d[0]*(T.x-P.x)+d[1]*(T.y-P.y);
+        if(g>gain){ gain=g; best=d; }
+      }
+      if(!best) return;
+      const a=Math.min(1,gain);
+      P.x+=best[0]*a; P.y+=best[1]*a;
+      if(a<1) return;
+      continue;
+    }
+    /* part-way along an edge: horizontal if y is whole, vertical if x is */
+    const ax=iy?'x':'y', pr=iy?'y':'x';
+    const lo=Math.floor(P[ax]), hi=lo+1;
+    const along=T[ax]-P[ax], perp=T[pr]-P[pr];
+    if(Math.abs(perp)>0.35 && Math.abs(perp)>Math.abs(along)){
+      /* the finger wants to turn: hop to whichever end of this edge opens
+         that way (the nearer one if both do) */
+      const s=perp>0?1:-1; let end=null, bd=9;
+      for(const e of [lo,hi]){
+        const ok = ax==='x' ? inR(R,e,P.y+s) : inR(R,P.x+s,e);
+        if(ok && Math.abs(P[ax]-e)<bd){ bd=Math.abs(P[ax]-e); end=e; }
+      }
+      if(end!==null){ P[ax]=end; continue; }
+    }
+    const nv=Math.max(lo,Math.min(hi,T[ax]));
+    if(Math.abs(nv-P[ax])<EPS) return;
+    P[ax]=nv;
+    if(!isInt(nv)) return;
+  }
+}
+function toCell(e){
+  const m=G.svg.getScreenCTM(); if(!m) return null;
+  const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(m.inverse());
+  return { x:(p.x-WX)/C, y:(p.y-WY)/C };
+}
+function onPointerDown(e){
+  if(S.phase!=='play'||S.paused||D.active) return;
+  if(e.button!=null && e.button!==0) return;
+  const g=e.target.closest && e.target.closest('[data-piece]'); if(!g) return;
+  const pt=toCell(e); if(!pt) return;
+  e.preventDefault();
+  const i=Number(g.dataset.piece), cur=posOf(S.st,i);
+  D.active=true; D.i=i; D.R=reachable(S.st,i); D.from={x:cur.x,y:cur.y}; D.P={x:cur.x,y:cur.y};
+  D.grab={x:pt.x-cur.x, y:pt.y-cur.y}; D.pid=e.pointerId;
+  try{ G.svg.setPointerCapture(e.pointerId); }catch(err){}
+  G.layer.appendChild(g);                    // lift above its neighbours
+  g.classList.add('lift','dragging');
+}
+function onPointerMove(e){
+  if(!D.active || e.pointerId!==D.pid) return;
+  const pt=toCell(e); if(!pt) return;
+  const T={ x:pt.x-D.grab.x, y:pt.y-D.grab.y };
+  slide(D.P,T,D.R);
+  place(D.i,D.P,false);
+}
+function onPointerUp(e){
+  if(!D.active || (e && e.pointerId!==D.pid)) return;
+  endDrag(true);
+}
+/* commit=false puts the block back where the drag started (a modal
+   interrupting a drag must not sneak a move in behind it). */
+function endDrag(commit){
+  if(!D.active) return;
+  D.active=false;
+  const g=G.pieces[D.i]; g.classList.remove('lift','dragging');
+  try{ G.svg.releasePointerCapture(D.pid); }catch(err){}
+  const to = commit ? { x:Math.round(D.P.x), y:Math.round(D.P.y) } : D.from;
+  if(!inR(D.R,to.x,to.y)){ place(D.i,D.from,true); return; }
+  place(D.i,to,true);
+  if(commit) commitMove(D.i,D.from,to);
+}
+
+/* The log: consecutive moves of the same block merge into one (dropping it
+   entirely if the block ends where it began), so a nervous re-grab never
+   costs a move. The proof records this merged log, never the raw drags. */
+function commitMove(i,from,to){
+  if(from.x===to.x && from.y===to.y) return;
+  const res=applyMove(S.st,i,to.x,to.y);
+  if(!res.legal){ place(i,from,true); return; }
+  const last=S.log[S.log.length-1];
+  if(last && last.i===i){
+    last.tx=to.x; last.ty=to.y;
+    if(last.tx===last.fx && last.ty===last.fy) S.log.pop();
+  } else S.log.push({ i:i, fx:from.x, fy:from.y, tx:to.x, ty:to.y });
+  paintHud();
+  $('srLive').textContent='Move '+S.log.length;
+  if(res.solved) win();
+}
+function undo(){
+  if(S.phase!=='play'||S.paused||D.active) return;
+  const m=S.log.pop(); if(!m) return;
+  if(m.i===HOOK) S.st.hook=m.fy; else S.st.pos[m.i]={x:m.fx, y:m.fy};
+  place(m.i,{x:m.fx,y:m.fy},true);
+  paintHud();
+  $('srLive').textContent='Undone — move '+S.log.length;
+}
+function keyMove(i,dx,dy){
+  const cur=posOf(S.st,i), to={x:cur.x+dx, y:cur.y+dy};
+  if(!inR(reachable(S.st,i),to.x,to.y)){
+    const g=G.pieces[i]; g.classList.remove('bump'); void g.getBBox(); g.classList.add('bump'); return;
+  }
+  place(i,to,true);
+  commitMove(i,cur,to);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RUN FLOW — Menu → Countdown → Play → Result (§14)
+   Every async step re-checks S.runId, so leaving mid-animation can never
+   let a stale flow carry on behind the menu.
+   ═══════════════════════════════════════════════════════════════ */
+var S={ phase:'idle', st:newState(), log:[], runId:0, paused:false,
+        tick:null, countTimer:null, moves:0, secs:0, score:0 };
+
+/* A stopwatch that pauses — §15: a modal pauses the run, and cancelling
+   resumes it with exactly the time that had passed. */
+const clock={ acc:0, t0:0, running:false,
+  start(){ this.acc=0; this.t0=Date.now(); this.running=true; },
+  pause(){ if(this.running){ this.acc+=Date.now()-this.t0; this.running=false; } },
+  resume(){ if(!this.running){ this.t0=Date.now(); this.running=true; } },
+  ms(){ return this.acc+(this.running?Date.now()-this.t0:0); }
+};
+
+const SCREEN_IDS=['screen-menu','screen-count','screen-play','screen-result'];
+function show(name){
+  const full='screen-'+name;
+  SCREEN_IDS.forEach(id=>{ const e=$(id); if(e) e.classList.toggle('active', id===full); });
+  const inPlay=(name==='play'||name==='count');
+  $('topbar').style.display=inPlay?'flex':'none';
+  $('theme-btn').style.display=inPlay?'none':'flex';
+  document.body.classList.toggle('playing',inPlay);
+  window.scrollTo(0,0);
+}
+function paintHud(){
+  $('movesNow').textContent=S.log.length;
+  $('timeNow').textContent=fmtTime(clock.ms()/1000);
+  $('btnUndo').disabled=!(S.phase==='play' && S.log.length);
+}
+
+/* ---------- THEME (§2) ---------- */
+const THEME_KEY='unshackle_theme';
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme',t); store.set(THEME_KEY,t);
+  $('theme-label').textContent = t==='dark' ? 'Light' : 'Dark';
+}
+applyTheme(store.get(THEME_KEY,'dark')==='light'?'light':'dark');
+function toggleTheme(){ applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'); }
+
+function startGame(){
+  S.runId++; clearInterval(S.tick); clearInterval(S.countTimer);
+  if(D.active) endDrag(false);
+  S.st=newState(); S.log=[]; S.phase='count'; S.paused=false;
+  G.svg.classList.remove('opened');
+  $('stage').classList.remove('paused');
+  placeAll(false);
+  $('btnRestart').disabled=false;
+  clock.acc=0; clock.running=false;
+  paintHud();
+  hubReportPlay();                       // §12 — once per attempt
+  const id=S.runId;
+  countdown(()=>{
+    if(id!==S.runId) return;
+    show('play'); S.phase='play'; clock.start();
+    /* a modal opened during the countdown: start paused, not behind it */
+    if($('modalBack').classList.contains('show')){ S.paused=true; clock.pause(); $('stage').classList.add('paused'); }
+    paintHud();
+    S.tick=setInterval(()=>{ if(S.phase==='play') $('timeNow').textContent=fmtTime(clock.ms()/1000); },250);
+  });
+}
+function countdown(done){
+  show('count');
+  let n=3; const num=$('countNum');
+  const paint=()=>{ num.textContent=n; num.style.animation='none'; void num.offsetWidth; num.style.animation=''; };
+  paint();
+  S.countTimer=setInterval(()=>{
+    n--;
+    if(n<=0){ clearInterval(S.countTimer); done(); return; }
+    paint();
+  },700);
+}
+function win(){
+  S.phase='won'; clock.pause(); clearInterval(S.tick);
+  S.moves=S.log.length; S.secs=Math.floor(clock.ms()/1000);
+  S.score=scoreFor(S.moves,S.secs);
+  paintHud();
+  $('btnRestart').disabled=true;
+  G.svg.classList.add('opened');
+  $('srLive').textContent='Unlocked in '+S.moves+' moves';
+  const id=S.runId;
+  setTimeout(()=>{ if(id===S.runId) showResult(); }, REDUCED?700:1700);
+}
+function showResult(){
+  $('resMoves').textContent=S.moves;
+  $('resTime').textContent=fmtTime(S.secs);
+  $('resultSub').textContent = S.moves<=MIN_MOVES
+    ? 'A perfect solve — '+MIN_MOVES+' moves is the fewest this lock allows.'
+    : 'You opened it in '+S.moves+' moves. It can be done in '+MIN_MOVES+'.';
+  const prev=getBest();
+  $('resultNewBest').style.display = S.score>prev ? '' : 'none';
+  if(S.score>prev) setBest(S.score);
+  $('lbList').innerHTML='';
+  show('result');
+  handleLeaderboard();
+}
+function exitToMenu(){
+  S.runId++; clearInterval(S.tick); clearInterval(S.countTimer);
+  if(D.active) endDrag(false);
+  clock.pause(); S.phase='idle'; S.paused=false;
+  $('stage').classList.remove('paused');
+  show('menu'); refreshHome();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL (§15) — pausing, not just asking
+   Mid-solve, any modal stops the clock AND hides the lock (so a pause can't
+   be used as free thinking time); cancelling resumes both exactly.
+   ═══════════════════════════════════════════════════════════════ */
+let modalAction=null;
+function openModal(title,text,confirmLabel,action,cancelLabel){
+  $('modalTitle').textContent=title; $('modalText').textContent=text;
+  $('modalConfirm').textContent=confirmLabel;
+  $('modalCancel').textContent=cancelLabel||'Stay';
+  $('modalCancel').style.display=action?'':'none';
+  $('modalConfirm').classList.toggle('danger-btn', !!action);
+  modalAction=action;
+  if(S.phase==='play' && !S.paused){
+    if(D.active) endDrag(false);
+    S.paused=true; clock.pause(); $('stage').classList.add('paused');
+  }
+  $('modalBack').classList.add('show');
+}
+function closeModal(){
+  $('modalBack').classList.remove('show'); modalAction=null;
+  if(S.paused){ S.paused=false; $('stage').classList.remove('paused'); if(S.phase==='play') clock.resume(); }
+}
+
+let toastTimer=null;
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1500); }
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL LEADERBOARD  —  /leaderboard/unshackle/{playerId}
+   One row per player, holding their best solve. A lower score never
+   overwrites a higher one (enforced by the Firebase rule as well as here).
+   There is no seed: every player solves the same lock.
+   ═══════════════════════════════════════════════════════════════ */
+var LB_GAME='unshackle';
+var LB_PROOF_V=1;
+var PID_KEY='unshacklePid', NAME_KEY='unshackleName', BEST_KEY='unshackle_best_solo';
+
+function lbApi(pth){ return HUB_DB+'/'+pth+'.json'; }
+function playerId(){
+  var id=null;
+  try{ id=localStorage.getItem(PID_KEY); }catch(e){}
+  if(!id){
+    id='u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36);
+    try{ localStorage.setItem(PID_KEY,id); }catch(e){}
+  }
+  return id;
+}
+function playerName(){ try{ return localStorage.getItem(NAME_KEY)||''; }catch(e){ return ''; } }
+function getBest(){ try{ return parseInt(localStorage.getItem(BEST_KEY),10)||0; }catch(e){ return 0; } }
+function setBest(v){ try{ localStorage.setItem(BEST_KEY,String(v)); }catch(e){} }
+
+/* Moves are "block:cell" pairs joined by ";" — the block's index in PIECES
+   (or "S" for the hook) and where that merged move left it: the anchor
+   cell as y*W+x, or just the row for the hook. */
+function buildProof(){
+  return S.log.map(m => m.i===HOOK ? 'S:'+m.ty : m.i+':'+(m.ty*W+m.tx)).join(';');
+}
+
+/* Resolves to the board ({} when nobody has solved it yet — Firebase
+   answers an empty path with JSON null), or to null when the board could
+   not be read at all, so "be the first" is never shown for a network error. */
+function lbFetchAll(){
+  return fetch(lbApi('leaderboard/'+LB_GAME))
+    .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(d){ if(d&&typeof d==='object'&&d.error) throw new Error(d.error); return (d&&typeof d==='object')?d:{}; })
+    .catch(function(){ return null; });
+}
+function lbRank(all,score){
+  var better=0,total=0;
+  for(var k in all){ if(!all[k])continue; total++; if(Number(all[k].score)>score) better++; }
+  return { rank:better+1, total:total };
+}
+function lbSubmit(name){
+  var entry={ name:String(name).slice(0,20), score:S.score, at:Date.now(), v:LB_PROOF_V, moves:buildProof() };
+  return fetch(lbApi('leaderboard/'+LB_GAME+'/'+playerId()),
+               { method:'PUT', body:JSON.stringify(entry) })
+    .then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+function renderBoard(list,all){
+  var me=playerId();
+  var rows=Object.keys(all).filter(function(k){ return all[k] && isFinite(Number(all[k].score)); })
+    .map(function(k){ return { id:k, name:all[k].name, score:Number(all[k].score) }; })
+    .sort(function(a,b){ return b.score-a.score; });
+  if(!rows.length){ list.innerHTML='<li class="empty">No one has opened the lock yet — be the first</li>'; return; }
+  list.innerHTML=rows.slice(0,10).map(function(r,i){
+    var d=decodeScore(r.score);
+    return '<li'+(r.id===me?' class="me"':'')+'><span class="rk">'+(i+1)+'</span><span class="nm">'+
+      escapeHtml(String(r.name||'—').slice(0,20))+'</span><span class="sc">'+d.moves+' moves &middot; '+fmtTime(d.secs)+'</span></li>';
+  }).join('');
+}
+function describe(score){ var d=decodeScore(score); return d.moves+' moves &middot; '+fmtTime(d.secs); }
+
+/* Home — the best panel stays hidden until this player has solved it (a
+   menu should not greet a first-time player with a zero); the board shows
+   whenever it can be reached, because the hub doesn't show it yet. */
+function refreshHome(){
+  var b=getBest();
+  if(b){ $('bestText').innerHTML='<b>'+describe(b)+'</b>'; $('bestPanel').style.display=''; }
+  else $('bestPanel').style.display='none';
+  lbFetchAll().then(function(all){
+    if(!all){ $('boardPanel').style.display='none'; return; }
+    renderBoard($('menuBoard'),all);
+    $('boardPanel').style.display='';
+    var mine=all[playerId()];
+    if(b && mine){
+      var r=lbRank(all,Number(mine.score)||0);
+      $('bestText').innerHTML='<b>'+describe(b)+'</b> &middot; <b style="color:var(--accent)">#'+r.rank+'</b> of '+r.total+' on the board';
+    }
+  });
+}
+
+/* Solved → find where it sits, ask for a name the first time, and submit
+   only if it beats this player's own best row. */
+function handleLeaderboard(){
+  var line=$('lbLine'), share=$('btnShare'), list=$('lbList');
+  share.hidden=true;
+  if(S.moves>=MAX_RANKED){
+    line.textContent='Open it in under '+MAX_RANKED+' moves to get on the board.';
+    showShare(null); return;
+  }
+  line.textContent='Checking the leaderboard…';
+  lbFetchAll().then(function(all){
+    if(!all){ line.textContent='Could not reach the leaderboard — your score is safe locally.'; showShare(null); return; }
+    var mine=all[playerId()];
+    var prevBest=mine?(Number(mine.score)||0):0;
+    if(S.score<=prevBest){
+      var r=lbRank(all,prevBest);
+      line.innerHTML='Your best is still <b>'+describe(prevBest)+'</b> — #'+r.rank+' of '+r.total+'.';
+      renderBoard(list,all); showShare(r.rank);
+      return;
+    }
+    var name=playerName();
+    var go=name?Promise.resolve(name):askName();
+    go.then(function(entered){
+      if(entered===null){
+        line.textContent='Not submitted. Solve it again to join the board.';
+        renderBoard(list,all); showShare(null);
+        return;
+      }
+      try{ localStorage.setItem(NAME_KEY,entered); }catch(e){}
+      line.textContent='Submitting…';
+      lbSubmit(entered).then(function(ok){
+        if(!ok){
+          line.textContent='Could not reach the leaderboard — your score is safe locally.';
+          showShare(null);
+          return;
+        }
+        lbFetchAll().then(function(after){
+          after=after||{};
+          var r2=lbRank(after,S.score);
+          line.innerHTML=prevBest
+            ? 'New personal best — you’re <b>#'+r2.rank+'</b> of '+r2.total+'.'
+            : 'You’re on the board at <b>#'+r2.rank+'</b> of '+r2.total+'.';
+          renderBoard(list,after); showShare(r2.rank);
+        });
+      });
+    });
+  });
+}
+function askName(){
+  return new Promise(function(resolve){
+    var bg=$('nameBg'), input=$('inLbName');
+    input.value=playerName();
+    bg.classList.add('show');
+    setTimeout(function(){ input.focus(); },50);
+    function done(v){
+      bg.classList.remove('show');
+      $('btnNameOk').onclick=null; $('btnNameSkip').onclick=null; input.onkeydown=null;
+      resolve(v);
+    }
+    function ok(){ var n=input.value.trim(); if(n) done(n); }
+    $('btnNameOk').onclick=ok;
+    $('btnNameSkip').onclick=function(){ done(null); };
+    input.onkeydown=function(e){ if(e.key==='Enter') ok(); };
+  });
+}
+
+/* ---------- Share — three tiers, never a silent failure ---------- */
+var SHARE_HOME='https://arcade.kenmemorize.com/';
+function shareUrl(){
+  if(location.protocol==='file:'||location.origin==='null') return SHARE_HOME;
+  return location.origin+location.pathname.replace(/\/games\/[^/]*$/,'/');
+}
+function showShare(rank){
+  var b=$('btnShare'); b.hidden=false;
+  b.onclick=function(){ shareScore(rank); };
+}
+function shareScore(rank){
+  var text='I opened the Unshackle padlock in '+S.moves+' moves ('+fmtTime(S.secs)+')'+(rank?' — #'+rank+' on the board':'')+'. '+shareUrl();
+  if(navigator.share){
+    navigator.share({ title:'Unshackle', text:text }).catch(function(e){
+      if(e&&e.name==='AbortError') return;
+      manualShare(text);
+    });
+    return;
+  }
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(function(){ toast('Copied'); }, function(){ manualShare(text); });
+    return;
+  }
+  manualShare(text);
+}
+function manualShare(text){ $('shareText').value=text; $('shareBg').classList.add('show'); }
+
+/* ═══════════════════════════════════════════════════════════════
+   VERIFICATION SURFACE
+   admin.html loads this game in a hidden iframe and calls
+   window.Unshackle, so verification always runs the game's REAL logic.
+   Do not delete this.
+   ═══════════════════════════════════════════════════════════════ */
+window.Unshackle={
+  PROOF_V:LB_PROOF_V, W:W, H:H, PIECES:PIECES, HOOK:HOOK, HOOK_START:HOOK_START,
+  MIN_MOVES:MIN_MOVES, MAX_RANKED:MAX_RANKED,
+  newState:newState, reachable:reachable, applyMove:applyMove,
+  scoreFor:scoreFor, decodeScore:decodeScore,
+
+  /* Replay a submitted proof. `seed` is ignored — there is one lock.
+
+     Every move is resolved through the same applyMove() live play uses, so
+     an illegal slide (through a block, or off the board) is rejected. The
+     log must actually OPEN the lock, and end there.
+
+     The MOVE count is pinned exactly: the score's thousands must equal
+     500 − moves. The last three digits are the time tie-break, which the
+     proof does not record — so that part is only range-checked. Consecutive
+     moves of one block are rejected: the game merges those, so a log that
+     contains them was not produced by it.
+
+     Returns { ok, reason, moves, secs, score }. */
+  verify:function(seed,movesStr,claimedScore){
+    function fail(reason,n){ return { ok:false, reason:reason, moves:n||0, secs:0, score:0 }; }
+    var entries=String(movesStr||'').split(';').filter(Boolean);
+    if(!entries.length) return fail('No moves recorded',0);
+    var st=newState(), prev=null, solved=false;
+    for(var k=0;k<entries.length;k++){
+      if(solved) return fail('Moves recorded after the lock was already open',k);
+      var m=/^(\d+|S):(\d+)$/.exec(entries[k]);
+      if(!m) return fail('Malformed entry '+(k+1)+': "'+entries[k]+'"',k);
+      var i=m[1]==='S'?HOOK:parseInt(m[1],10), v=parseInt(m[2],10);
+      if(i!==HOOK && i>=PIECES.length) return fail('Move '+(k+1)+' names block '+i+', which does not exist',k);
+      if(i===prev) return fail('Moves '+k+' and '+(k+1)+' are the same block back to back — the game merges those, so this log did not come from it',k);
+      var x=i===HOOK?0:v%W, y=i===HOOK?v:Math.floor(v/W);
+      if(i!==HOOK && v>=W*H) return fail('Move '+(k+1)+': cell '+v+' is outside the lock',k);
+      var res=applyMove(st,i,x,y);
+      if(!res.legal) return fail('Move '+(k+1)+': '+(i===HOOK?'the hook':PIECES[i].name)+' cannot slide there from where it was',k);
+      prev=i; solved=res.solved;
+    }
+    if(!solved) return fail('The moves never open the lock',entries.length);
+    var n=entries.length;
+    if(n>=MAX_RANKED) return fail(n+' moves — only runs under '+MAX_RANKED+' are ranked',n);
+    var claimed=Number(claimedScore), lo=(MAX_RANKED-n)*1000;
+    var ok=Number.isInteger(claimed) && claimed>=lo && claimed<=lo+999;
+    var secs=ok?999-(claimed-lo):0;
+    return { ok:ok, moves:n, secs:secs, score:claimed,
+             reason: ok ? 'Replay opens the lock in exactly '+n+' moves'
+                        : 'Claimed '+claimed+' implies '+decodeScore(claimed).moves+' moves, but this log opens the lock in '+n };
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   WIRE UP
+   ═══════════════════════════════════════════════════════════════ */
+buildLock();
+placeAll(false);
+
+$('btnStart').onclick=function(){ startGame(); };
+$('btnAgain').onclick=function(){ startGame(); };
+$('btnMenu').onclick=function(){ show('menu'); refreshHome(); };
+$('btnExit').onclick=function(){
+  if(S.phase==='won') return;            // the solve is being shown — let it land on the result screen
+  if(S.phase==='play') openModal('Leave this lock?','Your moves and time won’t be saved.','Leave',exitToMenu);
+  else exitToMenu();
+};
+$('btnRestart').onclick=function(){
+  if(S.phase!=='play') return;
+  openModal('Start over?','Every block goes back, and moves and time reset to zero.','Start over',startGame,'Keep going');
+};
+$('btnUndo').onclick=undo;
+$('theme-btn').onclick=toggleTheme;
+$('btnThemeTop').onclick=toggleTheme;
+$('btnHelpPlay').onclick=function(){
+  openModal('How to play',
+    'Drag a block to slide it — as far as the free space allows, even around corners. Push the black hook in the bottom-left all the way to the top to open the lock. One drag is one move, and moving the same block again straight after doesn’t count twice. The clock is paused while this is open.',
+    'Got it',null);
+};
+$('modalCancel').onclick=closeModal;
+$('modalConfirm').onclick=function(){ var a=modalAction; closeModal(); if(a) a(); };
+$('btnShareClose').onclick=function(){ $('shareBg').classList.remove('show'); };
+
+/* keyboard: Tab to a block, arrows move it one cell, U or Ctrl+Z undoes */
+document.addEventListener('keydown',function(e){
+  if(!$('screen-play').classList.contains('active')) return;
+  if($('modalBack').classList.contains('show')) return;
+  if(S.phase!=='play'||S.paused) return;
+  var t=e.target, tag=(t&&t.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA') return;
+  if(e.key==='u'||e.key==='U'||((e.ctrlKey||e.metaKey)&&(e.key==='z'||e.key==='Z'))){ e.preventDefault(); undo(); return; }
+  var g=t&&t.closest&&t.closest('[data-piece]');
+  if(!g||D.active) return;
+  var d={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(!d) return;
+  e.preventDefault();
+  var i=Number(g.dataset.piece);
+  if(i===HOOK && d[0]) return;
+  keyMove(i,d[0],d[1]);
+});
+
+refreshHome();
+
+/* debug-only playthrough hook, gated by ?debug=1 — no effect on normal play */
+if(DEBUG){
+  window.Unshackle.debug={
+    state:function(){ return S; }, proof:function(){ return buildProof(); },
+    start:function(){ startGame(); },
+    /* commit a move exactly as a finished drag would */
+    move:function(i,x,y){ var cur=posOf(S.st,i); if(!inR(reachable(S.st,i),x,y)) return false; place(i,{x:x,y:y},true); commitMove(i,{x:cur.x,y:cur.y},{x:x,y:y}); return true; },
+    undo:function(){ undo(); }, slide:slide, toCell:toCell, G:G
+  };
+}
+})();
+</script>
+</body>
+</html>

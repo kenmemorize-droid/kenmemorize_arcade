@@ -31,6 +31,9 @@
   --icon-stroke:#ffffff; --mark:#0b2b33;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+/* .big-btn sets display:block, which beats the browser's own [hidden] rule —
+   without this, guests saw the host-only START / NEXT WAVE buttons */
+[hidden]{display:none !important;}
 body{
   margin:0; min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
   background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 65%);
@@ -359,8 +362,8 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
   <div class="panel">
     <div class="section-title">Format</div>
     <p class="hint" style="text-align:center;">
-      <b>5 waves</b> on your own shore. Everyone's shore is built from the
-      identical seed, so the difficulty is the same for all players.
+      <b>5 rounds</b>. Each round is a fresh shore of up to 5 waves, built from
+      the identical seed for everyone, so the difficulty is the same for all players.
     </p>
   </div>
   <button class="big-btn" id="btnLaunch">START THE RACE</button>
@@ -370,9 +373,9 @@ table.lb td:last-child, table.lb th:last-child{text-align:right; font-weight:800
 
 <!-- ================= RACE STANDINGS ================= -->
 <section id="screen-standings" class="screen">
-  <h1 id="standTitle" style="font-size:22px;">Wave standings</h1>
+  <h1 id="standTitle" style="font-size:22px;">Round standings</h1>
   <div class="panel"><div id="standList"></div></div>
-  <button class="big-btn" id="btnNextWave">NEXT WAVE</button>
+  <button class="big-btn" id="btnNextWave">NEXT ROUND</button>
   <p class="hint" id="standWait" style="text-align:center;"></p>
 </section>
 
@@ -808,8 +811,12 @@ function renderPlay(){
     $('playersBar').style.display = '';
     $('turnTimer').style.display = '';
     renderPlayers();
-    $('beachLabel').textContent = 'Wave ' + G.waveNo + ' of ' + RACE_WAVES;
-    $('quotaLabel').textContent = 'Find ' + b.wave + ' / ' + b.cfg.target;
+    /* The race unit is a ROUND (a whole shore); a wave is one scatter inside
+       it, as in solo. Calling both "wave" made a 5-round race read as up to
+       25 waves out of a promised 5. Internals (RACE_WAVES, room.wave) keep
+       their names so the room format is unchanged. */
+    $('beachLabel').textContent = 'Round ' + G.waveNo + ' of ' + RACE_WAVES;
+    $('quotaLabel').textContent = 'Wave ' + b.wave + ' of ' + b.cfg.target;
     $('progressBar').style.width = Math.min(100, (b.wave-1) / b.cfg.target * 100) + '%';
   } else {
     $('playersBar').style.display = 'none';
@@ -1006,6 +1013,7 @@ function finishRun(note){
     row('Best solo run', (isBest ? '🏆 ' : '') + Math.max(best, G.totalScore));
 
   $('lbPanel').hidden = false;
+  $('playAgainBtn').textContent = 'PLAY AGAIN';   // a race before this run relabels it
   show('screen-final');
   handleLeaderboard();          // async; never blocks this screen
 }
@@ -1283,7 +1291,7 @@ function joinRoom(){
 
 function watchRoom(){
   raceErr('');
-  M.joined = true; M.lastKey = ''; M.refereedWave = 0; M.playReported = false;
+  M.joined = true; M.lastKey = ''; M.refereedWave = 0; M.dealt = 0; M.playReported = false;
   M.es = subscribe('rooms/' + M.code, onRoom, function(){ raceErr('Connection dropped.'); });
   clearInterval(M.hb);
   M.hb = setInterval(function(){
@@ -1305,7 +1313,10 @@ function leaveRoom(){
 
 /* ---- the single reactive entry point ---- */
 function onRoom(room){
-  if (!room){ if (M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  /* an update already in flight when we left must not repaint the race
+     screens over wherever the player went next */
+  if (!M.joined) return;
+  if (!room){ toast('Room closed'); leaveRoom(); return; }
   M.room = room;
 
   if (room.phase === 'lobby'){ M.playReported = false; paintLobby(); return; }
@@ -1343,6 +1354,11 @@ function paintLobby(){
 }
 
 function hostDealWave(n){
+  /* Exactly one deal per wave, in order, never past the last. A double-tap on
+     NEXT, or a guest tapping START, used to deal the same wave again with a
+     fresh seed, resetting everyone's `done`. */
+  if (!M.isHost || n !== M.dealt + 1 || n > RACE_WAVES) return;
+  M.dealt = n;
   var reset = {}, ids = Object.keys(P());
   for (var i=0;i<ids.length;i++){
     var p = P()[ids[i]];
@@ -1414,7 +1430,7 @@ function standings(){
 function paintStandings(){
   show('screen-standings');
   var rows = standings(), html = '';
-  $('standTitle').textContent = 'Wave ' + ((M.room && M.room.wave && M.room.wave.n) || 1) + ' of ' + RACE_WAVES;
+  $('standTitle').textContent = 'Round ' + ((M.room && M.room.wave && M.room.wave.n) || 1) + ' of ' + RACE_WAVES;
   for (var i=0;i<rows.length;i++)
     html += '<div class="stat-line"><span><span class="rk">' + (i+1) + '</span>' +
             escapeHtml(rows[i].name) + (rows[i].id === M.pid ? ' (you)' : '') +
@@ -1436,7 +1452,10 @@ function paintRaceFinal(){
   for (i=0;i<rows.length;i++)
     html += row('#' + (i+1) + ' ' + escapeHtml(rows[i].name), rows[i].total + ' pts');
   $('finalRows').innerHTML = html;
-  $('playAgainBtn').textContent = 'BACK TO MENU';
+  /* The two buttons must do different things: this one starts a NEW race
+     (the finished room is closed), homeBtn goes home. Relabelling it "BACK TO
+     MENU" left two buttons that both just left the room. */
+  $('playAgainBtn').textContent = 'NEW RACE';
   show('screen-final');
 }
 
@@ -1492,7 +1511,9 @@ document.addEventListener('DOMContentLoaded', function(){
   /* One handler that dispatches on mode. The final screen is shared by solo
      and race, so rebinding .onclick here would leave both wired at once. */
   $('playAgainBtn').addEventListener('click', function(){
-    if (G && G.mode === 'race') leaveRoom(); else startSolo();
+    if (G && G.mode === 'race'){
+      leaveRoom(); $('inName').value = playerName(); raceErr(''); show('screen-rooms');
+    } else startSolo();
   });
   $('homeBtn').addEventListener('click', function(){
     if (G && G.mode === 'race') leaveRoom();

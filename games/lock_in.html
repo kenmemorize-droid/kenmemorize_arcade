@@ -36,6 +36,9 @@
   --r-concrete:#b9bdc3;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+/* .big-btn sets display:block, which beats the browser's own [hidden] rule —
+   without this, guests saw the host-only START / NEXT ROOM buttons */
+[hidden]{display:none !important;}
 body{
   margin:0; min-height:100vh; font-family:'Segoe UI',Arial,sans-serif;
   background:radial-gradient(circle at 50% -10%, var(--bg2), var(--bg1) 65%);
@@ -1551,7 +1554,7 @@ function joinRoom(){
 
 function watchRoom(){
   raceErr('');
-  M.joined=true; M.lastKey=''; M.refereed=0; M.playReported=false;
+  M.joined=true; M.lastKey=''; M.refereed=0; M.dealt=0; M.playReported=false;
   M.es=subscribe('rooms/'+M.code,onRoom,function(){ raceErr('Connection dropped.'); });
   clearInterval(M.hb);
   M.hb=setInterval(function(){ if(M.joined) net.patch('rooms/'+M.code+'/players/'+M.pid,{ hb:Date.now() }); },5000);
@@ -1571,7 +1574,10 @@ function leaveRoom(){
 
 /* ---- the single reactive entry point ---- */
 function onRoom(room){
-  if(!room){ if(M.joined){ toast('Room closed'); leaveRoom(); } return; }
+  /* an update already in flight when we left must not repaint the race
+     screens over wherever the player went next */
+  if(!M.joined) return;
+  if(!room){ toast('Room closed'); leaveRoom(); return; }
   M.room=room;
   if(room.phase==='lobby'){ M.playReported=false; paintLobby(); return; }
   if(room.phase==='over'){ paintRaceFinal(); return; }
@@ -1608,6 +1614,10 @@ function paintLobby(){
 }
 
 function hostDealRound(n, seed){
+  /* Exactly one deal per room, in order, never past the last. A double-tap on
+     NEXT used to deal the same room twice, resetting everyone's `done`. */
+  if(!M.isHost || n!==M.dealt+1 || n>RACE_ROOMS) return;
+  M.dealt=n;
   var reset={}, ids=Object.keys(P());
   for(var i=0;i<ids.length;i++){
     var p=P()[ids[i]];
@@ -1724,7 +1734,10 @@ function paintRaceFinal(){
   $('resultNewBest').style.display='none';
   $('resultRows').innerHTML=standRows(rows);
   $('btnShare').hidden=true;
-  $('btnAgain').textContent='BACK TO MENU';
+  /* The two buttons must do different things: this one starts a NEW race
+     (the finished room is closed), btnMenu goes home. Relabelling it "Back to
+     menu" — as the older race games do — left two identical buttons. */
+  $('btnAgain').textContent='NEW RACE';
   show('result');
 }
 
@@ -1790,7 +1803,10 @@ buildStage();
 
 $('btnSolo').onclick=function(){ startSolo(); };
 $('btnOnline').onclick=function(){ $('inName').value=playerName(); raceErr(''); show('rooms'); };
-$('btnAgain').onclick=function(){ if(S.mode==='race'){ leaveRoom(); return; } startSolo(); };
+$('btnAgain').onclick=function(){
+  if(S.mode==='race'){ leaveRoom(); $('inName').value=playerName(); raceErr(''); show('rooms'); return; }
+  startSolo();
+};
 $('btnMenu').onclick=function(){ if(S.mode==='race'){ leaveRoom(); return; } show('menu'); refreshHome(); };
 $('btnExit').onclick=function(){
   if(S.mode==='race') openModal('Leave the race?','The others will keep playing without you.','Leave',exitToMenu);
