@@ -30,6 +30,7 @@
     --c-numeric:#FFC94D;
     --c-sequence:#A6FF4D;
     --c-logic:#B18CFF;
+    --c-others:#FF7A45;          /* min CIE76 ΔE 46 to the five above (Numeric's amber) */
   }
 
   *{box-sizing:border-box;}
@@ -189,15 +190,7 @@
     background:var(--panel); border:2px solid var(--chip-border); border-radius:20px;
     padding:20px 22px; display:flex; flex-direction:column;
   }
-  .lb-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
-  /* Mode switch — only for a game that keeps more than one board (Kopi Rush:
-     Recall vs Display). Sits between the title and the player count. */
-  .lb-modes{ display:inline-flex; margin-left:auto; padding:3px; gap:3px; border-radius:999px;
-    background:var(--chip-bg); border:1.5px solid var(--chip-border); }
-  .lb-modes button{ cursor:pointer; font-family:inherit; font-size:0.72rem; font-weight:800; letter-spacing:.03em;
-    padding:5px 12px; border-radius:999px; border:none; background:transparent; color:var(--dim); transition:all .15s ease; }
-  .lb-modes button[aria-pressed="true"]{ color:var(--text);
-    background:color-mix(in srgb, var(--feat-c, var(--marquee)) 28%, var(--chip-bg)); }
+  .lb-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
   .lb-head h2{ margin:0; font-size:0.95rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--marquee); }
   .lb-sub{ font-family:"SFMono-Regular","Menlo","Consolas",monospace; font-size:0.72rem; color:var(--dim); }
   .lb-list{ list-style:none; margin:0; padding:0; flex-grow:1; }
@@ -265,7 +258,6 @@
   <div class="lb-card">
     <div class="lb-head">
       <h2>Leaderboard</h2>
-      <div class="lb-modes" id="lbModes" role="group" aria-label="Leaderboard mode" hidden></div>
       <span class="lb-sub" id="lbCount"></span>
     </div>
     <ol class="lb-list" id="lbList"><li class="lb-empty">Loading…</li></ol>
@@ -282,6 +274,8 @@
 <script>
 /* =========================================================
    CATEGORIES — memory-skill groups. Order here = display order.
+   "others" (2026-10-02) holds games with no memory element — Bookends
+   first. Keep it last. Duplicated (keys/labels only) in admin.html.
    ========================================================= */
 const CATEGORIES = [
   { key:"spatial",  label:"Spatial",  icon:"🧭", color:"var(--c-spatial)"  },
@@ -289,6 +283,7 @@ const CATEGORIES = [
   { key:"numeric",  label:"Numeric",  icon:"🔢", color:"var(--c-numeric)"  },
   { key:"sequence", label:"Sequence", icon:"🔗", color:"var(--c-sequence)" },
   { key:"logic",    label:"Logic",    icon:"🧩", color:"var(--c-logic)"    },
+  { key:"others",   label:"Others",   icon:"🎮", color:"var(--c-others)"   },
 ];
 
 /* =========================================================
@@ -305,15 +300,17 @@ const CATEGORIES = [
    so every url is "games/<file>.html". No "../" anywhere.
    ========================================================= */
 const BUILTIN_GAMES = [
-  /* Star Slide, added 2026-10-06 — recreated from a reel of a paper 5×5 board
-     game: slide a counter until it hits something, first star to stop on the
-     centre wins. Two players on one device, or vs the computer. No
-     leaderboard, so it is not in RANKED. */
-  { id:"star-slide",       name:"Star Slide",         skill:"logic",    blurb:"Slide counters until they hit something and stop your star on the centre first. Pass-and-play PvP, or vs the computer.",  url:"games/star_slide.html",         icon:"⭐" },
-  /* Kopi Rush, added 2026-10-06 — recreated from a kopitiam "make the kopi"
-     table game. It keeps TWO leaderboards, one per mode (see MODE_BOARDS
-     below), so its id is the play-count key only, never a board path. */
-  { id:"kopi-rush",        name:"Kopi Rush",          skill:"logic",    blurb:"Read the kopitiam order, pour the right number of each ingredient and swipe it out — a 60-second ranked rush (quantities shown, or from memory), or an online race",  url:"games/kopi_rush.html",          icon:"☕" },
+  /* Bookends, added 2026-10-02 — an online word race from a reel of the
+     "Starts With Ends With" party game (that product name is never used).
+     No memory element, so it opened the "others" category. Online only, no
+     leaderboard, so never a RANKED candidate. */
+  { id:"bookends",         name:"Bookends",           skill:"others",   blurb:"Race to type a word that starts with one letter and ends with another — an online match for 2–6 players",  url:"games/bookends.html",           icon:"📚" },
+  /* Unshackle, added 2026-10-01 — a sliding-block padlock puzzle modelled on
+     a wooden puzzle lock. It HAS a leaderboard (/leaderboard/unshackle) but is
+     deliberately NOT in RANKED yet (Kenneth's call), so it stays a plain Logic
+     tile; the board is shown inside the game. To promote it later: add
+     "unshackle" to RANKED and "unshackle": "unshacklePid" to PID_KEYS. */
+  { id:"unshackle",        name:"Unshackle",          skill:"logic",    blurb:"Slide the wooden blocks to clear the hook's path and spring the padlock open — one lock for everyone, fewest moves tops the board",  url:"games/unshackle.html",          icon:"🗝️" },
   /* Lock In, added 2026-09-29 — replicated from a reel of a 3D "memorise the
      room, answer at the wall, wrong = spike pit" game. Never shipped before
      this, so every id and key is named for the title from day one. */
@@ -326,7 +323,7 @@ const BUILTIN_GAMES = [
   /* Renamed to Tidal Drift 2026-08-27. The id stays "tidal-recall" on purpose —
      it is the Firebase key for the play count and the /games overlay, and
      changing it would orphan both. The id is never shown to players. */
-  { id:"tidal-recall",     name:"Tidal Drift",        skill:"visual",   blurb:"Every wave scatters the shore — spot the treasure you haven't seen before, in a ranked solo run or a 5-wave online race",  url:"games/tidal_recall.html",       icon:"🌊" },
+  { id:"tidal-recall",     name:"Tidal Drift",        skill:"visual",   blurb:"Every wave scatters the shore — spot the treasure you haven't seen before, in a ranked solo run or a 5-round online race",  url:"games/tidal_recall.html",       icon:"🌊" },
   { id:"hue-recall",       name:"Hue Recall",         skill:"visual",   blurb:"Recall mixed brand-logo colours; scored on colour distance. Solo, Endless, Practice, and PvP.",       url:"games/hue-recall.html",         icon:"🎨" },
   { id:"ring-match",       name:"Ring Match",         skill:"spatial",   blurb:"Colour-matching slider puzzle with Zen and PvP race modes.",                                          url:"games/ring-match.html",         icon:"🎯" },
   { id:"overlap-pictures", name:"Overlapping Pictures", skill:"visual", blurb:"Competition-format memory-sports trainer with a 300-icon pool.",                                     url:"games/overlapping-picture-memory-game.html", icon:"🖼️" },
@@ -439,24 +436,8 @@ function cardTemplate(game, stats, catColor){
 const FEATURED = "cart-recall";     // the default selection, not the only board
 const LB_TOP = 10;
 
-/* Every ranked game — one chip each. Order here = chip order. */
-const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in", "kopi-rush"];
-
-/* A ranked game normally writes one board, /leaderboard/{its id}. A game with
-   several modes whose scores aren't comparable keeps one board per mode and
-   lists them here; its chip stays single and the leaderboard card gets a
-   mode switch, in this order left to right. `default` marks the mode shown
-   first. `query` is added to Play so the game opens in the mode shown. */
-const MODE_BOARDS = {
-  "kopi-rush": [
-    { board:"kopi-rush-display", tag:"Display", query:"mode=display" },
-    { board:"kopi-rush-recall",  tag:"Recall",  query:"mode=recall", default:true }
-  ]
-};
-const boardsOf = id => MODE_BOARDS[id] || [{ board:id }];
-let MODE_SEL = {};     // game id → index of the mode shown on its card
-const defaultMode = id => Math.max(0, boardsOf(id).findIndex(m => m.default));
-const activeMode  = id => boardsOf(id)[MODE_SEL[id] ?? defaultMode(id)];
+/* Every game that writes to /leaderboard/{id}. Order here = chip order. */
+const RANKED = ["cart-recall", "memomath", "tidal-recall", "blind-snap", "lock-in"];
 
 /* Each game keeps its own player id under its own localStorage key. Same
    origin, so the hub can read it and highlight the visitor's own row —
@@ -466,11 +447,8 @@ const PID_KEYS = {
   "memomath":     "memomathPid",
   "tidal-recall": "tidalDriftPid",  // key follows the NEW name; the id does not
   "blind-snap":   "blindSnapPid",
-  "lock-in":      "lockInPid",
-  "kopi-rush":    "kopiRushPid"     // one id per player, shared by both mode boards
+  "lock-in":      "lockInPid"
 };
-
-const BOARD_IDS = RANKED.flatMap(id => boardsOf(id).map(m => m.board));   // BOARDS is keyed by these
 
 let SELECTED = FEATURED;
 let BOARDS = {};
@@ -506,7 +484,6 @@ function renderRanked(stats){
 
   const game = GAMES.find(g => g.id === SELECTED);
   if(!game) return;
-  const modes = boardsOf(SELECTED), mode = activeMode(SELECTED);
 
   sec.hidden = false;
   document.getElementById("moreHead").hidden = false;
@@ -528,19 +505,13 @@ function renderRanked(stats){
     }).join("");
 
   const card = document.getElementById("featCard");
-  card.href = mode.query ? `${game.url}?${mode.query}` : game.url;
+  card.href = game.url;
   document.getElementById("featBadge").textContent = game.id === FEATURED ? "Featured" : "Ranked";
   document.getElementById("featIcon").textContent = game.icon;
   document.getElementById("featName").textContent = game.name;
   document.getElementById("featBlurb").textContent = game.blurb;
 
-  /* The mode switch: only drawn for a game with more than one board. */
-  const modesEl = document.getElementById("lbModes");
-  modesEl.hidden = modes.length < 2;
-  modesEl.innerHTML = modes.length < 2 ? "" : modes.map((m, i) =>
-    `<button type="button" data-mode="${i}" aria-pressed="${m === mode}">${esc(m.tag)}</button>`).join("");
-
-  const rows = Object.entries(BOARDS[mode.board] || {})
+  const rows = Object.entries(BOARDS[SELECTED] || {})
     .filter(([,e]) => e && typeof e.score === "number")
     .sort((a,b) => b[1].score - a[1].score);
 
@@ -551,7 +522,7 @@ function renderRanked(stats){
   const myIndex = rows.findIndex(([id]) => id === meId);
 
   /* Real figures instead of blank space in the tall card. */
-  const plays = (stats[game.id]?.totalPlays) || 0;   // plays are per game, not per board
+  const plays = (stats[SELECTED]?.totalPlays) || 0;
   const top   = rows.length ? Number(rows[0][1].score) : null;
   const mine  = myIndex >= 0 ? Number(rows[myIndex][1].score) : null;
   document.getElementById("featStats").innerHTML = [
@@ -607,9 +578,9 @@ async function render(){
   const emptyNote  = document.getElementById("emptyNote");
 
   const [stats, overlay, ...boards] = await Promise.all([
-    fetchGlobalStats(), fetchGamesOverlay(), ...BOARD_IDS.map(fetchBoard)
+    fetchGlobalStats(), fetchGamesOverlay(), ...RANKED.map(fetchBoard)
   ]);
-  BOARD_IDS.forEach((id, i) => { BOARDS[id] = boards[i]; });
+  RANKED.forEach((id, i) => { BOARDS[id] = boards[i]; });
   STATS = stats;
   GAMES = mergeGames(overlay);
   if(GAMES.length === 0){ emptyNote.style.display = "block"; return; }
@@ -680,13 +651,6 @@ document.getElementById("lbPick").addEventListener("click", e => {
   const b = e.target.closest("button[data-lb]");
   if(!b) return;
   SELECTED = b.getAttribute("data-lb");
-  renderRanked(STATS);
-});
-
-document.getElementById("lbModes").addEventListener("click", e => {
-  const b = e.target.closest("button[data-mode]");
-  if(!b) return;
-  MODE_SEL[SELECTED] = Number(b.getAttribute("data-mode"));
   renderRanked(STATS);
 });
 
